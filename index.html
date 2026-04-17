@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presupuestos · SPA EMESA</title>
+  <style>
+    :root {
+      --emesa-blue: #3880c7;
+      --emesa-blue-dark: #2f6fae;
+      --emesa-blue-soft: #e6f2fb;
+      --emesa-blue-light: #cce7f6;
+      --emesa-bg: #f5f7fa;
+      --emesa-surface: #ffffff;
+      --emesa-border: #dbe5ef;
+      --emesa-text: #1f2d3d;
+      --emesa-muted: #5f7285;
+      --emesa-breadcrumb-bg: #d1e7dd;
+      --emesa-breadcrumb-border: #c3e6de;
+      --emesa-breadcrumb-link: #1e6bb8;
+      --emesa-shadow: 0 10px 28px rgba(56, 128, 199, 0.1);
+      --font-main: 'Open Sans', 'Segoe UI', Tahoma, Arial, sans-serif;
+      --sidebar-collapsed: 80px;
+      --sidebar-expanded: 250px;
+      --header-height: 80px;
+      --transition: all 0.3s ease;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      font-family: var(--font-main);
+      background: var(--emesa-bg);
+      color: var(--emesa-text);
+    }
+
+    body {
+      min-height: 100vh;
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    .header {
+      background: var(--emesa-blue);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      height: var(--header-height);
+      padding: 0 16px;
+      box-shadow: 0 3px 12px rgba(30, 80, 135, 0.18);
+    }
+
+    .header-logo {
+      width: 150px;
+      height: 38px;
+      object-fit: contain;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      flex: 1;
+      text-align: center;
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .header-app-pill {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      font-size: 0.95rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-wrapper {
+      background: transparent;
+      border-bottom: none;
+      padding: 0;
+    }
+
+    .breadcrumb-container {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      overflow-x: auto;
+      padding: 10px 20px;
+      background: var(--emesa-breadcrumb-bg);
+      border-bottom: 1px solid var(--emesa-breadcrumb-border);
+      position: relative;
+      z-index: 101;
+      color: #3b4a5a;
+      font-family: var(--font-main);
+      font-size: 15px;
+      font-style: normal;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: 0;
+    }
+
+    .breadcrumb-item {
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .breadcrumb-clickable {
+      color: var(--emesa-breadcrumb-link);
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .breadcrumb-clickable:hover {
+      text-decoration: underline;
+    }
+
+    .breadcrumb-last {
+      color: var(--emesa-text);
+      font-weight: 700;
+    }
+
+    .breadcrumb-separator {
+      color: #7c8a99;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .view-panel {
+      display: none;
+    }
+
+    .view-panel.active {
+      display: block;
+    }
+
+    .app-layout {
+      display: flex;
+      min-height: calc(100vh - var(--header-height) - 42px);
+    }
+
+    .sidebar {
+      width: var(--sidebar-collapsed);
+      background: #f8fbff;
+      border-right: 1px solid #e5edf5;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
+      box-shadow: 4px 0 18px rgba(56, 128, 199, 0.08);
+      overflow: hidden;
+    }
+
+    .sidebar:hover,
+    .sidebar:focus-within {
+      width: var(--sidebar-expanded);
+    }
+
+    .sidebar-header {
+      min-height: 24px;
+      border-bottom: 1px solid #eef4fa;
+    }
+
+    .sidebar-nav {
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .nav-item,
+    .btn-config {
+      width: 100%;
+      min-height: 52px;
+      border: 1px solid transparent;
+      background: transparent;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      color: #36516d;
+      cursor: pointer;
+      transition: var(--transition);
+      text-align: left;
+    }
+
+    .nav-item:hover,
+    .btn-config:hover,
+    .nav-item:focus-visible,
+    .btn-config:focus-visible {
+      background: #eef6fd;
+      border-color: #d9e7f5;
+      outline: none;
+    }
+
+    .nav-item.active {
+      background: #e8f2fb;
+      border-left: 4px solid var(--emesa-blue);
+      color: var(--emesa-blue-dark);
+      font-weight: 700;
+    }
+
+    .nav-item-icon,
+    .config-icon {
+      min-width: 26px;
+      font-size: 1.2rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .nav-item-text,
+    .config-text,
+    .nav-badge {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .sidebar:hover .nav-item-text,
+    .sidebar:hover .config-text,
+    .sidebar:hover .nav-badge,
+    .sidebar:focus-within .nav-item-text,
+    .sidebar:focus-within .config-text,
+    .sidebar:focus-within .nav-badge {
+      opacity: 1;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: #eef2f6;
+      border: 1px solid #d7e0ea;
+      color: #5f7285;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .config-container {
+      padding: 10px 15px;
+      border-top: 1px solid #eee;
+    }
+
+    .btn-config {
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 6px;
+      justify-content: center;
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 28px;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--emesa-bg) 100%);
+    }
+
+    .content-area--config {
+      padding-top: 24px;
+      min-height: calc(100vh - var(--header-height) - 42px);
+    }
+
+    .hero-card,
+    .panel-card,
+    .placeholder-card,
+    .config-detail-card {
+      background: var(--emesa-surface);
+      border-radius: 24px;
+      box-shadow: var(--emesa-shadow);
+      border: 1px solid rgba(56, 128, 199, 0.08);
+    }
+
+    .home-panel {
+      display: none;
+      animation: fadeIn 0.24s ease;
+    }
+
+    .home-panel.active {
+      display: block;
+    }
+
+    .hero-card {
+      padding: 32px;
+      display: grid;
+      grid-template-columns: 1.35fr 0.85fr;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--emesa-blue);
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .page-title {
+      margin: 0 0 12px;
+      font-size: 2rem;
+      line-height: 1.15;
+      color: var(--emesa-text);
+    }
+
+    .page-description {
+      margin: 0;
+      color: var(--emesa-muted);
+      line-height: 1.65;
+      max-width: 760px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      border: none;
+      border-radius: 12px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: var(--transition);
+    }
+
+    .btn-primary {
+      background: var(--emesa-blue);
+      color: #fff;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      background: var(--emesa-blue-dark);
+      outline: none;
+    }
+
+    .btn-secondary {
+      background: #eef5fc;
+      color: var(--emesa-blue-dark);
+      border: 1px solid #d7e7f5;
+    }
+
+    .btn-secondary:hover,
+    .btn-secondary:focus-visible {
+      background: #e0eefb;
+      outline: none;
+    }
+
+    .hero-aside {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      align-content: start;
+    }
+
+    .stat-card {
+      background: var(--emesa-blue-soft);
+      border: 1px solid var(--emesa-blue-light);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .stat-card strong {
+      display: block;
+      font-size: 1.7rem;
+      color: var(--emesa-blue-dark);
+      margin-bottom: 4px;
+    }
+
+    .stat-card span {
+      color: #4e6882;
+      font-size: 0.95rem;
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .panel-card,
+    .placeholder-card {
+      padding: 24px;
+    }
+
+    .panel-card h2,
+    .placeholder-card h2,
+    .config-detail-card h2 {
+      margin: 0 0 10px;
+      font-size: 1.25rem;
+      color: var(--emesa-blue-dark);
+    }
+
+    .panel-card p,
+    .placeholder-card p,
+    .config-detail-card p {
+      margin: 0;
+      color: var(--emesa-muted);
+      line-height: 1.6;
+    }
+
+    .check-list {
+      list-style: none;
+      margin: 18px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .check-list li {
+      position: relative;
+      padding-left: 26px;
+      color: #40576d;
+    }
+
+    .check-list li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--emesa-blue);
+      font-weight: 700;
+    }
+
+    .emesa-config-menu-view {
+      width: 100%;
+      min-height: calc(100vh - 160px);
+      background: var(--emesa-bg);
+      animation: fadeIn 0.24s ease;
+    }
+
+    .emesa-config-menu-shell {
+      max-width: 800px;
+      margin: 24px auto 0;
+      padding: 0 16px 24px;
+    }
+
+    .config-heading {
+      margin: 0 0 24px;
+      text-align: center;
+    }
+
+    .config-heading h1 {
+      margin: 0 0 10px;
+      font-size: 2rem;
+      color: var(--emesa-text);
+    }
+
+    .config-heading p {
+      margin: 0;
+      color: var(--emesa-muted);
+      line-height: 1.6;
+    }
+
+    .emesa-config-menu-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 24px;
+      justify-content: center;
+    }
+
+    .emesa-config-card {
+      border: none;
+      background: #ffffff;
+      border-radius: 24px;
+      min-height: 270px;
+      padding: 28px 24px;
+      box-shadow: var(--emesa-shadow);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .emesa-config-card:hover,
+    .emesa-config-card:focus-visible {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 34px rgba(56, 128, 199, 0.16);
+      outline: none;
+    }
+
+    .emesa-config-card__icon {
+      font-size: 72px;
+      line-height: 1;
+    }
+
+    .emesa-config-card__title {
+      color: #4a7fb3;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    .config-detail {
+      display: none;
+      max-width: 980px;
+      margin: 24px auto 0;
+      padding: 0 16px 24px;
+      animation: fadeIn 0.24s ease;
+    }
+
+    .config-detail.active {
+      display: block;
+    }
+
+    .config-detail-card {
+      padding: 28px;
+    }
+
+    .config-detail-card__meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #eef6fd;
+      color: var(--emesa-blue-dark);
+      font-size: 0.92rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 24px;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 980px) {
+      .hero-card,
+      .panel-grid,
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-aside {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-wrap: wrap;
+        height: auto;
+        justify-content: center;
+        padding: 14px 16px;
+      }
+
+      .header-title {
+        order: 3;
+        width: 100%;
+        margin: 0;
+        font-size: 1.6rem;
+      }
+
+      .app-layout {
+        flex-direction: column;
+      }
+
+      .sidebar,
+      .sidebar:hover,
+      .sidebar:focus-within {
+        width: 100%;
+      }
+
+      .sidebar-nav,
+      .config-container {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .nav-item-text,
+      .config-text,
+      .nav-badge {
+        opacity: 1;
+      }
+
+      .content-area {
+        padding: 18px;
+      }
+
+      .hero-card,
+      .config-heading h1,
+      .page-title {
+        font-size: 1.6rem;
+      }
+
+      .emesa-config-menu-grid,
+      .hero-aside {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <img class="header-logo" src="../MCCAB/static/images/Logo_EMESA.png" alt="EMESA" onerror="this.style.visibility='hidden'" />
+    <div class="header-title">Presupuestos</div>
+    <div class="header-app-pill">Base SPA EMESA</div>
+    <img class="header-logo" src="../MCCAB/static/images/Logo_EMESA.png" alt="EMESA" onerror="this.style.visibility='hidden'" />
+  </header>
+
+  <nav class="breadcrumb-wrapper" aria-label="Breadcrumb">
+    <div id="breadcrumbContainer" class="breadcrumb-container"></div>
+  </nav>
+
+  <section id="view-inicio" class="view-panel active" aria-labelledby="titulo-inicio">
+    <div class="app-layout">
+      <aside class="sidebar" aria-label="Navegación principal Presupuestos">
+        <div class="sidebar-header"></div>
+
+        <nav class="sidebar-nav" aria-label="Secciones principales">
+          <button class="nav-item active" type="button" data-panel="resumen" aria-current="page">
+            <span class="nav-item-icon" aria-hidden="true">🏠</span>
+            <span class="nav-item-text">Inicio</span>
+          </button>
+          <button class="nav-item" type="button" data-panel="borradores">
+            <span class="nav-item-icon" aria-hidden="true">📝</span>
+            <span class="nav-item-text">Borradores</span>
+            <span class="nav-badge">12</span>
+          </button>
+          <button class="nav-item" type="button" data-panel="publicadas">
+            <span class="nav-item-icon" aria-hidden="true">📤</span>
+            <span class="nav-item-text">Publicadas</span>
+            <span class="nav-badge">08</span>
+          </button>
+        </nav>
+
+        <div class="config-container">
+          <button id="tab-configuracion" class="btn-config" type="button">
+            <span class="config-icon" aria-hidden="true">⚙️</span>
+            <span class="config-text">Configuración</span>
+          </button>
+        </div>
+      </aside>
+
+      <main class="content-area">
+        <section class="home-panel active" data-panel-view="resumen">
+          <article class="hero-card">
+            <div>
+              <p class="eyebrow">Plantilla inicial</p>
+              <h1 id="titulo-inicio" class="page-title">Arranque SPA corporativo para OFERTAS</h1>
+              <p class="page-description">Esta base ya deja preparado el patrón EMESA completo: header corporativo, breadcrumb SPA, vista de Inicio con sidebar contraíble y vista de Configuración separada sin sidebar. A partir de aquí podemos montar módulos, router y pantallas reales de OFERTAS sin rehacer la estructura.</p>
+              <div class="hero-actions">
+                <button class="btn-primary" type="button" data-go-config>Configurar módulos</button>
+                <button class="btn-secondary" type="button" data-panel-target="borradores">Ver siguiente bloque</button>
+              </div>
+            </div>
+
+            <div class="hero-aside">
+              <div class="stat-card">
+                <strong>01</strong>
+                <span>Vista Inicio lista</span>
+              </div>
+              <div class="stat-card">
+                <strong>01</strong>
+                <span>Vista Configuración lista</span>
+              </div>
+              <div class="stat-card">
+                <strong>SPA</strong>
+                <span>Breadcrumb con historial</span>
+              </div>
+              <div class="stat-card">
+                <strong>EMESA</strong>
+                <span>Sidebar hover 80px → 250px</span>
+              </div>
+            </div>
+          </article>
+
+          <div class="panel-grid">
+            <article class="panel-card">
+              <h2>Estructura ya preparada</h2>
+              <p>Header, breadcrumb y layout principal listos para reutilizar en las pantallas reales del proyecto.</p>
+              <ul class="check-list">
+                <li>Header corporativo con branding EMESA</li>
+                <li>Sidebar claro y expandible por hover</li>
+                <li>Separación correcta entre Inicio y Configuración</li>
+              </ul>
+            </article>
+            <article class="panel-card">
+              <h2>Navegación interna</h2>
+              <p>El breadcrumb reacciona a la navegación SPA y permite volver a niveles anteriores sin recargar la página.</p>
+              <ul class="check-list">
+                <li>Ruta Inicio</li>
+                <li>Ruta Inicio &gt; Configuración</li>
+                <li>Ruta Inicio &gt; Configuración &gt; subsección</li>
+              </ul>
+            </article>
+            <article class="panel-card">
+              <h2>Siguiente paso natural</h2>
+              <p>Separar este prototipo en `static/` + `templates/`, añadir router real y conectar APIs o formularios de OFERTAS.</p>
+              <ul class="check-list">
+                <li>Maestros de clientes</li>
+                <li>Canales y plantillas</li>
+                <li>Gestión del pipeline comercial</li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+        <section class="home-panel" data-panel-view="borradores">
+          <article class="placeholder-card">
+            <h2>Borradores</h2>
+            <p>Espacio listo para el listado de ofertas en edición, filtros rápidos y acciones masivas.</p>
+            <ul class="check-list">
+              <li>Tabla/lista de borradores</li>
+              <li>Filtros por comercial, fecha y estado</li>
+              <li>Acción rápida para duplicar o continuar edición</li>
+            </ul>
+          </article>
+        </section>
+
+        <section class="home-panel" data-panel-view="publicadas">
+          <article class="placeholder-card">
+            <h2>Publicadas</h2>
+            <p>Zona reservada para seguimiento de ofertas enviadas, aceptación comercial y trazabilidad.</p>
+            <ul class="check-list">
+              <li>Estado de envío y respuesta</li>
+              <li>Histórico de revisiones</li>
+              <li>Métricas de conversión</li>
+            </ul>
+          </article>
+        </section>
+      </main>
+    </div>
+  </section>
+
+  <section id="view-configuracion" class="view-panel" aria-labelledby="titulo-configuracion">
+    <main class="content-area content-area--config">
+      <section id="config-home" class="emesa-config-menu-view active">
+        <div class="emesa-config-menu-shell">
+          <div class="config-heading">
+            <h1 id="titulo-configuracion">Configuración OFERTAS</h1>
+            <p>Vista independiente sin sidebar, siguiendo el contrato EMESA de menú por tarjetas. Cada tarjeta abre una subsección SPA y actualiza el breadcrumb.</p>
+          </div>
+
+          <div class="emesa-config-menu-grid">
+            <button class="emesa-config-card" type="button" data-config-route="clientes">
+              <span class="emesa-config-card__icon" aria-hidden="true">👥</span>
+              <span class="emesa-config-card__title">Clientes</span>
+            </button>
+            <button class="emesa-config-card" type="button" data-config-route="tarifas">
+              <span class="emesa-config-card__icon" aria-hidden="true">💶</span>
+              <span class="emesa-config-card__title">Tarifas</span>
+            </button>
+            <button class="emesa-config-card" type="button" data-config-route="canales">
+              <span class="emesa-config-card__icon" aria-hidden="true">📣</span>
+              <span class="emesa-config-card__title">Canales</span>
+            </button>
+            <button class="emesa-config-card" type="button" data-config-route="plantillas">
+              <span class="emesa-config-card__icon" aria-hidden="true">🧩</span>
+              <span class="emesa-config-card__title">Plantillas</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section id="config-detail" class="config-detail" aria-live="polite">
+        <article class="config-detail-card">
+          <span class="config-detail-card__meta">Configuración · <span id="detailMeta">Subsección</span></span>
+          <h2 id="detailTitle">Subsección</h2>
+          <p id="detailDescription">Contenido base de configuración.</p>
+
+          <div class="detail-grid">
+            <div class="panel-card">
+              <h2>Qué montar aquí</h2>
+              <p id="detailGoal">Definir formularios, tablas o lógica real para la subsección seleccionada.</p>
+            </div>
+            <div class="panel-card">
+              <h2>Checklist de arranque</h2>
+              <p id="detailChecklist">Crear estructura de datos, validaciones, acciones CRUD y conexión API.</p>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </section>
+
+  <script>
+    class NavigationManager {
+      constructor() {
+        this.navigationStack = [{ label: 'Inicio', target: 'inicio', htmlFile: null }];
+        this.maxHistoryLength = 10;
+      }
+
+      pushNavigation(label, target, htmlFile = null) {
+        const lastItem = this.navigationStack[this.navigationStack.length - 1];
+        if (lastItem && lastItem.target === target) {
+          return;
+        }
+
+        this.navigationStack.push({ label, target, htmlFile });
+
+        if (this.navigationStack.length > this.maxHistoryLength) {
+          this.navigationStack.shift();
+        }
+
+        this.updateBreadcrumb();
+        this.saveNavigationState();
+      }
+
+      navigateToBreadcrumb(index) {
+        if (index >= 0 && index < this.navigationStack.length) {
+          this.navigationStack = this.navigationStack.slice(0, index + 1);
+          const item = this.navigationStack[index];
+          this.navigateToItem(item);
+          this.updateBreadcrumb();
+          this.saveNavigationState();
+        }
+      }
+
+      navigateToItem(item) {
+        if (item.htmlFile) {
+          window.location.href = item.htmlFile;
+          return;
+        }
+
+        if (window.spaNavigateTo && typeof window.spaNavigateTo === 'function') {
+          window.spaNavigateTo(item.target, { preserveHistory: true, fromBreadcrumb: true });
+        }
+      }
+
+      updateBreadcrumb() {
+        const container = document.getElementById('breadcrumbContainer');
+        if (!container) {
+          return;
+        }
+
+        container.innerHTML = '';
+        this.navigationStack.forEach((item, index) => {
+          const isLast = index === this.navigationStack.length - 1;
+          const breadcrumbItem = document.createElement('span');
+          breadcrumbItem.className = `breadcrumb-item ${isLast ? 'breadcrumb-last' : 'breadcrumb-clickable'}`;
+          breadcrumbItem.textContent = item.label;
+
+          if (!isLast) {
+            breadcrumbItem.onclick = () => this.navigateToBreadcrumb(index);
+          }
+
+          container.appendChild(breadcrumbItem);
+
+          if (!isLast) {
+            const separator = document.createElement('span');
+            separator.className = 'breadcrumb-separator';
+            separator.textContent = '>';
+            container.appendChild(separator);
+          }
+        });
+      }
+
+      saveNavigationState() {
+        try {
+          sessionStorage.setItem('NavigationStack', JSON.stringify(this.navigationStack));
+        } catch (error) {
+          console.warn('No se pudo guardar el estado de navegación:', error);
+        }
+      }
+
+      loadNavigationState() {
+        try {
+          const saved = sessionStorage.getItem('ofertasNavigationStack');
+          if (saved) {
+            this.navigationStack = JSON.parse(saved);
+          }
+        } catch (error) {
+          console.warn('No se pudo cargar el estado de navegación:', error);
+        }
+
+        this.updateBreadcrumb();
+      }
+
+      replaceStack(stack) {
+        this.navigationStack = stack;
+        this.updateBreadcrumb();
+        this.saveNavigationState();
+      }
+
+      reset() {
+        this.replaceStack([{ label: 'Inicio', target: 'inicio', htmlFile: null }]);
+      }
+    }
+
+    const detailConfig = {
+      clientes: {
+        title: 'Clientes',
+        description: 'Aquí puede vivir el maestro de clientes, segmentación comercial y reglas por canal o delegación.',
+        goal: 'Añadir buscador, tabla maestra, formulario de alta/edición y acciones CRUD.',
+        checklist: 'Modelo de cliente, validaciones, permisos y sincronización con el ERP o CRM.'
+      },
+      tarifas: {
+        title: 'Tarifas',
+        description: 'Subsección pensada para configurar tarifas base, descuentos, escalados y vigencias.',
+        goal: 'Definir cards, formularios o grids para familias de precio y reglas comerciales.',
+        checklist: 'Tipos de tarifa, vigencia, prioridad de reglas y simulación de cálculo.'
+      },
+      canales: {
+        title: 'Canales',
+        description: 'Base para mantener email, portales, comerciales o integraciones usados para enviar ofertas.',
+        goal: 'Gestionar canales de comunicación y plantillas de envío asociadas.',
+        checklist: 'Estados del canal, credenciales, textos y pruebas de conectividad.'
+      },
+      plantillas: {
+        title: 'Plantillas',
+        description: 'Espacio para plantillas de documento, bloques reutilizables y textos comerciales.',
+        goal: 'Preparar catálogo de plantillas por familia, idioma o cliente.',
+        checklist: 'Versionado, vista previa, placeholders y asignación por contexto.'
+      }
+    };
+
+    const navigationManager = new NavigationManager();
+    const homePanels = document.querySelectorAll('[data-panel-view]');
+    const navItems = document.querySelectorAll('.nav-item');
+    const viewInicio = document.getElementById('view-inicio');
+    const viewConfiguracion = document.getElementById('view-configuracion');
+    const configHome = document.getElementById('config-home');
+    const configDetail = document.getElementById('config-detail');
+    const detailMeta = document.getElementById('detailMeta');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailDescription = document.getElementById('detailDescription');
+    const detailGoal = document.getElementById('detailGoal');
+    const detailChecklist = document.getElementById('detailChecklist');
+
+    function setActiveSidebarItem(panel) {
+      navItems.forEach((item) => {
+        const isActive = item.dataset.panel === panel;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-current', isActive ? 'page' : 'false');
+      });
+    }
+
+    function showHomePanel(panel) {
+      homePanels.forEach((section) => {
+        section.classList.toggle('active', section.dataset.panelView === panel);
+      });
+      setActiveSidebarItem(panel);
+    }
+
+    function showConfigHome() {
+      configHome.classList.add('active');
+      configDetail.classList.remove('active');
+    }
+
+    function showConfigDetail(key) {
+      const config = detailConfig[key];
+      if (!config) {
+        return;
+      }
+
+      detailMeta.textContent = config.title;
+      detailTitle.textContent = config.title;
+      detailDescription.textContent = config.description;
+      detailGoal.textContent = config.goal;
+      detailChecklist.textContent = config.checklist;
+      configHome.classList.remove('active');
+      configDetail.classList.add('active');
+    }
+
+    function buildStackForRoute(route) {
+      if (route === 'inicio') {
+        return [{ label: 'Inicio', target: 'inicio', htmlFile: null }];
+      }
+
+      if (route === 'configuracion') {
+        return [
+          { label: 'Inicio', target: 'inicio', htmlFile: null },
+          { label: 'Configuración', target: 'configuracion', htmlFile: null }
+        ];
+      }
+
+      if (route.startsWith('configuracion-')) {
+        const key = route.replace('configuracion-', '');
+        const config = detailConfig[key];
+        if (!config) {
+          return [{ label: 'Inicio', target: 'inicio', htmlFile: null }];
+        }
+
+        return [
+          { label: 'Inicio', target: 'inicio', htmlFile: null },
+          { label: 'Configuración', target: 'configuracion', htmlFile: null },
+          { label: config.title, target: route, htmlFile: null }
+        ];
+      }
+
+      return [{ label: 'Inicio', target: 'inicio', htmlFile: null }];
+    }
+
+    window.spaNavigateTo = function(route, options = {}) {
+      const { preserveHistory = false } = options;
+
+      viewInicio.classList.toggle('active', route === 'inicio');
+      viewConfiguracion.classList.toggle('active', route !== 'inicio');
+
+      if (route === 'inicio') {
+        showHomePanel('resumen');
+      } else if (route === 'configuracion') {
+        showConfigHome();
+      } else if (route.startsWith('configuracion-')) {
+        showConfigDetail(route.replace('configuracion-', ''));
+      }
+
+      if (!preserveHistory) {
+        navigationManager.replaceStack(buildStackForRoute(route));
+      }
+    };
+
+    navItems.forEach((item) => {
+      item.addEventListener('click', () => {
+        showHomePanel(item.dataset.panel);
+        navigationManager.reset();
+      });
+    });
+
+    document.getElementById('tab-configuracion').addEventListener('click', () => {
+      window.spaNavigateTo('configuracion');
+    });
+
+    document.querySelectorAll('[data-go-config]').forEach((button) => {
+      button.addEventListener('click', () => {
+        window.spaNavigateTo('configuracion');
+      });
+    });
+
+    document.querySelectorAll('[data-panel-target]').forEach((button) => {
+      button.addEventListener('click', () => {
+        showHomePanel(button.dataset.panelTarget);
+      });
+    });
+
+    document.querySelectorAll('[data-config-route]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const route = `configuracion-${button.dataset.configRoute}`;
+        window.spaNavigateTo(route);
+      });
+    });
+
+    navigationManager.loadNavigationState();
+    window.spaNavigateTo('inicio', { preserveHistory: false });
+  </script>
+</body>
+</html>
