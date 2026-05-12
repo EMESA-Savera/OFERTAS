@@ -2,6 +2,7 @@
 
 {% block title %}Presupuestos{% endblock %}
 {% block app_header_title %}Presupuestos{% endblock %}
+{% block app_header_title_key %}app.title{% endblock %}
 
 {% block body %}
 <header class="header">
@@ -13,131 +14,323 @@
 </nav>
 
 <section class="view-panel active" data-view-panel="nueva-oferta">
-  <div class="app-shell">
+  <div class="app-shell app-layout-monthly">
     <aside class="sidebar" aria-label="Navegación principal">
-      <div class="sidebar-header"></div>
+      <div class="sidebar-header">
+        <span class="sidebar-header-mark" aria-hidden="true">OF</span>
+        <span class="sidebar-header-text">Presupuestos</span>
+      </div>
 
-      <nav class="sidebar-nav js-sidebar-nav" aria-label="Secciones"></nav>
+      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones"></nav>
 
-      <div class="config-container">
-        <button class="btn-config" type="button" data-view="configuracion" aria-current="false">
-          <span class="config-icon">⚙️</span>
-          <span class="config-text">Configuración</span>
+      <div class="config-container sidebar-footer">
+        <button class="btn-config menu-btn sidebar-config-btn" type="button" data-view="configuracion" aria-current="false" aria-pressed="false" data-translate-key-title="nav.settings" data-translate-key-aria-label="nav.settings">
+          <span class="config-icon emoji">⚙️</span>
+          <span class="config-text label" data-translate-key="nav.settings">Configuración</span>
         </button>
       </div>
     </aside>
 
-    <main class="content-area">
+    <main class="content-area content-wrapper">
       <section class="page-card page-card--oferta">
       <div class="page-card__header">
         <div>
-          <p class="page-eyebrow">Gestión comercial</p>
-          <h1>Nueva Solicitud de Presupuesto</h1>
-          <p>Formulario compacto para registrar la oferta más rápido, manteniendo toda la información clave visible.</p>
+          <p class="page-eyebrow" data-translate-key="common.commercial_management">Gestión comercial</p>
+          <h1 data-translate-key="offer.new_request_title">Nueva Solicitud de Presupuesto</h1>
+          <p data-translate-key="offer.new_request_description">Formulario compacto para registrar la oferta más rápido, manteniendo toda la información clave visible.</p>
         </div>
       </div>
 
       <!-- Importación de correo: mismo comportamiento, menor altura visual -->
       <section class="mail-import-card mail-import-card--compact" aria-labelledby="mailImportTitle">
-        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml o .msg">
+        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml o .msg" data-translate-key-aria-label="offer.mail_import_aria">
           <input id="mailFileInput" type="file" accept=".eml,.msg,message/rfc822" hidden />
           <span class="mail-dropzone__icon" aria-hidden="true">✉️</span>
           <div class="mail-dropzone__content">
-            <strong>Arrastra aquí el correo</strong>
-            <p>o haz clic para seleccionarlo desde tu equipo</p>
+            <strong data-translate-key="offer.mail_drop_title">Arrastra aquí el correo</strong>
+            <p data-translate-key="offer.mail_drop_hint">o haz clic para seleccionarlo desde tu equipo</p>
           </div>
         </div>
+        <!--<div class="mail-import-actions">
+          <button id="openOutlookImportButton" class="btn-secondary" type="button" data-translate-key="offer.open_outlook">
+            Abrir Outlook
+          </button>
+          <p class="mail-import-actions__hint" data-translate-key="offer.outlook_hint">Consulta el buzón corporativo e importa un correo sin descargarlo.</p>
+        </div>-->
       </section>
 
-      <form id="nuevaOfertaForm" class="oferta-form oferta-form--compact" autocomplete="off">
+      <form id="nuevaOfertaForm" class="oferta-form oferta-form--compact" autocomplete="off" novalidate>
         <!-- Grid compacta y responsive: 3 columnas en escritorio, 2 en tablet, 1 en móvil -->
         <div class="form-grid form-grid--compact">
           <div class="form-field field-group field-group--short form-field--readonly">
-            <label for="numero_oferta">Nº OFERTA</label>
-            <input id="numero_oferta" name="numero_oferta" class="input-compact" type="text" value="Consultando..." readonly />
+            <label for="numero_oferta" data-translate-key="offer.fields.offer_number">Nº OFERTA</label>
+            <input id="numero_oferta" name="numero_oferta" class="input-compact" type="text" value="Consultando..." data-translate-key-value="offer.loading" readonly />
           </div>
 
           <div class="form-field field-group field-group--date">
-            <label for="fecha_email">FECHA e-mail</label>
-            <input id="fecha_email" name="fecha_email" class="input-compact" type="date" />
+            <label for="fecha_email" data-translate-key="offer.fields.email_date">FECHA e-mail</label>
+            <input id="fecha_email" name="fecha_email" class="input-compact" type="date" required />
           </div>
 
           <div class="form-field field-group field-group--date">
-            <label for="fecha_alta_oferta">FECHA ALTA OFERTA</label>
+            <label for="fecha_alta_oferta" data-translate-key="offer.fields.offer_created_date">FECHA ALTA OFERTA</label>
             <input id="fecha_alta_oferta" name="fecha_alta_oferta" class="input-compact" type="date" />
           </div>
 
           <div class="form-field field-group field-group--medium">
-            <label for="cliente">CLIENTE</label>
-            <select id="cliente" name="cliente" class="input-compact">
-              <option value="">Seleccionar cliente (pendiente de conexión a BD)</option>
+            <label for="cliente" data-translate-key="offer.fields.client">CLIENTE</label>
+            <select id="cliente" name="cliente" class="input-compact" required>
+              <option value="" data-translate-key="offer.client_select_pending">Seleccionar cliente (pendiente de conexión a BD)</option>
             </select>
           </div>
 
           <div class="form-field field-group field-group--wide field-group--desktop-span-2">
-            <label for="ref_cliente_asunto_email">REF. CLIENTE / ASUNTO E-MAIL</label>
-            <input id="ref_cliente_asunto_email" name="ref_cliente_asunto_email" class="input-compact" type="text" maxlength="500" placeholder="Asunto del correo" />
+            <label for="emisor" data-translate-key="offer.fields.sender">QUIÉN LO ENVÍA</label>
+            <input id="emisor" name="emisor" class="input-compact" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" pattern=".*@.*" title="Indica al menos un correo electrónico válido" required />
+          </div>
+
+          <div class="form-field field-group field-group--wide field-group--desktop-span-2">
+            <label for="ref_cliente_asunto_email" data-translate-key="offer.fields.client_ref_subject">REF. CLIENTE / ASUNTO E-MAIL</label>
+            <input id="ref_cliente_asunto_email" name="ref_cliente_asunto_email" class="input-compact" type="text" maxlength="500" placeholder="Asunto del correo" data-translate-key-placeholder="offer.email_subject_placeholder" />
           </div>
 
           <!-- Observaciones mantiene protagonismo, pero con altura inicial moderada -->
           <div class="form-field field-group field-span-full">
-            <label for="observaciones">OBSERVACIONES</label>
-            <textarea id="observaciones" name="observaciones" class="textarea-compact" rows="4" placeholder="Detalle libre de la oferta, incidencias o contexto adicional"></textarea>
+            <label for="observaciones" data-translate-key="offer.fields.notes">OBSERVACIONES</label>
+            <textarea id="observaciones" name="observaciones" class="textarea-compact" rows="4" placeholder="Detalle libre de la oferta, incidencias o contexto adicional" data-translate-key-placeholder="offer.notes_placeholder"></textarea>
           </div>
         </div>
 
         <div class="form-actions form-actions--compact">
-          <button class="btn-primary" type="submit">Guardar oferta</button>
-          <button class="btn-secondary" type="reset">Limpiar formulario</button>
+          <button class="btn-primary" type="submit" data-translate-key="offer.save">Guardar oferta</button>
+          <button class="btn-secondary" type="reset" data-translate-key="common.clear_form">Limpiar formulario</button>
         </div>
       </form>
 
       <div id="formFeedback" class="form-feedback" aria-live="polite"></div>
+
+      <div id="ofertaEtcModal" class="oferta-modal" aria-hidden="true">
+        <div class="oferta-modal__backdrop" data-close-oferta-etc-modal="true"></div>
+        <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ofertaEtcModalTitle">
+          <div class="oferta-modal__header">
+            <div>
+              <p class="page-eyebrow">ETC</p>
+              <h2 id="ofertaEtcModalTitle">Paso 2: completar ETC</h2>
+              <p class="form-help">La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.</p>
+            </div>
+            <button class="oferta-modal__close" type="button" data-close-oferta-etc-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+          </div>
+
+          <form id="ofertaEtcForm" class="oferta-form" autocomplete="off" novalidate>
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="ofertaEtcResponsable">Responsable</label>
+                <select id="ofertaEtcResponsable" name="num_operario_responsable" required>
+                  <option value="">Selecciona un responsable</option>
+                </select>
+                <p class="form-help">Si eliges un departamento, se propondrá automáticamente su manager.</p>
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcDepartamento">Departamento destino</label>
+                <select id="ofertaEtcDepartamento" name="id_departamento_destino" required>
+                  <option value="">Sin departamento</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcCodigoExterno">Código externo</label>
+                <input id="ofertaEtcCodigoExterno" name="codigo_externo_oferta" type="text" maxlength="100" required />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="ofertaEtcReferenciaCliente">Referencia cliente</label>
+                <input id="ofertaEtcReferenciaCliente" name="referencia_cliente" type="text" maxlength="255" required />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcIncoterm">Incoterm</label>
+                <input id="ofertaEtcIncoterm" name="incoterm" type="text" maxlength="10" required />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <button id="ofertaEtcToggleExtended" class="btn-secondary" type="button" aria-controls="ofertaEtcExtendedFields" aria-expanded="false">Ext. formulario</button>
+                <p class="form-help">Muestra campos de menor uso detectados en el histórico del Excel.</p>
+              </div>
+            </div>
+
+            <div id="ofertaEtcExtendedFields" class="form-grid form-grid--extended" hidden>
+              <div class="form-field">
+                <label for="ofertaEtcPrioridad">Prioridad</label>
+                <select id="ofertaEtcPrioridad" name="prioridad">
+                  <option value="NORMAL">NORMAL</option>
+                  <option value="BAJA">BAJA</option>
+                  <option value="ALTA">ALTA</option>
+                  <option value="CRITICA">CRITICA</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label class="form-check-inline" for="ofertaEtcUrgente">
+                  <input id="ofertaEtcUrgente" name="es_urgente" type="checkbox" />
+                  <span>Marcar como urgente</span>
+                </label>
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcCodigoInterno">Código interno</label>
+                <input id="ofertaEtcCodigoInterno" name="codigo_interno_oferta" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcNumeroComision">Número comisión</label>
+                <input id="ofertaEtcNumeroComision" name="numero_comision" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcProyecto">Proyecto</label>
+                <select id="ofertaEtcProyecto" name="proyecto">
+                  <option value="">Sin proyecto</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcPoOriginal">PO original</label>
+                <input id="ofertaEtcPoOriginal" name="po_original" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcPedidoB2b">Pedido B2B</label>
+                <input id="ofertaEtcPedidoB2b" name="pedido_b2b" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcFechaEnvio">Fecha envío oferta</label>
+                <input id="ofertaEtcFechaEnvio" name="fecha_envio_oferta" type="date" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcSolicitanteNombre">Nombre solicitante</label>
+                <input id="ofertaEtcSolicitanteNombre" name="nombre_solicitante" type="text" maxlength="255" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcSolicitanteEmail">Email solicitante</label>
+                <input id="ofertaEtcSolicitanteEmail" name="email_solicitante" type="email" maxlength="255" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcTotalMaterial">Total material EUR</label>
+                <input id="ofertaEtcTotalMaterial" name="total_material_eur" type="number" step="0.01" min="0" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcTotalFee">Total fee EUR</label>
+                <input id="ofertaEtcTotalFee" name="total_fee_eur" type="number" step="0.01" min="0" />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="ofertaEtcResumenMaterial">Resumen material solicitado</label>
+                <textarea id="ofertaEtcResumenMaterial" name="resumen_material_solicitado" rows="3"></textarea>
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="ofertaEtcObservacionesCliente">Observaciones cliente</label>
+                <textarea id="ofertaEtcObservacionesCliente" name="observaciones_cliente" rows="3"></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-primary" type="submit">Guardar ETC y finalizar</button>
+              <button class="btn-secondary" type="button" data-close-oferta-etc-modal="true">Cancelar</button>
+            </div>
+          </form>
+
+          <div id="ofertaEtcFeedback" class="form-feedback" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div id="outlookImportModal" class="oferta-modal" aria-hidden="true">
+        <div class="oferta-modal__backdrop" data-close-outlook-import-modal="true"></div>
+        <div class="oferta-modal__dialog oferta-modal__dialog--outlook" role="dialog" aria-modal="true" aria-labelledby="outlookImportModalTitle">
+          <div class="oferta-modal__header">
+            <div>
+              <p class="page-eyebrow">Outlook</p>
+              <h2 id="outlookImportModalTitle" data-translate-key="offer.outlook_title">Importar desde Outlook</h2>
+              <p class="form-help" data-translate-key="offer.outlook_description">Selecciona un correo del buzón corporativo para traer emisor, asunto, fecha y cuerpo al formulario.</p>
+              <p id="outlookMailboxLabel" class="form-help"></p>
+            </div>
+            <button class="oferta-modal__close" type="button" data-close-outlook-import-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+          </div>
+
+          <div class="outlook-import__layout">
+            <div class="outlook-import__list-panel">
+              <div id="outlookMessagesList" class="outlook-import__list"></div>
+            </div>
+            <div class="outlook-import__detail-panel">
+              <div id="outlookMessageDetail" class="outlook-import__detail"></div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button id="outlookImportSelectedButton" class="btn-primary" type="button" data-translate-key="offer.outlook_import_selected">
+              Importar correo seleccionado
+            </button>
+            <button class="btn-secondary" type="button" data-close-outlook-import-modal="true" data-translate-key="common.cancel">Cancelar</button>
+          </div>
+
+          <div id="outlookImportFeedback" class="form-feedback" aria-live="polite"></div>
+        </div>
+      </div>
       </section>
     </main>
   </div>
 </section>
 
 <section class="view-panel" data-view-panel="listado-ofertas">
-  <div class="app-shell">
+  <div class="app-shell app-layout-monthly">
     <aside class="sidebar" aria-label="Navegación principal">
-      <div class="sidebar-header"></div>
+      <div class="sidebar-header">
+        <span class="sidebar-header-mark" aria-hidden="true">OF</span>
+        <span class="sidebar-header-text">Presupuestos</span>
+      </div>
 
-      <nav class="sidebar-nav js-sidebar-nav" aria-label="Secciones"></nav>
+      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones"></nav>
 
-      <div class="config-container">
-        <button class="btn-config" type="button" data-view="configuracion" aria-current="false">
-          <span class="config-icon">⚙️</span>
-          <span class="config-text">Configuración</span>
+      <div class="config-container sidebar-footer">
+        <button class="btn-config menu-btn sidebar-config-btn" type="button" data-view="configuracion" aria-current="false" aria-pressed="false" data-translate-key-title="nav.settings" data-translate-key-aria-label="nav.settings">
+          <span class="config-icon emoji">⚙️</span>
+          <span class="config-text label" data-translate-key="nav.settings">Configuración</span>
         </button>
       </div>
     </aside>
 
-    <main class="content-area">
+    <main class="content-area content-wrapper">
       <section class="page-card page-card--clientes">
         <div class="page-card__header">
           <div>
-            <p class="page-eyebrow">Gestión comercial</p>
-            <h1 id="ofertasListadoTitle">Todos</h1>
-            <p id="ofertasListadoDescription">Listado de ofertas registradas.</p>
+            <p class="page-eyebrow" data-translate-key="common.commercial_management">Gestión comercial</p>
+            <h1 id="ofertasListadoTitle" data-translate-key="listing.all">Todos</h1>
+            <p id="ofertasListadoDescription" data-translate-key="listing.description">Listado de ofertas registradas.</p>
           </div>
         </div>
 
         <div class="clientes-table-wrap clientes-table-wrap--spaced">
-          <table class="clientes-table">
+          <table class="clientes-table clientes-table--wide-scroll">
             <thead>
               <tr>
                 <th>Nº oferta</th>
-                <th>Fecha alta</th>
-                <th>Cliente</th>
-                <th>Observaciones</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th data-translate-key="table.offer_number">Nº oferta</th>
+                <th data-translate-key="table.created_date">Fecha alta</th>
+                <th data-translate-key="table.client">Cliente</th>
+                <th data-translate-key="table.notes">Observaciones</th>
+                <th data-translate-key="table.status">Estado</th>
+                <th data-translate-key="table.actions">Acciones</th>
               </tr>
             </thead>
             <tbody id="ofertasListadoTableBody">
               <tr>
-                <td colspan="6" class="clientes-table__empty">No hay ofertas disponibles.</td>
+                <td colspan="6" class="clientes-table__empty" data-translate-key="listing.empty">No hay ofertas disponibles.</td>
               </tr>
             </tbody>
           </table>
@@ -150,10 +343,10 @@
           <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ofertaEditModalTitle">
             <div class="oferta-modal__header">
               <div>
-                <p class="page-eyebrow">Presupuesto</p>
-                <h2 id="ofertaEditModalTitle">Editar oferta</h2>
+                <p class="page-eyebrow" data-translate-key="offer.budget">Presupuesto</p>
+                <h2 id="ofertaEditModalTitle" data-translate-key="offer.edit_title">Editar oferta</h2>
               </div>
-              <button class="oferta-modal__close" type="button" data-close-oferta-modal="true" aria-label="Cerrar">×</button>
+              <button class="oferta-modal__close" type="button" data-close-oferta-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
             </div>
 
             <form id="ofertaEditForm" class="oferta-form" autocomplete="off">
@@ -162,39 +355,44 @@
 
               <div class="form-grid">
                 <div class="form-field form-field--readonly">
-                  <label for="ofertaEditNumero">Nº OFERTA</label>
+                  <label for="ofertaEditNumero" data-translate-key="offer.fields.offer_number">Nº OFERTA</label>
                   <input id="ofertaEditNumero" name="numero_oferta" type="text" readonly />
                 </div>
 
                 <div class="form-field">
-                  <label for="ofertaEditFechaEmail">FECHA e-mail</label>
+                  <label for="ofertaEditFechaEmail" data-translate-key="offer.fields.email_date">FECHA e-mail</label>
                   <input id="ofertaEditFechaEmail" name="fecha_email" type="date" />
                 </div>
 
                 <div class="form-field">
-                  <label for="ofertaEditFechaAlta">FECHA ALTA OFERTA</label>
+                  <label for="ofertaEditFechaAlta" data-translate-key="offer.fields.offer_created_date">FECHA ALTA OFERTA</label>
                   <input id="ofertaEditFechaAlta" name="fecha_alta_oferta" type="date" />
                 </div>
 
                 <div class="form-field form-field--span-2">
-                  <label for="ofertaEditRef">REF. CLIENTE / ASUNTO E-MAIL</label>
+                  <label for="ofertaEditRef" data-translate-key="offer.fields.client_ref_subject">REF. CLIENTE / ASUNTO E-MAIL</label>
                   <input id="ofertaEditRef" name="ref_cliente_asunto_email" type="text" maxlength="500" />
                 </div>
 
                 <div class="form-field">
-                  <label for="ofertaEditCliente">CLIENTE</label>
+                  <label for="ofertaEditCliente" data-translate-key="offer.fields.client">CLIENTE</label>
                   <select id="ofertaEditCliente" name="id_cliente"></select>
                 </div>
 
                 <div class="form-field form-field--span-2">
-                  <label for="ofertaEditObservaciones">OBSERVACIONES</label>
+                  <label for="ofertaEditEmisor" data-translate-key="offer.fields.sender">QUIÉN LO ENVÍA</label>
+                  <input id="ofertaEditEmisor" name="emisor" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" />
+                </div>
+
+                <div class="form-field form-field--span-2">
+                  <label for="ofertaEditObservaciones" data-translate-key="offer.fields.notes">OBSERVACIONES</label>
                   <textarea id="ofertaEditObservaciones" name="observaciones" rows="4"></textarea>
                 </div>
               </div>
 
               <div class="form-actions">
-                <button class="btn-primary" type="submit">Guardar cambios</button>
-                <button class="btn-secondary" type="button" data-close-oferta-modal="true">Cancelar</button>
+                <button class="btn-primary" type="submit" data-translate-key="common.save_changes">Guardar cambios</button>
+                <button class="btn-secondary" type="button" data-close-oferta-modal="true" data-translate-key="common.cancel">Cancelar</button>
               </div>
             </form>
 
@@ -207,10 +405,10 @@
           <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ofertaEstadoModalTitle">
             <div class="oferta-modal__header">
               <div>
-                <p class="page-eyebrow">Flujo CRM</p>
-                <h2 id="ofertaEstadoModalTitle">Cambiar estado</h2>
+                <p class="page-eyebrow" data-translate-key="crm.flow">Flujo CRM</p>
+                <h2 id="ofertaEstadoModalTitle" data-translate-key="crm.change_status">Cambiar estado</h2>
               </div>
-              <button class="oferta-modal__close" type="button" data-close-oferta-estado-modal="true" aria-label="Cerrar">×</button>
+              <button class="oferta-modal__close" type="button" data-close-oferta-estado-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
             </div>
 
             <form id="ofertaEstadoForm" class="oferta-form" autocomplete="off">
@@ -218,45 +416,132 @@
 
               <div class="form-grid">
                 <div class="form-field form-field--readonly">
-                  <label for="ofertaEstadoNumero">Nº OFERTA</label>
+                  <label for="ofertaEstadoNumero" data-translate-key="offer.fields.offer_number">Nº OFERTA</label>
                   <input id="ofertaEstadoNumero" type="text" readonly />
                 </div>
 
                 <div class="form-field form-field--readonly">
-                  <label for="ofertaEstadoActual">ESTADO ACTUAL</label>
+                  <label for="ofertaEstadoActual" data-translate-key="crm.current_status">ESTADO ACTUAL</label>
                   <input id="ofertaEstadoActual" type="text" readonly />
                 </div>
 
                 <div class="form-field">
-                  <label for="ofertaEstadoNuevo">NUEVO ESTADO</label>
+                  <label for="ofertaEstadoNuevo" data-translate-key="crm.new_status">NUEVO ESTADO</label>
                   <select id="ofertaEstadoNuevo" name="id_estado" required></select>
                 </div>
 
                 <div class="form-field form-field--readonly">
-                  <label for="ofertaEstadoFecha">FECHA CAMBIO</label>
+                  <label for="ofertaEstadoFecha" data-translate-key="crm.change_date">FECHA CAMBIO</label>
                   <input id="ofertaEstadoFecha" type="text" readonly />
                 </div>
 
-                <div class="form-field form-field--span-2">
-                  <label for="ofertaEstadoComentario">COMENTARIO</label>
-                  <textarea id="ofertaEstadoComentario" name="comentario" rows="4" placeholder="Añade contexto para el histórico CRM..."></textarea>
+                <div class="form-field">
+                  <label for="ofertaEstadoFechaLimite" data-translate-key="crm.deadline">FECHA LÍMITE</label>
+                  <input id="ofertaEstadoFechaLimite" name="fecha_limite" type="date" />
+                  <label class="form-check-inline" for="ofertaEstadoSinFechaLimite">
+                    <input id="ofertaEstadoSinFechaLimite" type="checkbox" checked />
+                    <span data-translate-key="crm.undefined_deadline">Sin definir</span>
+                  </label>
                 </div>
 
                 <div class="form-field form-field--span-2">
-                  <label>HISTÓRICO CRM</label>
+                  <label for="ofertaEstadoComentario" data-translate-key="crm.comment">COMENTARIO</label>
+                  <textarea id="ofertaEstadoComentario" name="comentario" rows="4" placeholder="Añade contexto para el histórico CRM..." data-translate-key-placeholder="crm.comment_placeholder"></textarea>
+                </div>
+
+                <div class="form-field form-field--span-2">
+                  <label data-translate-key="crm.history">HISTÓRICO CRM</label>
                   <div id="ofertaEstadoHistorial" class="crm-history">
-                    <p class="crm-history__empty">Sin interacciones registradas.</p>
+                    <p class="crm-history__empty" data-translate-key="crm.history_empty">Sin interacciones registradas.</p>
                   </div>
                 </div>
               </div>
 
               <div class="form-actions">
-                <button class="btn-primary" type="submit">Guardar cambio de estado</button>
-                <button class="btn-secondary" type="button" data-close-oferta-estado-modal="true">Cancelar</button>
+                <button class="btn-primary" type="submit" data-translate-key="crm.save_status_change">Guardar cambio de estado</button>
+                <button class="btn-secondary" type="button" data-close-oferta-estado-modal="true" data-translate-key="common.cancel">Cancelar</button>
               </div>
             </form>
 
             <div id="ofertaEstadoFeedback" class="form-feedback" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div id="bomModal" class="oferta-modal" aria-hidden="true">
+          <div class="oferta-modal__backdrop" data-close-bom-modal="true"></div>
+          <div class="oferta-modal__dialog oferta-modal__dialog--bom" role="dialog" aria-modal="true" aria-labelledby="bomModalTitle">
+            <div class="oferta-modal__header">
+              <div>
+                <p class="page-eyebrow">BOM</p>
+                <h2 id="bomModalTitle">Materiales y precios</h2>
+                <p id="bomModalOffer" class="form-help">Consulta y actualiza el histórico de precios de materiales.</p>
+              </div>
+              <button class="oferta-modal__close" type="button" data-close-bom-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+
+            <div class="bom-modal__toolbar">
+              <label class="bom-modal__search" for="bomSearchInput">
+                <span>Buscar material</span>
+                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" />
+              </label>
+            </div>
+
+            <section id="bomListView" class="bom-modal__view">
+              <div class="clientes-table-wrap bom-modal__table-wrap">
+                <table class="clientes-table bom-table">
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>Precio actual</th>
+                      <th>Actualizado</th>
+                      <th>Diferencia</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bomListBody">
+                    <tr>
+                      <td colspan="5" class="clientes-table__empty">Cargando materiales...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section id="bomEditView" class="bom-modal__view" hidden>
+              <form id="bomEditForm" class="oferta-form" autocomplete="off">
+                <input id="bomEditMaterialId" name="id_material_precio" type="hidden" />
+
+                <div class="form-grid">
+                  <div class="form-field form-field--span-2 form-field--readonly">
+                    <label for="bomEditMaterial">Material</label>
+                    <input id="bomEditMaterial" name="material" type="text" maxlength="255" readonly />
+                  </div>
+
+                  <div class="form-field form-field--readonly">
+                    <label for="bomEditCurrentPrice">Precio actual</label>
+                    <input id="bomEditCurrentPrice" type="text" readonly />
+                  </div>
+
+                  <div class="form-field form-field--readonly">
+                    <label for="bomEditPreviousPrice">Precio anterior</label>
+                    <input id="bomEditPreviousPrice" type="text" readonly />
+                  </div>
+
+                  <div class="form-field form-field--span-2">
+                    <label for="bomEditNewPrice">Nuevo precio</label>
+                    <input id="bomEditNewPrice" name="precio" type="number" step="0.01" min="0" required />
+                    <p class="form-help">Se insertará un nuevo registro para mantener el histórico del material.</p>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button class="btn-primary" type="submit">Guardar nuevo precio</button>
+                  <button class="btn-secondary" type="button" data-back-to-bom-list="true">Volver al listado</button>
+                </div>
+              </form>
+            </section>
+
+            <div id="bomFeedback" class="form-feedback" aria-live="polite"></div>
           </div>
         </div>
       </section>
@@ -270,17 +555,27 @@
       <div class="emesa-config-menu-grid">
         <button class="emesa-config-card" type="button" data-config-target="clientes">
           <span class="emesa-config-card__icon" aria-hidden="true">🏢</span>
-          <span class="emesa-config-card__title">Clientes</span>
+          <span class="emesa-config-card__title" data-translate-key="config.clients">Clientes</span>
         </button>
 
         <button class="emesa-config-card" type="button" data-config-target="estados">
           <span class="emesa-config-card__icon" aria-hidden="true">📌</span>
-          <span class="emesa-config-card__title">Estados</span>
+          <span class="emesa-config-card__title" data-translate-key="config.states">Estados</span>
         </button>
-
+        <!--
         <button class="emesa-config-card" type="button" data-config-target="interacciones">
           <span class="emesa-config-card__icon" aria-hidden="true">🗂️</span>
-          <span class="emesa-config-card__title">Interacciones</span>
+          <span class="emesa-config-card__title" data-translate-key="config.interactions">Interacciones</span>
+        </button>
+        -->
+        <button class="emesa-config-card" type="button" data-config-target="usuarios">
+          <span class="emesa-config-card__icon" aria-hidden="true">👤</span>
+          <span class="emesa-config-card__title">Usuarios</span>
+        </button>
+
+        <button class="emesa-config-card" type="button" data-config-target="proyectos">
+          <span class="emesa-config-card__icon" aria-hidden="true">🏗️</span>
+          <span class="emesa-config-card__title">Proyectos</span>
         </button>
       </div>
     </div>
@@ -292,31 +587,31 @@
     <section class="page-card page-card--clientes">
       <div class="page-card__header">
         <div>
-          <p class="page-eyebrow">Configuración</p>
-          <h1>Clientes</h1>
-          <p>Alta y mantenimiento de clientes que alimentan el desplegable del formulario de Nueva Oferta.</p>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1 data-translate-key="config.clients">Clientes</h1>
+          <p data-translate-key="config.clients_description">Alta y mantenimiento de clientes que alimentan el desplegable del formulario de Nueva Oferta.</p>
         </div>
       </div>
 
-      <div class="clientes-toggle" role="tablist" aria-label="Gestión de clientes">
-        <button class="clientes-toggle__button active" type="button" data-clientes-mode="crear" aria-selected="true">Crear cliente</button>
-        <button class="clientes-toggle__button" type="button" data-clientes-mode="ver" aria-selected="false">Ver clientes</button>
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de clientes" data-translate-key-aria-label="config.clients_management">
+        <button class="clientes-toggle__button active" type="button" data-clientes-mode="crear" aria-selected="true" data-translate-key="config.create_client">Crear cliente</button>
+        <button class="clientes-toggle__button" type="button" data-clientes-mode="ver" aria-selected="false" data-translate-key="config.view_clients">Ver clientes</button>
       </div>
 
       <section class="clientes-mode-panel active" data-clientes-mode-panel="crear">
         <form id="clienteCreateForm" class="cliente-form" autocomplete="off">
           <div class="form-field form-field--span-2">
-            <label for="descripcion_cliente">Nombre del cliente</label>
-            <input id="descripcion_cliente" name="descripcion_cliente" type="text" maxlength="255" placeholder="Introduce la descripción del cliente" required />
+            <label for="descripcion_cliente" data-translate-key="config.client_name">Nombre del cliente</label>
+            <input id="descripcion_cliente" name="descripcion_cliente" type="text" maxlength="255" placeholder="Introduce la descripción del cliente" data-translate-key-placeholder="config.client_name_placeholder" required />
           </div>
 
           <div class="form-field form-field--span-2">
-            <label for="dominio">Dominio</label>
-            <input id="dominio" name="dominio" type="text" maxlength="255" placeholder="Ejemplo: cliente.com" />
+            <label for="dominio" data-translate-key="config.domain">Dominio</label>
+            <input id="dominio" name="dominio" type="text" maxlength="255" placeholder="Ejemplo: cliente.com" data-translate-key-placeholder="config.domain_placeholder" />
           </div>
 
           <div class="form-actions form-actions--start">
-            <button class="btn-primary" type="submit">Guardar cliente</button>
+            <button class="btn-primary" type="submit" data-translate-key="config.save_client">Guardar cliente</button>
           </div>
         </form>
 
@@ -329,14 +624,14 @@
             <thead>
               <tr>
                 <th>ID</th>
-                <th>Descripción cliente</th>
-                <th>Dominio</th>
-                <th>Acciones</th>
+                <th data-translate-key="table.client_description">Descripción cliente</th>
+                <th data-translate-key="config.domain">Dominio</th>
+                <th data-translate-key="table.actions">Acciones</th>
               </tr>
             </thead>
             <tbody id="clientesTableBody">
               <tr>
-                <td colspan="4" class="clientes-table__empty">No hay clientes creados todavía.</td>
+                <td colspan="4" class="clientes-table__empty" data-translate-key="config.clients_empty">No hay clientes creados todavía.</td>
               </tr>
             </tbody>
           </table>
@@ -353,30 +648,46 @@
     <section class="page-card page-card--estados">
       <div class="page-card__header">
         <div>
-          <p class="page-eyebrow">Configuración</p>
-          <h1>Estados</h1>
-          <p>Alta y mantenimiento de estados, junto con la configuración de columnas visibles para cada uno.</p>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1 data-translate-key="config.states">Estados</h1>
+          <p data-translate-key="config.states_description">Alta y mantenimiento de estados, junto con la configuración de columnas visibles para cada uno.</p>
         </div>
       </div>
 
       <div class="estados-layout">
         <section class="estados-card estados-card--left">
-          <h2 class="section-title">Maestro de estados</h2>
+          <h2 class="section-title" data-translate-key="config.state_master">Maestro de estados</h2>
 
-          <div class="clientes-toggle" role="tablist" aria-label="Gestión de estados">
-            <button class="clientes-toggle__button active" type="button" data-estados-mode="crear" aria-selected="true">Crear estado</button>
-            <button class="clientes-toggle__button" type="button" data-estados-mode="ver" aria-selected="false">Ver estados</button>
+          <div class="clientes-toggle" role="tablist" aria-label="Gestión de estados" data-translate-key-aria-label="config.states_management">
+            <button class="clientes-toggle__button active" type="button" data-estados-mode="crear" aria-selected="true" data-translate-key="config.create_state">Crear estado</button>
+            <button class="clientes-toggle__button" type="button" data-estados-mode="ver" aria-selected="false" data-translate-key="config.view_states">Ver estados</button>
           </div>
 
           <section class="clientes-mode-panel active" data-estados-mode-panel="crear">
             <form id="estadoCreateForm" class="cliente-form" autocomplete="off">
               <div class="form-field form-field--span-2">
-                <label for="descripcion_estado">Nombre del estado</label>
-                <input id="descripcion_estado" name="descripcion_estado" type="text" maxlength="255" placeholder="Introduce la descripción del estado" required />
+                <label for="descripcion_estado" data-translate-key="config.state_name">Nombre del estado</label>
+                <input id="descripcion_estado" name="descripcion_estado" type="text" maxlength="255" placeholder="Introduce la descripción del estado" data-translate-key-placeholder="config.state_name_placeholder" required />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="estadoEmojiSidebar">Emoji del sidebar</label>
+                <div class="estado-emoji-picker">
+                  <input id="estadoEmojiSidebar" name="emoji_sidebar" type="hidden" />
+                  <div id="estadoEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar"></div>
+                </div>
+                <small class="form-help">Se sugiere automáticamente según el nombre del estado, pero puedes cambiarlo.</small>
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="estado_departamento">Departamento</label>
+                <select id="estado_departamento" name="id_departamento">
+                  <option value="">Sin departamento</option>
+                </select>
               </div>
 
               <div class="form-actions form-actions--start">
-                <button class="btn-primary" type="submit">Guardar estado</button>
+                <button class="btn-primary" type="submit" data-translate-key="config.save_state">Guardar estado</button>
               </div>
             </form>
 
@@ -384,19 +695,20 @@
           </section>
 
           <section class="clientes-mode-panel" data-estados-mode-panel="ver">
-            <div class="clientes-table-wrap">
-              <table class="clientes-table">
+            <div class="clientes-table-wrap clientes-table-wrap--states">
+              <table class="clientes-table clientes-table--wide-scroll clientes-table--states">
                 <thead>
                   <tr>
                     <th class="col-drag"></th>
-                    <th>Orden</th>
-                    <th>Descripción estado</th>
-                    <th>Acciones</th>
+                    <th data-translate-key="table.order">Orden</th>
+                    <th data-translate-key="table.state_description">Descripción estado</th>
+                    <th data-translate-key="table.department">Departamento</th>
+                    <th data-translate-key="table.actions">Acciones</th>
                   </tr>
                 </thead>
                 <tbody id="estadosTableBody">
                   <tr>
-                    <td colspan="4" class="clientes-table__empty">No hay estados creados todavía.</td>
+                    <td colspan="5" class="clientes-table__empty" data-translate-key="config.states_empty">No hay estados creados todavía.</td>
                   </tr>
                 </tbody>
               </table>
@@ -408,11 +720,11 @@
 
         <section class="estados-card estados-card--right">
           <div class="section-title-row">
-            <h2 class="section-title">Configuración de columnas</h2>
+            <h2 class="section-title" data-translate-key="config.columns_configuration">Configuración de columnas</h2>
             <div class="form-field form-field--compact">
-              <label for="estadoColumnasSelect">Estado</label>
+              <label for="estadoColumnasSelect" data-translate-key="table.status">Estado</label>
               <select id="estadoColumnasSelect" name="estado_columnas_select">
-                <option value="">Selecciona un estado</option>
+                <option value="" data-translate-key="config.select_state">Selecciona un estado</option>
               </select>
             </div>
           </div>
@@ -420,33 +732,33 @@
           <form id="configColumnCreateForm" class="config-column-form" autocomplete="off">
             <div class="form-grid">
               <div class="form-field form-field--span-2">
-                <label for="config_columna">Columna</label>
+                <label for="config_columna" data-translate-key="table.column">Columna</label>
                 <select id="config_columna" name="columnas" multiple size="8" required></select>
-                <small class="form-help">Selecciona una o varias columnas y luego ajusta descripción y orden en la tabla inferior.</small>
+                <small class="form-help" data-translate-key="config.columns_help">Selecciona una o varias columnas y luego ajusta descripción y orden en la tabla inferior.</small>
               </div>
             </div>
 
             <div class="form-actions form-actions--start">
-              <button class="btn-primary" type="submit">Añadir columnas</button>
+              <button class="btn-primary" type="submit" data-translate-key="config.add_columns">Añadir columnas</button>
             </div>
           </form>
 
           <div id="configColumnCreateFeedback" class="form-feedback" aria-live="polite"></div>
 
           <div class="clientes-table-wrap clientes-table-wrap--spaced">
-            <table class="clientes-table">
+            <table class="clientes-table clientes-table--wide-scroll">
               <thead>
                 <tr>
                   <th class="col-drag"></th>
-                  <th>Columna</th>
-                  <th>Descripción</th>
-                  <th>Orden</th>
-                  <th>Acciones</th>
+                  <th data-translate-key="table.column">Columna</th>
+                  <th data-translate-key="table.description">Descripción</th>
+                  <th data-translate-key="table.order">Orden</th>
+                  <th data-translate-key="table.actions">Acciones</th>
                 </tr>
               </thead>
               <tbody id="configColumnasTableBody">
                 <tr>
-                  <td colspan="5" class="clientes-table__empty">Selecciona un estado para ver sus columnas configuradas.</td>
+                  <td colspan="5" class="clientes-table__empty" data-translate-key="config.columns_empty">Selecciona un estado para ver sus columnas configuradas.</td>
                 </tr>
               </tbody>
             </table>
@@ -455,6 +767,211 @@
           <div id="configColumnasTableFeedback" class="form-feedback" aria-live="polite"></div>
         </section>
       </div>
+
+      <div id="estadoEditModal" class="oferta-modal" aria-hidden="true">
+        <div class="oferta-modal__backdrop" data-close-estado-modal="true"></div>
+        <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="estadoEditModalTitle">
+          <div class="oferta-modal__header">
+            <div>
+              <p class="page-eyebrow" data-translate-key="config.states">Estados</p>
+              <h2 id="estadoEditModalTitle">Editar estado</h2>
+            </div>
+            <button class="oferta-modal__close" type="button" data-close-estado-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+          </div>
+
+          <form id="estadoEditForm" class="oferta-form" autocomplete="off">
+            <input id="estadoEditId" name="id_estado" type="hidden" />
+
+            <div class="form-grid">
+              <div class="form-field">
+                <label for="estadoEditOrden" data-translate-key="table.order">Orden</label>
+                <input id="estadoEditOrden" name="orden" type="number" min="1" step="1" />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="estadoEditDescripcion" data-translate-key="config.state_name">Nombre del estado</label>
+                <input id="estadoEditDescripcion" name="descripcion_estado" type="text" maxlength="255" required />
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="estadoEditDepartamento">Departamento</label>
+                <select id="estadoEditDepartamento" name="id_departamento">
+                  <option value="">Sin departamento</option>
+                </select>
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label for="estadoEditEmojiSidebar">Emoji del sidebar</label>
+                <div class="estado-emoji-picker estado-emoji-picker--modal">
+                  <input id="estadoEditEmojiSidebar" name="emoji_sidebar" type="hidden" />
+                  <div id="estadoEditEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar"></div>
+                </div>
+              </div>
+
+              <div class="form-field form-field--span-2">
+                <label class="estado-active-toggle" for="estadoEditActivo">
+                  <input id="estadoEditActivo" name="activo" type="checkbox" value="true" checked />
+                  <span class="estado-active-toggle__switch" aria-hidden="true"></span>
+                  <span class="estado-active-toggle__text">
+                    <strong>Activo</strong>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn-primary" type="submit">Guardar cambios</button>
+              <button class="btn-secondary" type="button" data-close-estado-modal="true" data-translate-key="common.cancel">Cancelar</button>
+            </div>
+          </form>
+
+          <div id="estadoEditFeedback" class="form-feedback" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</section>
+
+<section class="view-panel emesa-config-menu-view" data-view-panel="usuarios">
+  <main class="content-area content-area--config">
+    <section class="page-card page-card--clientes">
+      <div class="page-card__header">
+        <div>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1>Usuarios</h1>
+          <p>Alta de usuarios de OFERTAS a partir de General.Usuarios, con su rol y departamento.</p>
+        </div>
+      </div>
+
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de usuarios">
+        <button class="clientes-toggle__button active" type="button" data-usuarios-mode="crear" aria-selected="true">Añadir usuario</button>
+        <button class="clientes-toggle__button" type="button" data-usuarios-mode="ver" aria-selected="false">Ver usuarios</button>
+      </div>
+
+      <section class="clientes-mode-panel active" data-usuarios-mode-panel="crear">
+        <form id="userCreateForm" class="cliente-form" autocomplete="off">
+          <div class="form-grid form-grid--triple">
+            <div class="form-field">
+              <label for="user_num_operario">Nº operario</label>
+              <input id="user_num_operario" name="num_operario" type="text" list="generalUsersByNumber" inputmode="numeric" required />
+              <datalist id="generalUsersByNumber"></datalist>
+            </div>
+
+            <div class="form-field form-field--span-2">
+              <label for="user_nombre">Nombre</label>
+              <input id="user_nombre" name="nombre" type="text" maxlength="255" list="generalUsersByName" required />
+              <datalist id="generalUsersByName"></datalist>
+            </div>
+
+            <div class="form-field">
+              <label for="user_email">Email</label>
+              <input id="user_email" name="email" type="email" maxlength="255" />
+            </div>
+
+            <div class="form-field">
+              <label for="user_rol">Rol</label>
+              <select id="user_rol" name="id_rol" required>
+                <option value="">Selecciona un rol</option>
+              </select>
+            </div>
+
+            <div class="form-field form-field--span-2">
+              <label for="user_departamentos">Departamento</label>
+              <div class="form-actions form-actions--start">
+                <select id="user_departamentos" name="id_departamento">
+                  <option value="">Sin departamento</option>
+                </select>
+                <button id="addDepartmentButton" class="btn-secondary" type="button">+ Departamento</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions form-actions--start">
+            <button class="btn-primary" type="submit">Guardar usuario</button>
+          </div>
+        </form>
+
+        <div id="userCreateFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="clientes-mode-panel" data-usuarios-mode-panel="ver">
+        <div class="clientes-table-wrap">
+          <table class="clientes-table">
+            <thead>
+              <tr>
+                <th>Nº operario</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Departamentos</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="usuariosTableBody">
+              <tr>
+                <td colspan="6" class="clientes-table__empty">No hay usuarios creados todavía.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="usuariosTableFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+</section>
+
+<section class="view-panel emesa-config-menu-view" data-view-panel="proyectos">
+  <main class="content-area content-area--config">
+    <section class="page-card page-card--clientes">
+      <div class="page-card__header">
+        <div>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1>Proyectos</h1>
+          <p>Alta y mantenimiento de proyectos disponibles para el formulario ETC.</p>
+        </div>
+      </div>
+
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de proyectos">
+        <button class="clientes-toggle__button active" type="button" data-proyectos-mode="crear" aria-selected="true">Crear proyecto</button>
+        <button class="clientes-toggle__button" type="button" data-proyectos-mode="ver" aria-selected="false">Ver proyectos</button>
+      </div>
+
+      <section class="clientes-mode-panel active" data-proyectos-mode-panel="crear">
+        <form id="projectCreateForm" class="cliente-form" autocomplete="off">
+          <div class="form-field form-field--span-2">
+            <label for="descripcion_proyecto">Nombre del proyecto</label>
+            <input id="descripcion_proyecto" name="descripcion_proyecto" type="text" maxlength="255" placeholder="Introduce el nombre del proyecto" required />
+          </div>
+
+          <div class="form-actions form-actions--start">
+            <button class="btn-primary" type="submit">Guardar proyecto</button>
+          </div>
+        </form>
+
+        <div id="projectCreateFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="clientes-mode-panel" data-proyectos-mode-panel="ver">
+        <div class="clientes-table-wrap">
+          <table class="clientes-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Descripción proyecto</th>
+                <th data-translate-key="table.actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="proyectosTableBody">
+              <tr>
+                <td colspan="3" class="clientes-table__empty">No hay proyectos creados todavía.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="proyectosTableFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
     </section>
   </main>
 </section>

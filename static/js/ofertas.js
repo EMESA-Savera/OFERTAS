@@ -1,5 +1,23 @@
-document.addEventListener('DOMContentLoaded', () => {
-  const getNavItems = () => document.querySelectorAll('.nav-item[data-view]');
+document.addEventListener('DOMContentLoaded', async () => {
+  if (window.MonthlyI18n && window.MonthlyI18n.ready) {
+    try {
+      await window.MonthlyI18n.ready;
+    } catch {
+      // La app debe seguir usando los textos por defecto si falla i18n.
+    }
+  }
+
+  const currentUrl = new URL(window.location.href);
+  const shouldOpenOutlookAfterAuth = currentUrl.searchParams.get('open_outlook') === '1';
+  const outlookAuthError = currentUrl.searchParams.get('outlook_error') || '';
+  if (shouldOpenOutlookAfterAuth || outlookAuthError) {
+    currentUrl.searchParams.delete('open_outlook');
+    currentUrl.searchParams.delete('outlook_error');
+    const cleanUrl = `${currentUrl.pathname}${currentUrl.search ? currentUrl.search : ''}${currentUrl.hash}`;
+    window.history.replaceState({}, document.title, cleanUrl);
+  }
+
+  const getNavItems = () => document.querySelectorAll('.sidebar-menu .nav-item[data-view]');
   const getViewPanels = () => document.querySelectorAll('[data-view-panel]');
   const getSidebars = () => document.querySelectorAll('.sidebar');
   const sidebarNavContainers = document.querySelectorAll('.js-sidebar-nav');
@@ -8,9 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const feedback = document.getElementById('formFeedback');
   const mailDropzone = document.getElementById('mailDropzone');
   const mailFileInput = document.getElementById('mailFileInput');
+  const openOutlookImportButton = document.getElementById('openOutlookImportButton');
   const numeroOfertaField = document.getElementById('numero_oferta');
   const clienteSelect = document.getElementById('cliente');
-  const configButtons = document.querySelectorAll('.btn-config[data-view="configuracion"]');
+  const emisorInput = document.getElementById('emisor');
+  const configButtons = document.querySelectorAll('.sidebar-config-btn[data-view="configuracion"], .btn-config[data-view="configuracion"]');
   const breadcrumbContainer = document.getElementById('breadcrumbContainer');
   const clienteCreateForm = document.getElementById('clienteCreateForm');
   const clienteCreateFeedback = document.getElementById('clienteCreateFeedback');
@@ -18,8 +38,40 @@ document.addEventListener('DOMContentLoaded', () => {
   const clientesTableBody = document.getElementById('clientesTableBody');
   const clientesModeButtons = document.querySelectorAll('[data-clientes-mode]');
   const clientesModePanels = document.querySelectorAll('[data-clientes-mode-panel]');
+  const projectCreateForm = document.getElementById('projectCreateForm');
+  const projectCreateFeedback = document.getElementById('projectCreateFeedback');
+  const proyectosTableFeedback = document.getElementById('proyectosTableFeedback');
+  const proyectosTableBody = document.getElementById('proyectosTableBody');
+  const proyectosModeButtons = document.querySelectorAll('[data-proyectos-mode]');
+  const proyectosModePanels = document.querySelectorAll('[data-proyectos-mode-panel]');
+  const userCreateForm = document.getElementById('userCreateForm');
+  const userCreateFeedback = document.getElementById('userCreateFeedback');
+  const usuariosTableFeedback = document.getElementById('usuariosTableFeedback');
+  const usuariosTableBody = document.getElementById('usuariosTableBody');
+  const usuariosModeButtons = document.querySelectorAll('[data-usuarios-mode]');
+  const usuariosModePanels = document.querySelectorAll('[data-usuarios-mode-panel]');
+  const userNumOperarioInput = document.getElementById('user_num_operario');
+  const userNombreInput = document.getElementById('user_nombre');
+  const userEmailInput = document.getElementById('user_email');
+  const addDepartmentButton = document.getElementById('addDepartmentButton');
+  const userRoleSelect = document.getElementById('user_rol');
+  const userDepartamentosSelect = document.getElementById('user_departamentos');
   const estadoCreateForm = document.getElementById('estadoCreateForm');
+  const estadoCreateDescripcion = document.getElementById('descripcion_estado');
+  const estadoEmojiSidebar = document.getElementById('estadoEmojiSidebar');
+  const estadoEmojiSidebarPicker = document.getElementById('estadoEmojiSidebarPicker');
+  const estadoDepartamentoSelect = document.getElementById('estado_departamento');
   const estadoCreateFeedback = document.getElementById('estadoCreateFeedback');
+  const estadoEditModal = document.getElementById('estadoEditModal');
+  const estadoEditForm = document.getElementById('estadoEditForm');
+  const estadoEditId = document.getElementById('estadoEditId');
+  const estadoEditOrden = document.getElementById('estadoEditOrden');
+  const estadoEditDescripcion = document.getElementById('estadoEditDescripcion');
+  const estadoEditDepartamento = document.getElementById('estadoEditDepartamento');
+  const estadoEditEmojiSidebar = document.getElementById('estadoEditEmojiSidebar');
+  const estadoEditEmojiSidebarPicker = document.getElementById('estadoEditEmojiSidebarPicker');
+  const estadoEditActivo = document.getElementById('estadoEditActivo');
+  const estadoEditFeedback = document.getElementById('estadoEditFeedback');
   const estadosTableFeedback = document.getElementById('estadosTableFeedback');
   const estadosTableBody = document.getElementById('estadosTableBody');
   const estadosModeButtons = document.querySelectorAll('[data-estados-mode]');
@@ -44,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ofertaEditFechaAlta = document.getElementById('ofertaEditFechaAlta');
   const ofertaEditRef = document.getElementById('ofertaEditRef');
   const ofertaEditCliente = document.getElementById('ofertaEditCliente');
+  const ofertaEditEmisor = document.getElementById('ofertaEditEmisor');
   const ofertaEditObservaciones = document.getElementById('ofertaEditObservaciones');
   const ofertaEstadoModal = document.getElementById('ofertaEstadoModal');
   const ofertaEstadoForm = document.getElementById('ofertaEstadoForm');
@@ -53,13 +106,73 @@ document.addEventListener('DOMContentLoaded', () => {
   const ofertaEstadoActual = document.getElementById('ofertaEstadoActual');
   const ofertaEstadoNuevo = document.getElementById('ofertaEstadoNuevo');
   const ofertaEstadoFecha = document.getElementById('ofertaEstadoFecha');
+  const ofertaEstadoFechaLimite = document.getElementById('ofertaEstadoFechaLimite');
+  const ofertaEstadoSinFechaLimite = document.getElementById('ofertaEstadoSinFechaLimite');
   const ofertaEstadoComentario = document.getElementById('ofertaEstadoComentario');
   const ofertaEstadoHistorial = document.getElementById('ofertaEstadoHistorial');
+  const bomModal = document.getElementById('bomModal');
+  const bomModalTitle = document.getElementById('bomModalTitle');
+  const bomModalOffer = document.getElementById('bomModalOffer');
+  const bomSearchInput = document.getElementById('bomSearchInput');
+  const bomListView = document.getElementById('bomListView');
+  const bomEditView = document.getElementById('bomEditView');
+  const bomListBody = document.getElementById('bomListBody');
+  const bomEditForm = document.getElementById('bomEditForm');
+  const bomEditMaterialId = document.getElementById('bomEditMaterialId');
+  const bomEditMaterial = document.getElementById('bomEditMaterial');
+  const bomEditCurrentPrice = document.getElementById('bomEditCurrentPrice');
+  const bomEditPreviousPrice = document.getElementById('bomEditPreviousPrice');
+  const bomEditNewPrice = document.getElementById('bomEditNewPrice');
+  const bomFeedback = document.getElementById('bomFeedback');
+  const ofertaEtcModal = document.getElementById('ofertaEtcModal');
+  const ofertaEtcForm = document.getElementById('ofertaEtcForm');
+  const ofertaEtcFeedback = document.getElementById('ofertaEtcFeedback');
+  const ofertaEtcResponsable = document.getElementById('ofertaEtcResponsable');
+  const ofertaEtcDepartamento = document.getElementById('ofertaEtcDepartamento');
+  const ofertaEtcToggleExtended = document.getElementById('ofertaEtcToggleExtended');
+  const ofertaEtcExtendedFields = document.getElementById('ofertaEtcExtendedFields');
+  const ofertaEtcPrioridad = document.getElementById('ofertaEtcPrioridad');
+  const ofertaEtcUrgente = document.getElementById('ofertaEtcUrgente');
+  const ofertaEtcCodigoExterno = document.getElementById('ofertaEtcCodigoExterno');
+  const ofertaEtcCodigoInterno = document.getElementById('ofertaEtcCodigoInterno');
+  const ofertaEtcReferenciaCliente = document.getElementById('ofertaEtcReferenciaCliente');
+  const ofertaEtcIncoterm = document.getElementById('ofertaEtcIncoterm');
+  const ofertaEtcNumeroComision = document.getElementById('ofertaEtcNumeroComision');
+  const ofertaEtcProyecto = document.getElementById('ofertaEtcProyecto');
+  const ofertaEtcPoOriginal = document.getElementById('ofertaEtcPoOriginal');
+  const ofertaEtcPedidoB2b = document.getElementById('ofertaEtcPedidoB2b');
+  const ofertaEtcFechaEnvio = document.getElementById('ofertaEtcFechaEnvio');
+  const ofertaEtcSolicitanteNombre = document.getElementById('ofertaEtcSolicitanteNombre');
+  const ofertaEtcSolicitanteEmail = document.getElementById('ofertaEtcSolicitanteEmail');
+  const ofertaEtcTotalMaterial = document.getElementById('ofertaEtcTotalMaterial');
+  const ofertaEtcTotalFee = document.getElementById('ofertaEtcTotalFee');
+  const ofertaEtcResumenMaterial = document.getElementById('ofertaEtcResumenMaterial');
+  const ofertaEtcObservacionesCliente = document.getElementById('ofertaEtcObservacionesCliente');
+  const outlookImportModal = document.getElementById('outlookImportModal');
+  const outlookImportFeedback = document.getElementById('outlookImportFeedback');
+  const outlookMailboxLabel = document.getElementById('outlookMailboxLabel');
+  const outlookMessagesList = document.getElementById('outlookMessagesList');
+  const outlookMessageDetail = document.getElementById('outlookMessageDetail');
+  const outlookImportSelectedButton = document.getElementById('outlookImportSelectedButton');
 
   let clientesCache = [];
+  let proyectosCache = [];
+  let usuariosCache = [];
+  let generalUsersCache = [];
+  let rolesCache = [];
+  let departamentosCache = [];
   let editingClienteId = null;
+  let editingProyectoId = null;
+  let editingUsuarioId = null;
   let estadosCache = [];
-  let editingEstadoId = null;
+  let stateEmojiSuggestions = {
+    default: '📌',
+    choices: [{ emoji: '📌', label: 'General' }],
+    rules: [],
+  };
+  let stateEmojiSuggestionsPromise = null;
+  let estadoCreateEmojiManuallyChanged = false;
+  let estadoEditEmojiManuallyChanged = false;
   let configuracionColumnasCache = [];
   let ofertasListadoCache = [];
   let availableOfferColumns = [];
@@ -67,11 +180,39 @@ document.addEventListener('DOMContentLoaded', () => {
   let editingConfigId = null;
   let skipConfigAutoSaveId = null;
   let selectedEstadoId = '';
+  let currentViewName = 'nueva-oferta';
   let currentListadoContext = { viewName: 'todos', estadoId: null, label: 'Todos' };
+  let currentOfertaEstadoId = null;
+  let currentOfertaEstadoInteracciones = [];
+  let pendingOfertaEtcPayload = null;
+  let savedOfertaContext = null;
+  let currentAuthenticatedUser = null;
+  let outlookMessagesCache = [];
+  let selectedOutlookMessageId = null;
+  let selectedOutlookMessageImportData = null;
+  let outlookAuthRedirectInProgress = false;
+  let bomMaterialesCache = [];
+  let currentBomOfertaContext = null;
+  let currentBomMaterial = null;
   const expandedTableCells = new Set();
+  const ACTION_COLUMN_VISIBILITY_KEY = 'ofertasActionColumnVisibility';
+  const OPTIONAL_ACTION_KEYS = Object.freeze(['edit', 'bom']);
+  const DEFAULT_ACTION_COLUMN_VISIBILITY = Object.freeze({
+    visible: ['edit', 'bom'],
+    hidden: [],
+  });
+  let ofertasActionColumnVisibility = {
+    visible: [...DEFAULT_ACTION_COLUMN_VISIBILITY.visible],
+    hidden: [...DEFAULT_ACTION_COLUMN_VISIBILITY.hidden],
+  };
+  let draggedActionConfigKey = null;
+  let actionConfigPopup = null;
+  let actionConfigPopupAnchor = null;
   const tableStates = {
     ofertas: { filters: {}, sortKey: 'numero_oferta', sortDirection: 'asc' },
     clientes: { filters: {}, sortKey: null, sortDirection: 'asc' },
+    proyectos: { filters: {}, sortKey: null, sortDirection: 'asc' },
+    usuarios: { filters: {}, sortKey: 'num_operario', sortDirection: 'asc' },
     estados: { filters: {}, sortKey: 'orden', sortDirection: 'asc' },
     configColumnas: { filters: {}, sortKey: 'orden_columna', sortDirection: 'asc' },
   };
@@ -82,21 +223,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const configuredColumns = currentListadoContext.estadoId && currentOfferColumnsConfig.length
           ? currentOfferColumnsConfig.map((config) => ({
               key: config.columna,
-              label: config.descripcion_columna || availableOfferColumns.find((column) => column.value === config.columna)?.label || config.columna,
+              label: getConfiguredOfferColumnLabel(config),
               sortable: true,
               searchable: true,
             }))
           : [
-              { key: 'Numero_oferta', label: 'Nº oferta', sortable: true, searchable: true },
-              { key: 'Fecha_alta_oferta', label: 'Fecha alta', sortable: true, searchable: true },
-              { key: 'Cliente', label: 'Cliente', sortable: true, searchable: true },
-              { key: 'Observaciones_oferta', label: 'Observaciones', sortable: true, searchable: true },
-              { key: 'Estado', label: 'Estado', sortable: true, searchable: true },
+              { key: 'numero_oferta', label: t('table.offer_number', 'Nº oferta'), sortable: true, searchable: true },
+              { key: 'fecha_alta_oferta', label: t('table.created_date', 'Fecha alta'), sortable: true, searchable: true },
+              { key: 'cliente', label: t('table.client', 'Cliente'), sortable: true, searchable: true },
+              { key: 'emisor', label: t('table.sender', 'Emisor'), sortable: true, searchable: true },
+              { key: 'observaciones_oferta', label: t('table.notes', 'Observaciones'), sortable: true, searchable: true },
+              { key: 'estado', label: t('table.status', 'Estado'), sortable: true, searchable: true },
             ];
 
         return [
           ...configuredColumns,
-          { key: 'acciones', label: 'Acciones', sortable: false, searchable: false },
+          { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
         ];
       },
     },
@@ -104,28 +246,48 @@ document.addEventListener('DOMContentLoaded', () => {
       tableElement: () => clientesTableBody?.closest('table'),
       columns: [
         { key: 'id_cliente', label: 'ID', sortable: true, searchable: true },
-        { key: 'descripcion_cliente', label: 'Descripción cliente', sortable: true, searchable: true },
-        { key: 'dominio', label: 'Dominio', sortable: true, searchable: true },
-        { key: 'acciones', label: 'Acciones', sortable: false, searchable: false },
+        { key: 'descripcion_cliente', label: t('table.client_description', 'Descripción cliente'), sortable: true, searchable: true },
+        { key: 'dominio', label: t('config.domain', 'Dominio'), sortable: true, searchable: true },
+        { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
+      ],
+    },
+    proyectos: {
+      tableElement: () => proyectosTableBody?.closest('table'),
+      columns: [
+        { key: 'id_proyecto', label: 'ID', sortable: true, searchable: true },
+        { key: 'descripcion_proyecto', label: 'Descripción proyecto', sortable: true, searchable: true },
+        { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
+      ],
+    },
+    usuarios: {
+      tableElement: () => usuariosTableBody?.closest('table'),
+      columns: [
+        { key: 'num_operario', label: 'Nº operario', sortable: true, searchable: true },
+        { key: 'nombre', label: 'Nombre', sortable: true, searchable: true },
+        { key: 'email', label: 'Email', sortable: true, searchable: true },
+        { key: 'rol', label: 'Rol', sortable: true, searchable: true },
+        { key: 'departamentos', label: 'Departamentos', sortable: true, searchable: true },
+        { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
     estados: {
       tableElement: () => estadosTableBody?.closest('table'),
       columns: [
         { key: 'drag', label: '', sortable: false, searchable: false, className: 'col-drag' },
-        { key: 'orden', label: 'Orden', sortable: true, searchable: true },
-        { key: 'descripcion_estado', label: 'Descripción estado', sortable: true, searchable: true },
-        { key: 'acciones', label: 'Acciones', sortable: false, searchable: false },
+        { key: 'orden', label: t('table.order', 'Orden'), sortable: true, searchable: true },
+        { key: 'descripcion_estado', label: t('table.state_description', 'Descripción estado'), sortable: true, searchable: true },
+        { key: 'nombre_departamento', label: t('table.department', 'Departamento'), sortable: true, searchable: true },
+        { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
     configColumnas: {
       tableElement: () => configColumnasTableBody?.closest('table'),
       columns: [
         { key: 'drag', label: '', sortable: false, searchable: false, className: 'col-drag' },
-        { key: 'columna', label: 'Columna', sortable: true, searchable: true },
-        { key: 'descripcion_columna', label: 'Descripción', sortable: true, searchable: true },
-        { key: 'orden_columna', label: 'Orden', sortable: true, searchable: true },
-        { key: 'acciones', label: 'Acciones', sortable: false, searchable: false },
+        { key: 'columna', label: t('table.column', 'Columna'), sortable: true, searchable: true },
+        { key: 'descripcion_columna', label: t('table.description', 'Descripción'), sortable: true, searchable: true },
+        { key: 'orden_columna', label: t('table.order', 'Orden'), sortable: true, searchable: true },
+        { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
   };
@@ -136,6 +298,605 @@ document.addEventListener('DOMContentLoaded', () => {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+
+  function t(key, fallback = key) {
+    if (window.GlobalHeader && typeof window.GlobalHeader.translate === 'function') {
+      const translated = window.GlobalHeader.translate(key);
+      if (translated && translated !== key) {
+        return translated;
+      }
+
+      return fallback;
+    }
+
+    return fallback;
+  }
+
+  const loadActionColumnVisibility = () => {
+    try {
+      const raw = window.localStorage.getItem(ACTION_COLUMN_VISIBILITY_KEY);
+      if (!raw) {
+        return {
+          visible: [...DEFAULT_ACTION_COLUMN_VISIBILITY.visible],
+          hidden: [...DEFAULT_ACTION_COLUMN_VISIBILITY.hidden],
+        };
+      }
+
+      const parsed = JSON.parse(raw);
+      const visible = Array.isArray(parsed?.visible)
+        ? parsed.visible.filter((value) => OPTIONAL_ACTION_KEYS.includes(value))
+        : [];
+      const hidden = Array.isArray(parsed?.hidden)
+        ? parsed.hidden.filter((value) => OPTIONAL_ACTION_KEYS.includes(value))
+        : [];
+      const configured = [...visible, ...hidden];
+      const missingKeys = OPTIONAL_ACTION_KEYS.filter((value) => !configured.includes(value));
+
+      return {
+        visible: [...visible, ...missingKeys],
+        hidden,
+      };
+    } catch (error) {
+      return {
+        visible: [...DEFAULT_ACTION_COLUMN_VISIBILITY.visible],
+        hidden: [...DEFAULT_ACTION_COLUMN_VISIBILITY.hidden],
+      };
+    }
+  };
+
+  const persistActionColumnVisibility = () => {
+    try {
+      window.localStorage.setItem(ACTION_COLUMN_VISIBILITY_KEY, JSON.stringify({
+        visible: ofertasActionColumnVisibility.visible,
+        hidden: ofertasActionColumnVisibility.hidden,
+      }));
+    } catch (error) {
+      // No bloquear la UI si localStorage no está disponible.
+    }
+  };
+
+  const getActionColumnVisibility = () => ({
+    visible: [...ofertasActionColumnVisibility.visible],
+    hidden: [...ofertasActionColumnVisibility.hidden],
+  });
+
+  const isActionVisible = (actionKey) => getActionColumnVisibility().visible.includes(actionKey);
+
+  const getActionLabel = (actionKey) => {
+    if (actionKey === 'status') {
+      return t('table.status', 'Estado');
+    }
+    if (actionKey === 'edit') {
+      return t('common.edit', 'Editar');
+    }
+    return 'BOM';
+  };
+
+  const renderActionConfigChip = (actionKey, { locked = false } = {}) => {
+    return `
+      <div
+        class="action-config-chip${locked ? ' action-config-chip--locked' : ''}"
+        ${locked ? '' : 'draggable="true"'}
+        ${locked ? '' : `data-action-config-item="${actionKey}"`}
+      >
+        <span class="action-config-chip__label">${escapeHtml(getActionLabel(actionKey))}</span>
+        <span class="action-config-chip__meta">${locked ? escapeHtml(t('common.fixed', 'Fijo')) : '↕'}</span>
+      </div>
+    `;
+  };
+
+  const renderActionConfigPopupContent = () => {
+    const visibility = getActionColumnVisibility();
+    const visibleItems = visibility.visible.map((actionKey) => renderActionConfigChip(actionKey)).join('');
+    const hiddenItems = visibility.hidden.length
+      ? visibility.hidden.map((actionKey) => renderActionConfigChip(actionKey)).join('')
+      : `<p class="action-config-zone__empty">${escapeHtml(t('table.actions_all_visible', 'No hay acciones ocultas.'))}</p>`;
+
+    return `
+      <p class="action-config__hint">${escapeHtml(t('table.actions_drag_hint', 'Arrastra entre visibles y ocultas para decidir qué botones mostrar.'))}</p>
+      <div class="action-config-layout">
+        <section class="action-config-section">
+          <p class="action-config-section__title">${escapeHtml(t('common.visible', 'Visibles'))}</p>
+          <div class="action-config-zone" data-action-config-zone="visible">
+            ${renderActionConfigChip('status', { locked: true })}
+            ${visibleItems}
+          </div>
+        </section>
+        <section class="action-config-section">
+          <p class="action-config-section__title">${escapeHtml(t('common.hidden', 'Ocultas'))}</p>
+          <div class="action-config-zone action-config-zone--hidden" data-action-config-zone="hidden">
+            ${hiddenItems}
+          </div>
+        </section>
+      </div>
+    `;
+  };
+
+  const renderOfertasActionHeaderConfig = () => {
+    return `
+      <button
+        class="table-actions-menu__toggle table-actions-menu__toggle--header"
+        type="button"
+        data-open-action-config-popup="true"
+        aria-haspopup="dialog"
+        aria-expanded="${actionConfigPopup?.classList.contains('is-visible') ? 'true' : 'false'}"
+        aria-label="${escapeHtml(t('table.actions', 'Acciones'))}"
+      >
+        <span aria-hidden="true">⚙️</span>
+      </button>
+    `;
+  };
+
+  const ensureActionConfigPopup = () => {
+    if (actionConfigPopup) {
+      return actionConfigPopup;
+    }
+
+    actionConfigPopup = document.createElement('div');
+    actionConfigPopup.className = 'action-config-popup';
+    actionConfigPopup.setAttribute('aria-hidden', 'true');
+    actionConfigPopup.hidden = true;
+    actionConfigPopup.addEventListener('click', (event) => {
+      const closeButton = event.target.closest('[data-close-action-config-popup]');
+      if (closeButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        closeActionConfigPopup();
+      }
+    });
+    document.body.appendChild(actionConfigPopup);
+    return actionConfigPopup;
+  };
+
+  const renderActionConfigPopup = () => {
+    const popup = ensureActionConfigPopup();
+    popup.innerHTML = `
+      <div class="action-config-popup__panel" role="dialog" aria-modal="false" aria-label="${escapeHtml(t('table.actions', 'Acciones'))}">
+        <div class="action-config-popup__header">
+          <strong>${escapeHtml(t('table.actions', 'Acciones'))}</strong>
+          <button class="action-config-popup__close" type="button" data-close-action-config-popup="true" aria-label="${escapeHtml(t('common.close', 'Cerrar'))}">×</button>
+        </div>
+        <div class="action-config-popup__body">
+          ${renderActionConfigPopupContent()}
+        </div>
+      </div>
+    `;
+    return popup;
+  };
+
+  const positionActionConfigPopup = () => {
+    if (!actionConfigPopup || !actionConfigPopupAnchor || !actionConfigPopup.classList.contains('is-visible')) {
+      return;
+    }
+
+    if (!actionConfigPopupAnchor.isConnected) {
+      const nextAnchor = document.querySelector('[data-open-action-config-popup="true"]');
+      if (nextAnchor instanceof HTMLElement) {
+        actionConfigPopupAnchor = nextAnchor;
+        actionConfigPopupAnchor.setAttribute('aria-expanded', 'true');
+      } else {
+        closeActionConfigPopup();
+        return;
+      }
+    }
+
+    const anchorRect = actionConfigPopupAnchor.getBoundingClientRect();
+    const panel = actionConfigPopup.querySelector('.action-config-popup__panel');
+    if (!panel) {
+      return;
+    }
+
+    const panelRect = panel.getBoundingClientRect();
+    const margin = 12;
+    const top = Math.min(anchorRect.bottom + 8, window.innerHeight - panelRect.height - margin);
+    const left = Math.min(
+      Math.max(margin, anchorRect.right - panelRect.width),
+      window.innerWidth - panelRect.width - margin,
+    );
+
+    panel.style.top = `${Math.max(margin, top)}px`;
+    panel.style.left = `${Math.max(margin, left)}px`;
+  };
+
+  const closeActionConfigPopup = () => {
+    if (!actionConfigPopup) {
+      return;
+    }
+
+    if (document.activeElement instanceof HTMLElement && actionConfigPopup.contains(document.activeElement)) {
+      if (actionConfigPopupAnchor?.isConnected) {
+        actionConfigPopupAnchor.focus();
+      } else {
+        document.activeElement.blur();
+      }
+    }
+
+    actionConfigPopup.classList.remove('is-visible');
+    actionConfigPopup.setAttribute('aria-hidden', 'true');
+    actionConfigPopup.hidden = true;
+    if (actionConfigPopupAnchor) {
+      actionConfigPopupAnchor.setAttribute('aria-expanded', 'false');
+    }
+    actionConfigPopupAnchor = null;
+  };
+
+  const openActionConfigPopup = (anchor) => {
+    actionConfigPopupAnchor = anchor;
+    const popup = renderActionConfigPopup();
+    popup.hidden = false;
+    popup.classList.add('is-visible');
+    popup.setAttribute('aria-hidden', 'false');
+    anchor.setAttribute('aria-expanded', 'true');
+    positionActionConfigPopup();
+  };
+
+  const refreshActionConfigUi = () => {
+    setupTableHeaderControls('ofertas');
+    renderOfertasListado(ofertasListadoCache);
+    if (actionConfigPopup?.classList.contains('is-visible')) {
+      const nextAnchor = document.querySelector('[data-open-action-config-popup="true"]');
+      if (!(nextAnchor instanceof HTMLElement)) {
+        closeActionConfigPopup();
+        return;
+      }
+
+      actionConfigPopupAnchor = nextAnchor;
+      actionConfigPopupAnchor.setAttribute('aria-expanded', 'true');
+      renderActionConfigPopup();
+      positionActionConfigPopup();
+    }
+  };
+
+  const renderOfertasActionButtons = (oferta) => {
+    const offerNumber = oferta.numero_oferta || oferta.id_oferta;
+    const buttons = [];
+
+    if (isActionVisible('edit')) {
+      buttons.push(`
+        <button class="btn-inline btn-inline--edit btn-inline--compact" type="button" data-edit-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.edit_aria', 'Editar oferta {number}', { number: offerNumber }))}">${escapeHtml(t('common.edit', 'Editar'))}</button>
+      `);
+    }
+
+    buttons.push(`
+      <button class="btn-inline btn-inline--save btn-inline--compact" type="button" data-change-estado-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.change_status_aria', 'Cambiar estado de la oferta {number}', { number: offerNumber }))}">${escapeHtml(t('table.status', 'Estado'))}</button>
+    `);
+
+    if (isActionVisible('bom')) {
+      buttons.push(`
+        <button class="btn-inline btn-inline--compact" type="button" data-bom-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.bom_aria', 'Abrir BOM de la oferta {number}', { number: offerNumber }))}">BOM</button>
+      `);
+    }
+
+    return buttons.join('');
+  };
+
+  const moveActionConfigItem = (actionKey, targetZone) => {
+    if (!OPTIONAL_ACTION_KEYS.includes(actionKey) || !['visible', 'hidden'].includes(targetZone)) {
+      return false;
+    }
+
+    const currentConfig = getActionColumnVisibility();
+    const nextVisible = currentConfig.visible.filter((value) => value !== actionKey);
+    const nextHidden = currentConfig.hidden.filter((value) => value !== actionKey);
+
+    if (targetZone === 'visible') {
+      nextVisible.push(actionKey);
+    } else {
+      nextHidden.push(actionKey);
+    }
+
+    ofertasActionColumnVisibility = {
+      visible: nextVisible,
+      hidden: nextHidden,
+    };
+    persistActionColumnVisibility();
+    return true;
+  };
+
+  function tf(key, fallback, replacements = {}) {
+    return String(t(key, fallback)).replace(/\{(\w+)\}/g, (_, token) => replacements[token] ?? `{${token}}`);
+  }
+
+  function getCurrentLocale() {
+    const language = window.GlobalHeader && typeof window.GlobalHeader.getCurrentLanguage === 'function'
+      ? window.GlobalHeader.getCurrentLanguage()
+      : (document.documentElement.lang || 'es');
+
+    if (language === 'en') return 'en-US';
+    if (language === 'cs') return 'cs-CZ';
+    return 'es-ES';
+  }
+
+  function buildNavigationStack(viewName) {
+    if (viewName === 'clientes') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+        { label: t('config.clients', 'Clientes'), target: 'clientes', htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'estados') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+        { label: t('config.states', 'Estados'), target: 'estados', htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'usuarios') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+        { label: 'Usuarios', target: 'usuarios', htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'proyectos') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+        { label: 'Proyectos', target: 'proyectos', htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'todos') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('listing.all', 'Todos'), target: 'todos', htmlFile: null },
+      ];
+    }
+
+    if (viewName.startsWith('estado-')) {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: currentListadoContext.label || t('table.status', 'Estado'), target: viewName, htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'configuracion') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+      ];
+    }
+
+    return [
+      { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+      { label: t('sidebar.new_offer', 'Insertar Presupuesto'), target: 'nueva-oferta', htmlFile: null },
+    ];
+  }
+
+  function getOfferColumnLabel(columnName, fallbackLabel = null) {
+    const labelMap = {
+      id_oferta: () => t('table.offer_id', 'ID oferta'),
+      estado: () => t('table.status', 'Estado'),
+      fecha_email: () => t('table.email_date', 'Fecha e-mail'),
+      fecha_alta_oferta: () => t('table.offer_created_date', 'Fecha alta oferta'),
+      fecha_limite: () => t('table.deadline', 'Fecha límite'),
+      numero_oferta: () => t('table.offer_number', 'Nº oferta'),
+      ref_cliente_asunto_email: () => t('table.client_ref_subject', 'Ref. cliente / asunto e-mail'),
+      cliente: () => t('table.client', 'Cliente'),
+      emisor: () => t('table.sender', 'Emisor'),
+      observaciones_oferta: () => t('table.offer_notes', 'Observaciones oferta'),
+      tipo_interaccion: () => t('table.interaction_types', 'Tipos interacción'),
+      fecha_interaccion: () => t('table.interaction_dates', 'Fechas interacción'),
+      observaciones_interaccion: () => t('table.interaction_notes', 'Observaciones interacción'),
+    };
+
+    return labelMap[columnName]?.() || fallbackLabel || columnName;
+  }
+
+  function shouldTranslateConfiguredLabel(columnName, configuredLabel) {
+    if (!configuredLabel) {
+      return true;
+    }
+
+    const normalizedConfigured = String(configuredLabel).trim().toLocaleLowerCase();
+    const candidates = [
+      columnName,
+      getOfferColumnLabel(columnName, columnName),
+      availableOfferColumns.find((column) => column.value === columnName)?.label,
+    ].filter(Boolean);
+
+    return candidates.some((candidate) => String(candidate).trim().toLocaleLowerCase() === normalizedConfigured);
+  }
+
+  function getConfiguredOfferColumnLabel(config) {
+    if (!config) {
+      return '';
+    }
+
+    if (shouldTranslateConfiguredLabel(config.columna, config.descripcion_columna)) {
+      return getOfferColumnLabel(config.columna, config.descripcion_columna || config.columna);
+    }
+
+    return config.descripcion_columna || getOfferColumnLabel(config.columna, config.columna);
+  }
+
+  function translateEstadoLabel(label) {
+    const normalized = String(label || '').trim().toLocaleLowerCase();
+    const stateMap = {
+      pendiente: t('state.pending', 'Pendiente'),
+      'pendiente tecnico': t('state.pending_technical', 'Pendiente Tecnico'),
+      'pendiente compras': t('state.pending_purchasing', 'Pendiente Compras'),
+      enviada: t('state.sent', 'Enviada'),
+      pedido: t('state.ordered', 'Pedido'),
+      anulada: t('state.cancelled', 'Anulada'),
+    };
+
+    return stateMap[normalized] || label;
+  }
+
+  function getSidebarStateIcon(label) {
+    if (label && typeof label === 'object') {
+      const explicitEmoji = String(label.emoji_sidebar || '').trim();
+      if (explicitEmoji) {
+        return explicitEmoji;
+      }
+      return getSuggestedStateEmoji(label.descripcion_estado || '');
+    }
+
+    return getSuggestedStateEmoji(label);
+  }
+
+  function getFallbackSidebarStateIcon(label) {
+    const normalized = String(label || '').trim().toLocaleLowerCase();
+
+    if (normalized.includes('tecn')) {
+      return '🛠️';
+    }
+
+    if (normalized.includes('compra')) {
+      return '🛒';
+    }
+
+    if (normalized.includes('envi')) {
+      return '📤';
+    }
+
+    if (normalized.includes('pedido')) {
+      return '📦';
+    }
+
+    if (normalized.includes('anulad') || normalized.includes('cancel')) {
+      return '⛔';
+    }
+
+    if (normalized.includes('pend')) {
+      return '⏳';
+    }
+
+    return '📌';
+  }
+
+  const normalizeEmojiSuggestionSource = (value) => String(value || '')
+    .trim()
+    .toLocaleLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const getSuggestedStateEmoji = (label) => {
+    const normalized = normalizeEmojiSuggestionSource(label);
+    if (!normalized) {
+      return stateEmojiSuggestions.default || '📌';
+    }
+
+    const matchingRule = (Array.isArray(stateEmojiSuggestions.rules) ? stateEmojiSuggestions.rules : [])
+      .find((rule) => Array.isArray(rule.keywords) && rule.keywords.some((keyword) => normalized.includes(normalizeEmojiSuggestionSource(keyword))));
+
+    if (matchingRule?.emoji) {
+      return matchingRule.emoji;
+    }
+
+    return getFallbackSidebarStateIcon(label);
+  };
+
+  const buildStateEmojiButtons = (selectedValue = '') => {
+    const normalizedSelectedValue = String(selectedValue || '').trim();
+    const choices = Array.isArray(stateEmojiSuggestions.choices) && stateEmojiSuggestions.choices.length
+      ? stateEmojiSuggestions.choices
+      : [{ emoji: '📌', label: 'General' }];
+
+    return choices.map((choice) => {
+      const emoji = String(choice.emoji || '').trim();
+      const optionLabel = String(choice.label || emoji || 'Emoji').trim();
+      const isSelected = emoji === normalizedSelectedValue;
+      return `
+        <button
+          class="estado-emoji-picker__option${isSelected ? ' is-selected' : ''}"
+          type="button"
+          data-emoji-option="${escapeHtml(emoji)}"
+          aria-label="${escapeHtml(optionLabel)}"
+          aria-pressed="${isSelected ? 'true' : 'false'}"
+        >${escapeHtml(emoji)}</button>`;
+    }).join('');
+  };
+
+  const updateStateEmojiPickerSelection = (pickerElement, emoji) => {
+    if (!pickerElement) {
+      return;
+    }
+
+    const normalizedEmoji = String(emoji || stateEmojiSuggestions.default || '📌').trim() || '📌';
+    pickerElement.querySelectorAll('[data-emoji-option]').forEach((button) => {
+      const isSelected = button.dataset.emojiOption === normalizedEmoji;
+      button.classList.toggle('is-selected', isSelected);
+      button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    });
+  };
+
+  const populateStateEmojiSelect = (inputElement, pickerElement, selectedEmoji = '') => {
+    if (!inputElement || !pickerElement) {
+      return;
+    }
+
+    const resolvedEmoji = String(selectedEmoji || '').trim() || stateEmojiSuggestions.default || '📌';
+    inputElement.value = resolvedEmoji;
+    pickerElement.innerHTML = buildStateEmojiButtons(resolvedEmoji);
+    updateStateEmojiPickerSelection(pickerElement, resolvedEmoji);
+  };
+
+  const syncStateEmojiFromDescription = (descriptionField, inputElement, pickerElement, force = false) => {
+    if (!descriptionField || !inputElement || !pickerElement) {
+      return;
+    }
+
+    const suggestedEmoji = getSuggestedStateEmoji(descriptionField.value || '');
+    if (force) {
+      populateStateEmojiSelect(inputElement, pickerElement, suggestedEmoji);
+      return;
+    }
+
+    updateStateEmojiPickerSelection(pickerElement, inputElement.value || suggestedEmoji);
+  };
+
+  const bindStateEmojiPicker = (pickerElement, inputElement, onSelect) => {
+    if (!pickerElement || !inputElement) {
+      return;
+    }
+
+    pickerElement.addEventListener('click', (event) => {
+      const optionButton = event.target.closest('[data-emoji-option]');
+      if (!optionButton) {
+        return;
+      }
+
+      const selectedEmoji = String(optionButton.dataset.emojiOption || '').trim() || stateEmojiSuggestions.default || '📌';
+      inputElement.value = selectedEmoji;
+      updateStateEmojiPickerSelection(pickerElement, selectedEmoji);
+      if (typeof onSelect === 'function') {
+        onSelect(selectedEmoji);
+      }
+    });
+  };
+
+  const getActiveEstados = () => estadosCache.filter((estado) => estado.activo !== false);
+
+  const loadStateEmojiSuggestions = async () => {
+    if (stateEmojiSuggestionsPromise) {
+      return stateEmojiSuggestionsPromise;
+    }
+
+    stateEmojiSuggestionsPromise = fetch('/static/data/state-emoji-suggestions.json')
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('No se pudo cargar la configuración de emojis');
+        }
+        const payload = await response.json();
+        stateEmojiSuggestions = {
+          default: payload?.default || '📌',
+          choices: Array.isArray(payload?.choices) ? payload.choices : [{ emoji: '📌', label: 'General' }],
+          rules: Array.isArray(payload?.rules) ? payload.rules : [],
+        };
+        populateStateEmojiSelect(estadoEmojiSidebar, estadoEmojiSidebarPicker, estadoEmojiSidebar?.value || getSuggestedStateEmoji(estadoCreateDescripcion?.value || ''));
+        populateStateEmojiSelect(estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, estadoEditEmojiSidebar?.value || getSuggestedStateEmoji(estadoEditDescripcion?.value || ''));
+        return stateEmojiSuggestions;
+      })
+      .catch(() => stateEmojiSuggestions);
+
+    return stateEmojiSuggestionsPromise;
+  };
 
   const setGenericFeedback = (element, message, type = 'success') => {
     if (!element) {
@@ -166,6 +927,383 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const clearFeedback = () => {
     clearGenericFeedback(feedback);
+  };
+
+  const getFieldContainer = (field) => field?.closest('.form-field') || null;
+
+  const getFieldErrorElement = (field) => {
+    const container = getFieldContainer(field);
+    if (!container) {
+      return null;
+    }
+
+    let errorElement = container.querySelector('.form-field__error');
+    if (!errorElement) {
+      errorElement = document.createElement('p');
+      errorElement.className = 'form-field__error';
+      container.appendChild(errorElement);
+    }
+
+    return errorElement;
+  };
+
+  const setFieldValidationError = (field, message) => {
+    const container = getFieldContainer(field);
+    const errorElement = getFieldErrorElement(field);
+    if (!container || !errorElement || !field) {
+      return;
+    }
+
+    container.classList.add('is-invalid');
+    field.setAttribute('aria-invalid', 'true');
+    errorElement.textContent = message;
+  };
+
+  const clearFieldValidationError = (field) => {
+    const container = getFieldContainer(field);
+    const errorElement = getFieldErrorElement(field);
+    if (!container || !errorElement || !field) {
+      return;
+    }
+
+    container.classList.remove('is-invalid');
+    field.removeAttribute('aria-invalid');
+    errorElement.textContent = '';
+  };
+
+  const clearFormValidationErrors = (formElement) => {
+    if (!formElement) {
+      return;
+    }
+
+    formElement.querySelectorAll('.form-field.is-invalid').forEach((container) => {
+      container.classList.remove('is-invalid');
+    });
+
+    formElement.querySelectorAll('[aria-invalid="true"]').forEach((field) => {
+      field.removeAttribute('aria-invalid');
+    });
+
+    formElement.querySelectorAll('.form-field__error').forEach((errorElement) => {
+      errorElement.textContent = '';
+    });
+  };
+
+  const validateRequiredField = (field, message, validator = null) => {
+    if (!field) {
+      return true;
+    }
+
+    const isValid = validator ? validator(field) : (field.checkValidity() && String(field.value || '').trim() !== '');
+    if (isValid) {
+      clearFieldValidationError(field);
+      return true;
+    }
+
+    setFieldValidationError(field, message);
+    return false;
+  };
+
+  const bindFieldValidation = (field, message, validator = null) => {
+    if (!field) {
+      return;
+    }
+
+    const revalidateIfNeeded = () => {
+      if (getFieldContainer(field)?.classList.contains('is-invalid')) {
+        validateRequiredField(field, message, validator);
+      }
+    };
+
+    field.addEventListener('blur', () => {
+      validateRequiredField(field, message, validator);
+    });
+    field.addEventListener('input', revalidateIfNeeded);
+    field.addEventListener('change', revalidateIfNeeded);
+  };
+
+  const extractSenderIdentityFromText = (value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized) {
+      return { name: null, email: null };
+    }
+
+    const match = normalized.match(/^(.*?)\s*<([^<>]+)>$/);
+    if (match) {
+      return {
+        name: match[1].trim() || null,
+        email: match[2].trim() || null,
+      };
+    }
+
+    if (normalized.includes('@')) {
+      return { name: null, email: normalized.replace(/[<>]/g, '') };
+    }
+
+    return { name: normalized, email: null };
+  };
+
+  const updateOfertaEtcStandbyUi = () => {
+    if (!savedOfertaContext) {
+      pendingOfertaEtcPayload = null;
+    }
+  };
+
+  const buildResponsableLabel = (usuario) => {
+    if (!usuario) {
+      return '';
+    }
+
+    const departamento = usuario.nombre_departamento || usuario.departamentos || '';
+    const role = usuario.rol || '';
+    const suffix = [departamento, role].filter(Boolean).join(' · ');
+    return suffix
+      ? `${usuario.nombre} (${usuario.num_operario}) · ${suffix}`
+      : `${usuario.nombre} (${usuario.num_operario})`;
+  };
+
+  const getEtcResponsableUsers = (departamentoId = null) => {
+    const normalizedDepartamentoId = departamentoId == null || departamentoId === '' ? null : Number(departamentoId);
+    const source = Array.isArray(usuariosCache) ? [...usuariosCache] : [];
+    const filtered = normalizedDepartamentoId == null
+      ? source
+      : source.filter((usuario) => Number(usuario.id_departamento) === normalizedDepartamentoId);
+
+    return filtered.sort((left, right) => String(left.nombre || '').localeCompare(String(right.nombre || ''), 'es', { sensitivity: 'base' }));
+  };
+
+  const getDepartamentoManager = (departamentoId = null) => {
+    const users = getEtcResponsableUsers(departamentoId);
+    return users.find((usuario) => Number(usuario.id_rol) === 1 || String(usuario.rol || usuario.nombre_rol || '').trim().toLowerCase() === 'manager') || null;
+  };
+
+  const setOfertaEtcExtendedVisibility = (isVisible) => {
+    if (!ofertaEtcExtendedFields || !ofertaEtcToggleExtended) {
+      return;
+    }
+
+    ofertaEtcExtendedFields.hidden = !isVisible;
+    ofertaEtcToggleExtended.textContent = isVisible ? 'Ocultar ext. formulario' : 'Ext. formulario';
+    ofertaEtcToggleExtended.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
+  };
+
+  const renderOfertaEtcResponsableOptions = ({ selectedNumOperario = null, preferManager = false } = {}) => {
+    if (!ofertaEtcResponsable) {
+      return;
+    }
+
+    const users = getEtcResponsableUsers(ofertaEtcDepartamento?.value || null);
+    const manager = getDepartamentoManager(ofertaEtcDepartamento?.value || null);
+    const selectedUser = users.find((usuario) => String(usuario.num_operario) === String(selectedNumOperario ?? ''));
+    const fallbackUser = preferManager
+      ? (manager || selectedUser || users[0] || null)
+      : (selectedUser || manager || users[0] || null);
+
+    const emptyLabel = ofertaEtcDepartamento?.value && !users.length
+      ? 'No hay usuarios configurados en este departamento'
+      : 'Selecciona un responsable';
+
+    ofertaEtcResponsable.innerHTML = [
+      `<option value="">${escapeHtml(emptyLabel)}</option>`,
+      ...users.map((usuario) => `<option value="${escapeHtml(usuario.num_operario)}">${escapeHtml(buildResponsableLabel(usuario))}</option>`),
+    ].join('');
+
+    ofertaEtcResponsable.value = fallbackUser ? String(fallbackUser.num_operario) : '';
+  };
+
+  const populateOfertaEtcForm = (payload = null) => {
+    const currentUser = getCurrentUser();
+
+    if (ofertaEtcForm) {
+      ofertaEtcForm.reset();
+    }
+
+    if (ofertaEtcDepartamento) {
+      ofertaEtcDepartamento.innerHTML = buildDepartamentoOptions(payload?.id_departamento_destino || '');
+      ofertaEtcDepartamento.value = payload?.id_departamento_destino ? String(payload.id_departamento_destino) : '';
+    }
+
+    if (ofertaEtcResponsable) {
+      renderOfertaEtcResponsableOptions({
+        selectedNumOperario: payload?.num_operario_responsable ?? currentUser?.num_operario ?? null,
+        preferManager: !payload?.num_operario_responsable,
+      });
+    }
+
+    setOfertaEtcExtendedVisibility(false);
+
+    if (ofertaEtcPrioridad) ofertaEtcPrioridad.value = payload?.prioridad || 'NORMAL';
+    if (ofertaEtcUrgente) ofertaEtcUrgente.checked = Boolean(payload?.es_urgente);
+    if (ofertaEtcCodigoExterno) ofertaEtcCodigoExterno.value = payload?.codigo_externo_oferta || '';
+    if (ofertaEtcCodigoInterno) ofertaEtcCodigoInterno.value = payload?.codigo_interno_oferta || '';
+    if (ofertaEtcReferenciaCliente) ofertaEtcReferenciaCliente.value = payload?.referencia_cliente || '';
+    if (ofertaEtcIncoterm) ofertaEtcIncoterm.value = payload?.incoterm || '';
+    if (ofertaEtcNumeroComision) ofertaEtcNumeroComision.value = payload?.numero_comision || '';
+    if (ofertaEtcProyecto) ofertaEtcProyecto.value = payload?.proyecto || '';
+    if (ofertaEtcPoOriginal) ofertaEtcPoOriginal.value = payload?.po_original || '';
+    if (ofertaEtcPedidoB2b) ofertaEtcPedidoB2b.value = payload?.pedido_b2b || '';
+    if (ofertaEtcFechaEnvio) ofertaEtcFechaEnvio.value = payload?.fecha_envio_oferta || '';
+    if (ofertaEtcSolicitanteNombre) ofertaEtcSolicitanteNombre.value = payload?.nombre_solicitante || '';
+    if (ofertaEtcSolicitanteEmail) ofertaEtcSolicitanteEmail.value = payload?.email_solicitante || '';
+    if (ofertaEtcTotalMaterial) ofertaEtcTotalMaterial.value = payload?.total_material_eur || '';
+    if (ofertaEtcTotalFee) ofertaEtcTotalFee.value = payload?.total_fee_eur || '';
+    if (ofertaEtcResumenMaterial) ofertaEtcResumenMaterial.value = payload?.resumen_material_solicitado || '';
+    if (ofertaEtcObservacionesCliente) ofertaEtcObservacionesCliente.value = payload?.observaciones_cliente || '';
+  };
+
+  const openOfertaEtcModal = () => {
+    if (!ofertaEtcModal) {
+      return;
+    }
+
+    populateOfertaEtcForm(pendingOfertaEtcPayload || buildOfertaEtcPayloadForInsert());
+    clearFormValidationErrors(ofertaEtcForm);
+    clearGenericFeedback(ofertaEtcFeedback);
+    ofertaEtcModal.classList.add('is-visible');
+    ofertaEtcModal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeOfertaEtcModal = () => {
+    if (!ofertaEtcModal) {
+      return;
+    }
+
+    ofertaEtcModal.classList.remove('is-visible');
+    ofertaEtcModal.setAttribute('aria-hidden', 'true');
+    clearGenericFeedback(ofertaEtcFeedback);
+    savedOfertaContext = null;
+    pendingOfertaEtcPayload = null;
+    if (ofertaEtcForm) {
+      clearFormValidationErrors(ofertaEtcForm);
+      ofertaEtcForm.reset();
+    }
+  };
+
+  const buildPendingOfertaEtcPayload = () => {
+    const currentUser = getCurrentUser();
+    const selectedResponsable = usuariosCache.find((usuario) => String(usuario.num_operario) === String(ofertaEtcResponsable?.value || '')) || null;
+
+    return {
+      num_operario_responsable: ofertaEtcResponsable?.value || currentUser?.num_operario || null,
+      nombre_responsable: selectedResponsable?.nombre || currentUser?.nombre || null,
+      id_departamento_destino: ofertaEtcDepartamento?.value || null,
+      prioridad: ofertaEtcPrioridad?.value || 'NORMAL',
+      es_urgente: Boolean(ofertaEtcUrgente?.checked),
+      codigo_externo_oferta: ofertaEtcCodigoExterno?.value?.trim() || null,
+      codigo_interno_oferta: ofertaEtcCodigoInterno?.value?.trim() || null,
+      referencia_cliente: ofertaEtcReferenciaCliente?.value?.trim() || null,
+      incoterm: ofertaEtcIncoterm?.value?.trim() || null,
+      numero_comision: ofertaEtcNumeroComision?.value?.trim() || null,
+      proyecto: ofertaEtcProyecto?.value?.trim() || null,
+      po_original: ofertaEtcPoOriginal?.value?.trim() || null,
+      pedido_b2b: ofertaEtcPedidoB2b?.value?.trim() || null,
+      fecha_envio_oferta: ofertaEtcFechaEnvio?.value || null,
+      nombre_solicitante: ofertaEtcSolicitanteNombre?.value?.trim() || null,
+      email_solicitante: ofertaEtcSolicitanteEmail?.value?.trim() || null,
+      total_material_eur: ofertaEtcTotalMaterial?.value?.trim() || null,
+      total_fee_eur: ofertaEtcTotalFee?.value?.trim() || null,
+      resumen_material_solicitado: ofertaEtcResumenMaterial?.value?.trim() || null,
+      observaciones_cliente: ofertaEtcObservacionesCliente?.value?.trim() || null,
+      origen_registro: 'MANUAL',
+      activo: true,
+    };
+  };
+
+  const buildOfertaEtcPayloadForInsert = () => {
+    const basePayload = buildPayload();
+    const senderIdentity = extractSenderIdentityFromText(emisorInput?.value || '');
+
+    return {
+      ...(pendingOfertaEtcPayload || {}),
+      id_cliente: pendingOfertaEtcPayload?.id_cliente || basePayload.id_cliente || basePayload.cliente || null,
+      fecha_recepcion: pendingOfertaEtcPayload?.fecha_recepcion || basePayload.fecha_email || null,
+      referencia_cliente: pendingOfertaEtcPayload?.referencia_cliente || basePayload.ref_cliente_asunto_email || null,
+      nombre_solicitante: pendingOfertaEtcPayload?.nombre_solicitante || senderIdentity.name || null,
+      email_solicitante: pendingOfertaEtcPayload?.email_solicitante || senderIdentity.email || null,
+      observaciones_cliente: pendingOfertaEtcPayload?.observaciones_cliente || basePayload.observaciones || null,
+    };
+  };
+
+  const validateSenderEmailField = (field) => Boolean(extractSenderIdentityFromText(field?.value || '').email);
+
+  const ofertaEtcPriorityFieldConfigs = [
+    { field: ofertaEtcResponsable, message: 'Este campo es obligatorio.' },
+    { field: ofertaEtcDepartamento, message: 'Este campo es obligatorio.' },
+    { field: ofertaEtcCodigoExterno, message: 'Este campo es obligatorio.' },
+    { field: ofertaEtcReferenciaCliente, message: 'Este campo es obligatorio.' },
+    { field: ofertaEtcIncoterm, message: 'Este campo es obligatorio.' },
+  ].filter((config) => Boolean(config.field));
+
+  const ofertaEtcIdentifierFields = [
+    ofertaEtcCodigoExterno,
+    ofertaEtcCodigoInterno,
+    ofertaEtcReferenciaCliente,
+    ofertaEtcNumeroComision,
+    ofertaEtcProyecto,
+  ].filter(Boolean);
+
+  const validateOfertaPrincipalForm = () => {
+    const validations = [
+      {
+        field: document.getElementById('fecha_email'),
+        message: 'Este campo es obligatorio.',
+      },
+      {
+        field: clienteSelect,
+        message: 'Este campo es obligatorio.',
+      },
+      {
+        field: emisorInput,
+        message: 'Este campo es obligatorio y debe incluir un correo electrónico.',
+        validator: validateSenderEmailField,
+      },
+    ];
+
+    let firstInvalidField = null;
+    validations.forEach(({ field, message, validator }) => {
+      const isValid = validateRequiredField(field, message, validator);
+      if (!isValid && !firstInvalidField) {
+        firstInvalidField = field;
+      }
+    });
+
+    if (firstInvalidField) {
+      firstInvalidField.focus();
+      return false;
+    }
+
+    return true;
+  };
+
+  const validateOfertaEtcIdentifierFields = () => {
+    const hasIdentifier = ofertaEtcIdentifierFields.some((field) => String(field.value || '').trim() !== '');
+    if (hasIdentifier) {
+      ofertaEtcIdentifierFields.forEach((field) => clearFieldValidationError(field));
+      return true;
+    }
+
+    const message = 'Debes rellenar al menos uno de estos campos obligatorios.';
+    ofertaEtcIdentifierFields.forEach((field) => setFieldValidationError(field, message));
+    ofertaEtcIdentifierFields[0]?.focus();
+    return false;
+  };
+
+  const validateOfertaEtcPriorityFields = () => {
+    let firstInvalidField = null;
+
+    ofertaEtcPriorityFieldConfigs.forEach(({ field, message }) => {
+      const isValid = validateRequiredField(field, message);
+      if (!isValid && !firstInvalidField) {
+        firstInvalidField = field;
+      }
+    });
+
+    if (firstInvalidField) {
+      firstInvalidField.focus();
+      return false;
+    }
+
+    return true;
   };
 
   const releaseSidebarFocus = () => {
@@ -216,12 +1354,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const isEstadosDragEnabled = () => {
+    if (isReadOnlyUser()) {
+      return false;
+    }
+
     const state = tableStates.estados;
     const hasFilters = Object.values(state.filters).some((value) => String(value || '').trim() !== '');
     return !hasFilters && state.sortKey === 'orden' && state.sortDirection === 'asc';
   };
 
   const isConfigColumnasDragEnabled = () => {
+    if (isReadOnlyUser()) {
+      return false;
+    }
+
     const state = tableStates.configColumnas;
     const hasFilters = Object.values(state.filters).some((value) => String(value || '').trim() !== '');
     return !hasFilters && state.sortKey === 'orden_columna' && state.sortDirection === 'asc';
@@ -249,19 +1395,23 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       const filterValue = state.filters[column.key] || '';
       const filterPlaceholder = getFilterPlaceholder(tableKey, column.key, column.label);
+      const headerActions = tableKey === 'ofertas' && column.key === 'acciones'
+        ? renderOfertasActionHeaderConfig()
+        : '';
 
       return `
         <th class="${classes.join(' ')}" data-table-key="${tableKey}" data-column-key="${column.key}" ${column.sortable ? 'data-sortable="true"' : ''}>
           <div class="table-header__content">
-            <button class="table-header__sort" type="button" ${column.sortable ? '' : 'disabled'} aria-label="Ordenar por ${escapeHtml(column.label || column.key)}">
+            <button class="table-header__sort" type="button" ${column.sortable ? '' : 'disabled'} aria-label="${escapeHtml(tf('table.sort_by', 'Ordenar por {label}', { label: column.label || column.key }))}">
               <span class="table-header__label">${escapeHtml(column.label)}</span>
               ${column.sortable ? `<span class="table-header__sort-indicator">${sortArrow}</span>` : ''}
             </button>
+            ${headerActions}
             ${column.searchable ? `
               <div class="table-header__filter-wrap">
                 <span class="table-header__filter-icon" aria-hidden="true">⌕</span>
                 <input class="table-header__filter" type="text" value="${escapeHtml(filterValue)}" placeholder="${escapeHtml(filterPlaceholder)}" aria-label="${escapeHtml(filterPlaceholder)}" data-filter-key="${column.key}" />
-                ${filterValue ? `<button class="table-header__filter-clear" type="button" data-clear-filter="true" data-table-key="${tableKey}" data-filter-key="${column.key}" aria-label="Limpiar filtro ${escapeHtml(column.label)}">×</button>` : ''}
+                ${filterValue ? `<button class="table-header__filter-clear" type="button" data-clear-filter="true" data-table-key="${tableKey}" data-filter-key="${column.key}" aria-label="${escapeHtml(tf('table.clear_filter', 'Limpiar filtro {label}', { label: column.label }))}">×</button>` : ''}
               </div>
             ` : ''}
           </div>
@@ -284,7 +1434,7 @@ document.addEventListener('DOMContentLoaded', () => {
     configColumnaSelect.innerHTML = availableOfferColumns
       .map((column) => `
         <option value="${escapeHtml(column.value)}" ${selectedValues.includes(column.value) ? 'selected' : ''}>
-          ${escapeHtml(column.label)}
+          ${escapeHtml(getOfferColumnLabel(column.value, column.label))}
         </option>
       `)
       .join('');
@@ -326,6 +1476,469 @@ document.addEventListener('DOMContentLoaded', () => {
     return parsed.toLocaleDateString('es-ES');
   };
 
+  const formatDisplayDateTime = (value) => {
+    if (!value) {
+      return '';
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+
+    return parsed.toLocaleString(getCurrentLocale(), {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatCurrencyAmount = (value) => {
+    if (value === null || value === undefined || value === '') {
+      return '—';
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value);
+    }
+
+    return new Intl.NumberFormat(getCurrentLocale(), {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(numericValue);
+  };
+
+  const formatSignedCurrencyAmount = (value) => {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return String(value ?? '');
+    }
+
+    const absoluteValue = formatCurrencyAmount(Math.abs(numericValue));
+    if (numericValue > 0) {
+      return `+${absoluteValue}`;
+    }
+    if (numericValue < 0) {
+      return `-${absoluteValue}`;
+    }
+    return formatCurrencyAmount(0);
+  };
+
+  const normalizeSearchText = (value) => String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+  const getFilteredBomMateriales = () => {
+    const query = normalizeSearchText(bomSearchInput?.value || '');
+    if (!query) {
+      return bomMaterialesCache;
+    }
+
+    return bomMaterialesCache.filter((material) => normalizeSearchText(material.material).includes(query));
+  };
+
+  const renderBomDifference = (material) => {
+    if (material?.diferencia_precio === null || material?.diferencia_precio === undefined) {
+      return '<span class="bom-diff bom-diff--neutral">Sin histórico</span>';
+    }
+
+    const difference = Number(material.diferencia_precio);
+    const className = difference > 0
+      ? 'bom-diff bom-diff--positive'
+      : difference < 0
+        ? 'bom-diff bom-diff--negative'
+        : 'bom-diff bom-diff--neutral';
+
+    return `<span class="${className}">${escapeHtml(formatSignedCurrencyAmount(difference))}</span>`;
+  };
+
+  const renderBomMaterialesTable = ({ loading = false } = {}) => {
+    if (!bomListBody) {
+      return;
+    }
+
+    if (loading) {
+      bomListBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="clientes-table__empty">Cargando materiales...</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const materiales = getFilteredBomMateriales();
+    if (!materiales.length) {
+      const emptyMessage = bomMaterialesCache.length
+        ? 'No hay materiales que coincidan con la búsqueda.'
+        : 'No hay materiales registrados todavía.';
+      bomListBody.innerHTML = `
+        <tr>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(emptyMessage)}</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const readOnly = isReadOnlyUser();
+
+    bomListBody.innerHTML = materiales.map((material) => `
+      <tr>
+        <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
+        <td class="column-bom-price">${escapeHtml(formatCurrencyAmount(material.precio))}</td>
+        <td class="column-bom-date">${escapeHtml(formatDisplayDateTime(material.fecha_creacion) || '—')}</td>
+        <td class="column-bom-diff">${renderBomDifference(material)}</td>
+        <td class="column-bom-actions">
+          <button
+            class="btn-inline btn-inline--success btn-inline--icon"
+            type="button"
+            data-edit-material-precio="${escapeHtml(material.id_material_precio)}"
+            aria-label="Editar precio de ${escapeHtml(material.material || '')}"
+            title="Editar precio"
+            ${readOnly ? 'disabled' : ''}
+          >✎</button>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  const openBomListView = () => {
+    currentBomMaterial = null;
+    if (bomListView) {
+      bomListView.hidden = false;
+    }
+    if (bomEditView) {
+      bomEditView.hidden = true;
+    }
+    if (bomSearchInput) {
+      bomSearchInput.disabled = false;
+    }
+    renderBomMaterialesTable();
+  };
+
+  const openBomEditView = (material) => {
+    if (!material || !bomEditView) {
+      return;
+    }
+
+    currentBomMaterial = material;
+    clearGenericFeedback(bomFeedback);
+
+    if (bomEditMaterialId) {
+      bomEditMaterialId.value = material.id_material_precio ?? '';
+    }
+    if (bomEditMaterial) {
+      bomEditMaterial.value = material.material ?? '';
+    }
+    if (bomEditCurrentPrice) {
+      bomEditCurrentPrice.value = formatCurrencyAmount(material.precio);
+    }
+    if (bomEditPreviousPrice) {
+      bomEditPreviousPrice.value = material.precio_anterior == null
+        ? 'Sin histórico'
+        : formatCurrencyAmount(material.precio_anterior);
+    }
+    if (bomEditNewPrice) {
+      bomEditNewPrice.value = Number.isFinite(Number(material.precio)) ? Number(material.precio).toFixed(2) : '';
+      bomEditNewPrice.focus();
+      bomEditNewPrice.select();
+    }
+    if (bomSearchInput) {
+      bomSearchInput.disabled = true;
+    }
+    if (bomListView) {
+      bomListView.hidden = true;
+    }
+    bomEditView.hidden = false;
+  };
+
+  const closeBomModal = () => {
+    if (!bomModal) {
+      return;
+    }
+
+    bomModal.classList.remove('is-visible');
+    bomModal.setAttribute('aria-hidden', 'true');
+    bomMaterialesCache = [];
+    currentBomOfertaContext = null;
+    currentBomMaterial = null;
+    clearGenericFeedback(bomFeedback);
+    if (bomSearchInput) {
+      bomSearchInput.value = '';
+      bomSearchInput.disabled = false;
+    }
+    if (bomEditForm) {
+      bomEditForm.reset();
+    }
+    openBomListView();
+  };
+
+  const loadBomMateriales = async ({ silent = false } = {}) => {
+    if (!silent) {
+      clearGenericFeedback(bomFeedback);
+      renderBomMaterialesTable({ loading: true });
+    }
+
+    const response = await fetch('/api/materiales-precio');
+    if (response.status === 401) {
+      handleUnauthorized();
+      return [];
+    }
+
+    const result = await response.json();
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'No se pudieron cargar los materiales BOM');
+    }
+
+    bomMaterialesCache = Array.isArray(result.materiales) ? result.materiales : [];
+    renderBomMaterialesTable();
+    return bomMaterialesCache;
+  };
+
+  const openBomModal = async (ofertaId) => {
+    if (!bomModal) {
+      return;
+    }
+
+    const oferta = ofertasListadoCache.find((item) => Number(item.id_oferta) === Number(ofertaId)) || null;
+    currentBomOfertaContext = oferta || { id_oferta: ofertaId, numero_oferta: ofertaId };
+
+    if (bomModalTitle) {
+      bomModalTitle.textContent = 'Materiales y precios';
+    }
+    if (bomModalOffer) {
+      const offerReference = currentBomOfertaContext?.numero_oferta || `#${currentBomOfertaContext?.id_oferta ?? ofertaId}`;
+      bomModalOffer.textContent = `Oferta ${offerReference}. El cambio de precio inserta una nueva versión y conserva el histórico.`;
+    }
+    if (bomSearchInput) {
+      bomSearchInput.value = '';
+    }
+
+    bomModal.classList.add('is-visible');
+    bomModal.setAttribute('aria-hidden', 'false');
+    openBomListView();
+
+    try {
+      await loadBomMateriales();
+    } catch (error) {
+      setGenericFeedback(bomFeedback, error.message || 'No se pudieron cargar los materiales BOM.', 'error');
+      renderBomMaterialesTable();
+    }
+  };
+
+  const renderOutlookMessagesList = () => {
+    if (!outlookMessagesList) {
+      return;
+    }
+
+    if (!outlookMessagesCache.length) {
+      outlookMessagesList.innerHTML = `<p class="outlook-import__empty">${escapeHtml(t('offer.outlook_empty', 'No hay correos disponibles en Outlook.'))}</p>`;
+      return;
+    }
+
+    outlookMessagesList.innerHTML = outlookMessagesCache.map((message) => {
+      const isSelected = message.id === selectedOutlookMessageId;
+      const sender = message.sender_name || message.sender_email || t('common.not_available', 'No disponible');
+      return `
+        <button class="outlook-import__item ${isSelected ? 'is-selected' : ''}" type="button" data-outlook-message-id="${escapeHtml(message.id)}">
+          <strong>${escapeHtml(message.subject || '(sin asunto)')}</strong>
+          <span>${escapeHtml(sender)}</span>
+          <small>${escapeHtml(formatDisplayDateTime(message.received_at) || '')}</small>
+        </button>
+      `;
+    }).join('');
+  };
+
+  const renderOutlookMessageDetail = (message = null) => {
+    if (!outlookMessageDetail) {
+      return;
+    }
+
+    if (!message) {
+      outlookMessageDetail.innerHTML = `<p class="outlook-import__empty">${escapeHtml(t('offer.outlook_select_message', 'Selecciona un correo para ver el detalle.'))}</p>`;
+      if (outlookImportSelectedButton) {
+        outlookImportSelectedButton.disabled = true;
+      }
+      return;
+    }
+
+    const sender = message.sender_name || message.sender_email || t('common.not_available', 'No disponible');
+    const recipients = Array.isArray(message.to_recipients) && message.to_recipients.length
+      ? message.to_recipients.map((item) => item.name || item.address).filter(Boolean).join(', ')
+      : '—';
+    const escapedBody = escapeHtml(selectedOutlookMessageImportData?.observaciones || '').replace(/\n/g, '<br>');
+
+    outlookMessageDetail.innerHTML = `
+      <div class="outlook-import__detail-meta">
+        <p><strong>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}:</strong> ${escapeHtml(message.subject || '(sin asunto)')}</p>
+        <p><strong>${escapeHtml(t('offer.fields.sender', 'QUIÉN LO ENVÍA'))}:</strong> ${escapeHtml(sender)}</p>
+        <p><strong>${escapeHtml(t('offer.fields.email_date', 'FECHA e-mail'))}:</strong> ${escapeHtml(formatDisplayDateTime(message.received_at) || '—')}</p>
+        <p><strong>Para:</strong> ${escapeHtml(recipients)}</p>
+      </div>
+      <div class="outlook-import__detail-body">${escapedBody || '<span class="table-cell__placeholder">—</span>'}</div>
+    `;
+
+    if (outlookImportSelectedButton) {
+      outlookImportSelectedButton.disabled = false;
+    }
+  };
+
+  const closeOutlookImportModal = () => {
+    if (!outlookImportModal) {
+      return;
+    }
+
+    outlookImportModal.classList.remove('is-visible');
+    outlookImportModal.setAttribute('aria-hidden', 'true');
+    clearGenericFeedback(outlookImportFeedback);
+    outlookMessagesCache = [];
+    selectedOutlookMessageId = null;
+    selectedOutlookMessageImportData = null;
+    if (outlookMailboxLabel) {
+      outlookMailboxLabel.textContent = '';
+    }
+    if (outlookMessagesList) {
+      outlookMessagesList.innerHTML = '';
+    }
+    if (outlookMessageDetail) {
+      outlookMessageDetail.innerHTML = '';
+    }
+    if (outlookImportSelectedButton) {
+      outlookImportSelectedButton.disabled = true;
+    }
+  };
+
+  const loadOutlookMessageDetail = async (messageId) => {
+    if (!messageId) {
+      return;
+    }
+
+    selectedOutlookMessageId = messageId;
+    selectedOutlookMessageImportData = null;
+    renderOutlookMessagesList();
+    renderOutlookMessageDetail(null);
+    clearGenericFeedback(outlookImportFeedback);
+    if (outlookMessageDetail) {
+      outlookMessageDetail.innerHTML = `<p class="outlook-import__empty">${escapeHtml(t('offer.outlook_loading', 'Cargando correos de Outlook...'))}</p>`;
+    }
+
+    try {
+      const response = await fetch(`/api/outlook/messages/${encodeURIComponent(messageId)}`);
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudo cargar el correo de Outlook');
+      }
+
+      selectedOutlookMessageImportData = result.import_data || null;
+      renderOutlookMessageDetail(result.outlook_message || null);
+    } catch (error) {
+      renderOutlookMessageDetail(null);
+      setGenericFeedback(outlookImportFeedback, error.message || 'No se pudo cargar el correo de Outlook.', 'error');
+    }
+  };
+
+  const openOutlookImportModal = async () => {
+    if (!outlookImportModal) {
+      return;
+    }
+
+    clearGenericFeedback(outlookImportFeedback);
+    if (outlookMessagesList) {
+      outlookMessagesList.innerHTML = `<p class="outlook-import__empty">${escapeHtml(t('offer.outlook_loading', 'Cargando correos de Outlook...'))}</p>`;
+    }
+    renderOutlookMessageDetail(null);
+    outlookImportModal.classList.add('is-visible');
+    outlookImportModal.setAttribute('aria-hidden', 'false');
+
+    try {
+      const statusResponse = await fetch('/api/outlook/status');
+      if (statusResponse.status === 401) {
+        handleUnauthorized();
+        closeOutlookImportModal();
+        return;
+      }
+
+      const statusResult = await statusResponse.json();
+      if (!statusResponse.ok || statusResult.success === false) {
+        throw new Error(statusResult.message || 'No se pudo consultar el estado de Outlook');
+      }
+
+      if (!statusResult.configured || !statusResult.available) {
+        const missingConfig = (statusResult.missing_config || []).join(', ');
+        const missingDependencies = (statusResult.missing_dependencies || []).join(', ');
+        throw new Error(missingConfig || missingDependencies || 'Outlook no está configurado todavía.');
+      }
+
+      if (!statusResult.connected) {
+        if (outlookMailboxLabel) {
+          outlookMailboxLabel.textContent = '';
+        }
+        if (statusResult.login_url) {
+          if (outlookAuthRedirectInProgress) {
+            return;
+          }
+          outlookAuthRedirectInProgress = true;
+          window.location.href = statusResult.login_url;
+          return;
+        }
+        throw new Error('Outlook no está conectado para este usuario.');
+      }
+
+      outlookAuthRedirectInProgress = false;
+
+      if (outlookMailboxLabel) {
+        const mailboxLabel = statusResult.mailbox || statusResult.account?.username || '';
+        outlookMailboxLabel.textContent = mailboxLabel ? `${t('offer.outlook_mailbox', 'Buzón')}: ${mailboxLabel}` : '';
+      }
+
+      const response = await fetch('/api/outlook/messages?folder=inbox&top=20');
+      if (response.status === 401) {
+        handleUnauthorized();
+        closeOutlookImportModal();
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron cargar los correos de Outlook');
+      }
+
+      if (outlookMailboxLabel) {
+        const mailboxLabel = result.account?.username || statusResult.mailbox || statusResult.account?.username || '';
+        outlookMailboxLabel.textContent = mailboxLabel ? `${t('offer.outlook_mailbox', 'Buzón')}: ${mailboxLabel}` : '';
+      }
+
+      outlookMessagesCache = Array.isArray(result.messages) ? result.messages : [];
+      selectedOutlookMessageId = outlookMessagesCache[0]?.id || null;
+      renderOutlookMessagesList();
+
+      if (selectedOutlookMessageId) {
+        await loadOutlookMessageDetail(selectedOutlookMessageId);
+      } else {
+        renderOutlookMessageDetail(null);
+      }
+    } catch (error) {
+      outlookAuthRedirectInProgress = false;
+      outlookMessagesCache = [];
+      selectedOutlookMessageId = null;
+      selectedOutlookMessageImportData = null;
+      renderOutlookMessagesList();
+      renderOutlookMessageDetail(null);
+      setGenericFeedback(outlookImportFeedback, error.message || 'No se pudo abrir Outlook.', 'error');
+    }
+  };
+
   const sanitizeColumnClassName = (value) => String(value ?? '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -342,42 +1955,57 @@ document.addEventListener('DOMContentLoaded', () => {
   const getFilterPlaceholder = (tableKey, columnKey, label) => {
     const placeholders = {
       ofertas: {
-        Numero_oferta: 'Filtrar nº oferta',
-        Fecha_alta_oferta: 'Filtrar fecha',
-        Fecha_email: 'Filtrar fecha',
-        Cliente: 'Filtrar cliente',
-        Observaciones_oferta: 'Buscar observación',
-        Estado: 'Filtrar estado',
+        numero_oferta: t('table.filter_offer_number', 'Filtrar nº oferta'),
+        fecha_alta_oferta: t('table.filter_date', 'Filtrar fecha'),
+        fecha_email: t('table.filter_date', 'Filtrar fecha'),
+        fecha_limite: t('table.filter_date', 'Filtrar fecha'),
+        cliente: t('table.filter_client', 'Filtrar cliente'),
+        emisor: t('table.filter_sender', 'Filtrar emisor'),
+        observaciones_oferta: t('table.search_notes', 'Buscar observación'),
+        estado: t('table.filter_status', 'Filtrar estado'),
       },
       clientes: {
-        id_cliente: 'Filtrar ID',
-        descripcion_cliente: 'Filtrar cliente',
-        dominio: 'Filtrar dominio',
+        id_cliente: t('table.filter_id', 'Filtrar ID'),
+        descripcion_cliente: t('table.filter_client', 'Filtrar cliente'),
+        dominio: t('table.filter_domain', 'Filtrar dominio'),
+      },
+      proyectos: {
+        id_proyecto: t('table.filter_id', 'Filtrar ID'),
+        descripcion_proyecto: t('table.filter_description', 'Filtrar descripción'),
+      },
+      usuarios: {
+        num_operario: 'Filtrar nº operario',
+        nombre: 'Filtrar nombre',
+        rol: 'Filtrar rol',
+        departamentos: 'Filtrar departamentos',
       },
       estados: {
-        orden: 'Filtrar orden',
-        descripcion_estado: 'Filtrar estado',
+        orden: t('table.filter_order', 'Filtrar orden'),
+        descripcion_estado: t('table.filter_status', 'Filtrar estado'),
+        nombre_departamento: t('table.filter_department', 'Filtrar departamento'),
       },
       configColumnas: {
-        columna: 'Filtrar columna',
-        descripcion_columna: 'Filtrar descripción',
-        orden_columna: 'Filtrar orden',
+        columna: t('table.filter_column', 'Filtrar columna'),
+        descripcion_columna: t('table.filter_description', 'Filtrar descripción'),
+        orden_columna: t('table.filter_order', 'Filtrar orden'),
       },
     };
 
-    return placeholders[tableKey]?.[columnKey] || `Filtrar ${String(label || columnKey).toLowerCase()}`;
+    return placeholders[tableKey]?.[columnKey] || tf('table.filter_generic', 'Filtrar {label}', { label: String(label || columnKey).toLowerCase() });
   };
 
   const getColumnCellClass = (tableKey, columnKey) => {
     const sharedClass = `column-${sanitizeColumnClassName(columnKey)}`;
     const specificClasses = {
       ofertas: {
-        Numero_oferta: 'column-primary column-offer-number',
-        Fecha_alta_oferta: 'column-secondary column-date',
-        Fecha_email: 'column-secondary column-date',
-        Cliente: 'column-primary column-client',
-        Observaciones_oferta: 'column-observaciones',
-        Estado: 'column-status',
+        numero_oferta: 'column-primary column-offer-number',
+        fecha_alta_oferta: 'column-secondary column-date',
+        fecha_email: 'column-secondary column-date',
+        fecha_limite: 'column-secondary column-date',
+        cliente: 'column-primary column-client',
+        emisor: 'column-secondary column-sender',
+        observaciones_oferta: 'column-observaciones',
+        estado: 'column-status',
         acciones: 'column-actions',
       },
       clientes: {
@@ -386,10 +2014,22 @@ document.addEventListener('DOMContentLoaded', () => {
         dominio: 'column-secondary column-domain',
         acciones: 'column-actions',
       },
+      proyectos: {
+        id_proyecto: 'column-secondary column-id',
+        descripcion_proyecto: 'column-primary',
+        acciones: 'column-actions',
+      },
+      usuarios: {
+        num_operario: 'column-secondary column-id',
+        nombre: 'column-primary column-client',
+        rol: 'column-secondary',
+        departamentos: 'column-observaciones',
+      },
       estados: {
         drag: 'column-drag',
         orden: 'column-secondary column-order',
         descripcion_estado: 'column-primary',
+        nombre_departamento: 'column-secondary column-department',
         acciones: 'column-actions',
       },
       configColumnas: {
@@ -415,7 +2055,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const renderStatusBadge = (value) => {
-    const label = String(value || 'Sin estado').trim() || 'Sin estado';
+    const label = translateEstadoLabel(String(value || t('table.no_status', 'Sin estado')).trim() || t('table.no_status', 'Sin estado'));
     return `<span class="status-badge status-badge--${getStatusTone(label)}">${escapeHtml(label)}</span>`;
   };
 
@@ -489,8 +2129,8 @@ document.addEventListener('DOMContentLoaded', () => {
             data-toggle-table-cell="${escapeHtml(cellKey)}"
             data-table-key="${escapeHtml(tableKey)}"
             aria-expanded="${isExpanded ? 'true' : 'false'}"
-            aria-label="${isExpanded ? 'Colapsar' : 'Expandir'} ${escapeHtml(columnLabel)}"
-          >${isExpanded ? 'Ver menos' : 'Ver más'}</button>
+            aria-label="${escapeHtml(tf(isExpanded ? 'table.collapse_label' : 'table.expand_label', isExpanded ? 'Colapsar {label}' : 'Expandir {label}', { label: columnLabel }))}"
+          >${isExpanded ? t('table.show_less', 'Ver menos') : t('table.show_more', 'Ver más')}</button>
         </div>
       </td>
     `;
@@ -504,6 +2144,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (tableKey === 'clientes') {
       renderClientesTable();
+      return;
+    }
+
+    if (tableKey === 'proyectos') {
+      renderProyectosTable();
+      return;
+    }
+
+    if (tableKey === 'usuarios') {
+      renderUsuariosTable();
       return;
     }
 
@@ -524,6 +2174,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const formData = new FormData(form);
     return Object.fromEntries(formData.entries());
+  };
+
+  const checkDuplicateEmailSubject = async () => {
+    const payload = buildPayload();
+    const response = await fetch('/api/ofertas/verificar-duplicado-correo', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fecha_email: payload.fecha_email,
+        ref_cliente_asunto_email: payload.ref_cliente_asunto_email,
+      }),
+    });
+
+    if (response.status === 401) {
+      handleUnauthorized();
+      return { exists: false };
+    }
+
+    const result = await response.json();
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'No se pudo comprobar si el correo ya existe.');
+    }
+
+    return result;
+  };
+
+  const renderProyectoOptions = (selectedValue = '') => {
+    if (!ofertaEtcProyecto) {
+      return;
+    }
+
+    ofertaEtcProyecto.innerHTML = [
+      `<option value="">${escapeHtml(t('offer.no_project', 'Sin proyecto'))}</option>`,
+      ...proyectosCache.map((proyecto) => `<option value="${escapeHtml(proyecto.descripcion_proyecto)}">${escapeHtml(proyecto.descripcion_proyecto)}</option>`),
+    ].join('');
+
+    ofertaEtcProyecto.value = selectedValue || '';
   };
 
   const applyImportedEmailData = async (data) => {
@@ -549,6 +2238,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (refField) {
       refField.value = data.ref_cliente_asunto_email || '';
     }
+    if (emisorInput) {
+      emisorInput.value = data.emisor || data.sender_email || '';
+    }
     if (observacionesField) {
       observacionesField.value = data.observaciones || '';
     }
@@ -558,6 +2250,13 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const importMailFile = async (file) => {
+    if (guardReadOnlyAction()) {
+      if (mailFileInput) {
+        mailFileInput.value = '';
+      }
+      return;
+    }
+
     if (!file) {
       return;
     }
@@ -601,21 +2300,125 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Gestión de sesión: sincroniza localStorage con el servidor y muestra modal si no hay sesión
   const handleUnauthorized = () => {
+    currentAuthenticatedUser = null;
     localStorage.removeItem('usuarioSGA');
     if (window.LoginModal && !window.LoginModal.isOpen) {
       window.LoginModal.show();
     }
   };
 
+  const setCurrentUser = (user) => {
+    currentAuthenticatedUser = user && typeof user === 'object' ? { ...user, success: true } : null;
+
+    if (currentAuthenticatedUser) {
+      localStorage.setItem('usuarioSGA', JSON.stringify(currentAuthenticatedUser));
+    } else {
+      localStorage.removeItem('usuarioSGA');
+    }
+
+    if (window.LoginModal && window.LoginModal.updateUserWidget) {
+      window.LoginModal.updateUserWidget();
+    }
+
+    return currentAuthenticatedUser;
+  };
+
+  const syncCurrentUserFromServer = async () => {
+    const response = await fetch('/api/session/check');
+    const data = await response.json();
+
+    if (data.authenticated && data.user) {
+      return setCurrentUser(data.user);
+    }
+
+    return setCurrentUser(null);
+  };
+
+  const getCurrentUser = () => {
+    return currentAuthenticatedUser;
+  };
+
   const isAuthenticated = () => {
-    try {
-      const raw = localStorage.getItem('usuarioSGA');
-      if (!raw) return false;
-      const user = JSON.parse(raw);
-      return !!(user && user.id);
-    } catch {
+    const user = getCurrentUser();
+    return !!(user && user.id);
+  };
+
+  const isReadOnlyUser = () => {
+    const user = getCurrentUser();
+    if (!user) {
       return false;
     }
+
+    if (user.read_only === true) {
+      return true;
+    }
+
+    return Number(user.num_operario) === 4;
+  };
+
+  const isManagerUser = () => {
+    const user = getCurrentUser();
+    if (!user) {
+      return false;
+    }
+
+    if (Number(user.id_rol) === 1) {
+      return true;
+    }
+
+    return String(user.rol || user.nombre_rol || '').trim().toLowerCase() === 'manager';
+  };
+
+  const MANAGER_ONLY_MESSAGE = 'Solo los usuarios con rol Manager pueden añadir o editar configuraciones.';
+
+  const enforceManagerOnlyUi = (buttons, panels, requestedMode, createModeName = 'crear') => {
+    const resolvedMode = isManagerUser() ? requestedMode : 'ver';
+
+    buttons.forEach((button) => {
+      const isCreateButton = button.dataset.clientesMode === createModeName
+        || button.dataset.proyectosMode === createModeName
+        || button.dataset.estadosMode === createModeName
+        || button.dataset.usuariosMode === createModeName;
+      button.hidden = !isManagerUser() && isCreateButton;
+      const buttonMode = button.dataset.clientesMode || button.dataset.proyectosMode || button.dataset.estadosMode || button.dataset.usuariosMode;
+      const isActive = buttonMode === resolvedMode;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    panels.forEach((panel) => {
+      const panelMode = panel.dataset.clientesModePanel || panel.dataset.proyectosModePanel || panel.dataset.estadosModePanel || panel.dataset.usuariosModePanel;
+      const isCreatePanel = panelMode === createModeName;
+      panel.hidden = !isManagerUser() && isCreatePanel;
+      panel.classList.toggle('active', panelMode === resolvedMode);
+    });
+
+    return resolvedMode;
+  };
+
+  const showManagerOnlyFeedback = (feedbackElement, modeSetter = null) => {
+    if (typeof modeSetter === 'function') {
+      modeSetter('ver');
+    }
+    setGenericFeedback(feedbackElement, MANAGER_ONLY_MESSAGE, 'error');
+  };
+
+  const showReadOnlyAlert = () => {
+    window.alert(t('auth.read_only_alert', 'Read-only user. This account can only view information.'));
+  };
+
+  const guardReadOnlyAction = (event = null) => {
+    if (!isReadOnlyUser()) {
+      return false;
+    }
+
+    if (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+
+    showReadOnlyAlert();
+    return true;
   };
 
   const loadNextNumeroOferta = async () => {
@@ -623,7 +2426,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    numeroOfertaField.value = 'Consultando...';
+    numeroOfertaField.value = t('offer.loading', 'Consultando...');
 
     try {
       const response = await fetch('/api/ofertas/siguiente-numero');
@@ -635,12 +2438,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (!response.ok || result.success === false) {
-        throw new Error(result.message || 'No se pudo consultar el siguiente número de oferta');
+        throw new Error(result.message || t('offer.next_number_error', 'No se pudo consultar el siguiente número de oferta'));
       }
 
-      numeroOfertaField.value = result.numero_oferta || 'No disponible';
+      numeroOfertaField.value = result.numero_oferta || t('common.not_available', 'No disponible');
     } catch (error) {
-      numeroOfertaField.value = 'No disponible';
+      numeroOfertaField.value = t('common.not_available', 'No disponible');
     }
   };
 
@@ -655,8 +2458,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const placeholderOption = document.createElement('option');
     placeholderOption.value = '';
     placeholderOption.textContent = clientes.length
-      ? 'Seleccionar cliente'
-      : 'No hay clientes creados';
+      ? t('offer.select_client', 'Seleccionar cliente')
+      : t('config.clients_none', 'No hay clientes creados');
     clienteSelect.appendChild(placeholderOption);
 
     clientes.forEach((cliente) => {
@@ -678,7 +2481,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await response.json();
 
       if (!response.ok || result.success === false) {
-        throw new Error(result.message || 'No se pudieron consultar los clientes');
+        throw new Error(result.message || t('config.clients_fetch_error', 'No se pudieron consultar los clientes'));
       }
 
       clientesCache = Array.isArray(result.clientes) ? result.clientes : [];
@@ -691,9 +2494,283 @@ document.addEventListener('DOMContentLoaded', () => {
       renderClientesTable();
 
       if (!silent) {
-        setGenericFeedback(clientesTableFeedback, error.message || 'No se pudieron cargar los clientes.', 'error');
+        setGenericFeedback(clientesTableFeedback, error.message || t('config.clients_load_error', 'No se pudieron cargar los clientes.'), 'error');
       }
 
+      return [];
+    }
+  };
+
+  const renderRoleOptions = () => {
+    if (!userRoleSelect) {
+      return;
+    }
+
+    userRoleSelect.innerHTML = [
+      '<option value="">Selecciona un rol</option>',
+      ...rolesCache.map((role) => `<option value="${escapeHtml(role.id_rol)}">${escapeHtml(role.nombre_rol)}</option>`),
+    ].join('');
+  };
+
+  const buildRoleOptions = (selectedValue = '') => {
+    const normalizedSelectedValue = String(selectedValue ?? '');
+
+    return [
+      '<option value="">Selecciona un rol</option>',
+      ...rolesCache.map((role) => {
+        const optionValue = String(role.id_rol ?? '');
+        const isSelected = optionValue === normalizedSelectedValue ? ' selected' : '';
+        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(role.nombre_rol)}</option>`;
+      }),
+    ].join('');
+  };
+
+  const buildDepartamentoOptions = (selectedValue = '', emptyLabel = 'Sin departamento') => {
+    const normalizedSelectedValue = String(selectedValue ?? '');
+
+    return [
+      `<option value="">${escapeHtml(emptyLabel)}</option>`,
+      ...departamentosCache.map((departamento) => {
+        const optionValue = String(departamento.id_departamento ?? '');
+        const isSelected = optionValue === normalizedSelectedValue ? ' selected' : '';
+        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(departamento.nombre_departamento)}</option>`;
+      }),
+    ].join('');
+  };
+
+  const renderDepartamentoOptions = () => {
+    if (userDepartamentosSelect) {
+      userDepartamentosSelect.innerHTML = buildDepartamentoOptions(userDepartamentosSelect.value);
+    }
+
+    if (estadoDepartamentoSelect) {
+      estadoDepartamentoSelect.innerHTML = buildDepartamentoOptions(estadoDepartamentoSelect.value);
+    }
+
+    if (ofertaEtcDepartamento) {
+      ofertaEtcDepartamento.innerHTML = buildDepartamentoOptions(ofertaEtcDepartamento.value);
+    }
+  };
+
+  const renderGeneralUsersDatalists = () => {
+    const numberList = document.getElementById('generalUsersByNumber');
+    const nameList = document.getElementById('generalUsersByName');
+
+    if (numberList) {
+      numberList.innerHTML = generalUsersCache
+        .map((user) => `<option value="${escapeHtml(user.num_operario)}">${escapeHtml(user.nombre)}</option>`)
+        .join('');
+    }
+
+    if (nameList) {
+      nameList.innerHTML = generalUsersCache
+        .map((user) => `<option value="${escapeHtml(user.nombre)}">${escapeHtml(user.num_operario)}</option>`)
+        .join('');
+    }
+  };
+
+  const findGeneralUserByNumOperario = (value) => {
+    const normalizedValue = String(value ?? '').trim();
+    return generalUsersCache.find((user) => String(user.num_operario) === normalizedValue) || null;
+  };
+
+  const findGeneralUserByNombre = (value) => {
+    const normalizedValue = String(value ?? '').trim().toLocaleLowerCase();
+    const matches = generalUsersCache.filter((user) => String(user.nombre || '').trim().toLocaleLowerCase() === normalizedValue);
+    if (matches.length === 1) {
+      return matches[0];
+    }
+    return null;
+  };
+
+  const syncUserFieldsFromGeneralUser = (generalUser, source = 'num_operario') => {
+    if (!generalUser) {
+      return;
+    }
+
+    if (userNumOperarioInput && source !== 'num_operario') {
+      userNumOperarioInput.value = String(generalUser.num_operario ?? '');
+    }
+
+    if (userNombreInput && source !== 'nombre') {
+      userNombreInput.value = String(generalUser.nombre ?? '');
+    }
+  };
+
+  const loadGeneralUsers = async ({ silent = false } = {}) => {
+    try {
+      const response = await fetch('/api/usuarios-general');
+      if (response.status === 401) {
+        handleUnauthorized();
+        return [];
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron consultar los usuarios de General.Usuarios');
+      }
+
+      generalUsersCache = Array.isArray(result.usuarios) ? result.usuarios : [];
+      renderGeneralUsersDatalists();
+      return generalUsersCache;
+    } catch (error) {
+      generalUsersCache = [];
+      renderGeneralUsersDatalists();
+      if (!silent) {
+        setGenericFeedback(userCreateFeedback, error.message || 'No se pudo cargar el catálogo de usuarios.', 'error');
+      }
+      return [];
+    }
+  };
+
+  const loadRoles = async ({ silent = false } = {}) => {
+    try {
+      const response = await fetch('/api/roles');
+      if (response.status === 401) {
+        handleUnauthorized();
+        return [];
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron consultar los roles');
+      }
+
+      rolesCache = Array.isArray(result.roles) ? result.roles : [];
+      renderRoleOptions();
+      return rolesCache;
+    } catch (error) {
+      rolesCache = [];
+      renderRoleOptions();
+      if (!silent) {
+        setGenericFeedback(userCreateFeedback, error.message || 'No se pudieron cargar los roles.', 'error');
+      }
+      return [];
+    }
+  };
+
+  const loadDepartamentos = async ({ silent = false } = {}) => {
+    try {
+      const response = await fetch('/api/departamentos');
+      if (response.status === 401) {
+        handleUnauthorized();
+        return [];
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron consultar los departamentos');
+      }
+
+      departamentosCache = Array.isArray(result.departamentos) ? result.departamentos : [];
+      renderDepartamentoOptions();
+      return departamentosCache;
+    } catch (error) {
+      departamentosCache = [];
+      renderDepartamentoOptions();
+      if (!silent) {
+        setGenericFeedback(userCreateFeedback, error.message || 'No se pudieron cargar los departamentos.', 'error');
+      }
+      return [];
+    }
+  };
+
+  const setUsuariosMode = (mode) => {
+    enforceManagerOnlyUi(usuariosModeButtons, usuariosModePanels, mode, 'crear');
+
+    if (!isManagerUser()) {
+      clearGenericFeedback(userCreateFeedback);
+    }
+  };
+
+  const renderUsuariosTable = () => {
+    if (!usuariosTableBody) {
+      return;
+    }
+
+    const processedUsuarios = getProcessedRows('usuarios', usuariosCache);
+    const canManageUsers = isManagerUser();
+
+    if (!processedUsuarios.length) {
+      usuariosTableBody.innerHTML = `
+        <tr>
+          <td colspan="6" class="clientes-table__empty">No hay usuarios creados todavía.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    usuariosTableBody.innerHTML = processedUsuarios.map((usuario) => {
+      const isEditing = canManageUsers && editingUsuarioId === Number(usuario.num_operario);
+
+      return `
+      <tr data-usuario-row="${escapeHtml(usuario.num_operario)}" class="${isEditing ? 'usuarios-table__row usuarios-table__row--editing' : 'usuarios-table__row'}">
+        ${renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'num_operario', value: usuario.num_operario, contentClass: 'table-cell__content--strong' })}
+        ${renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'nombre', value: usuario.nombre, contentClass: 'table-cell__content--strong', title: usuario.nombre })}
+        ${isEditing
+          ? `
+            <td class="${getColumnCellClass('usuarios', 'email')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Email')}">
+              <input class="usuarios-table__edit-input" type="email" value="${escapeHtml(usuario.email || '')}" data-edit-usuario-email="${escapeHtml(usuario.num_operario)}" maxlength="255" />
+            </td>
+          `
+          : renderTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'email', value: usuario.email || '', contentClass: 'table-cell__content--muted', title: usuario.email || '' })}
+        ${isEditing
+          ? `
+            <td class="${getColumnCellClass('usuarios', 'rol')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Rol')}">
+              <select class="usuarios-table__edit-input usuarios-table__edit-select" data-edit-usuario-rol="${escapeHtml(usuario.num_operario)}">
+                ${buildRoleOptions(usuario.id_rol || '')}
+              </select>
+            </td>
+          `
+          : renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'rol', value: usuario.rol, contentClass: 'table-cell__content--muted' })}
+        ${isEditing
+          ? `
+            <td class="${getColumnCellClass('usuarios', 'departamentos')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Departamentos')}">
+              <select class="usuarios-table__edit-input usuarios-table__edit-select" data-edit-usuario-departamento="${escapeHtml(usuario.num_operario)}">
+                ${buildDepartamentoOptions(usuario.id_departamento || '')}
+              </select>
+            </td>
+          `
+          : renderTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'departamentos', value: usuario.departamentos, contentClass: 'table-cell__content--muted', title: usuario.departamentos })}
+        <td class="table-cell table-cell--actions ${getColumnCellClass('usuarios', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
+          <div class="clientes-table__actions actions-inline ${isEditing ? 'usuarios-table__actions usuarios-table__actions--editing' : ''}">
+            ${isEditing
+              ? `
+                <button class="btn-inline btn-inline--save btn-inline--compact" type="button" data-save-usuario="${escapeHtml(usuario.num_operario)}">${escapeHtml(t('common.save', 'Guardar'))}</button>
+                <button class="btn-inline btn-inline--cancel btn-inline--compact" type="button" data-cancel-usuario="${escapeHtml(usuario.num_operario)}">${escapeHtml(t('common.cancel', 'Cancelar'))}</button>
+              `
+              : canManageUsers
+                ? `<button class="btn-inline btn-inline--edit" type="button" data-edit-usuario="${escapeHtml(usuario.num_operario)}">${escapeHtml(t('common.edit', 'Editar'))}</button>`
+                : '<span class="table-cell__content table-cell__content--muted">-</span>'}
+          </div>
+        </td>
+      </tr>
+    `;
+    }).join('');
+  };
+
+  const loadUsuarios = async ({ silent = false } = {}) => {
+    try {
+      const response = await fetch('/api/usuarios');
+      if (response.status === 401) {
+        handleUnauthorized();
+        return [];
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron consultar los usuarios');
+      }
+
+      usuariosCache = Array.isArray(result.usuarios) ? result.usuarios : [];
+      renderUsuariosTable();
+      return usuariosCache;
+    } catch (error) {
+      usuariosCache = [];
+      renderUsuariosTable();
+      if (!silent) {
+        setGenericFeedback(usuariosTableFeedback, error.message || 'No se pudieron cargar los usuarios.', 'error');
+      }
       return [];
     }
   };
@@ -704,7 +2781,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     ofertaEditCliente.innerHTML = [
-      '<option value="">Sin cliente</option>',
+      `<option value="">${escapeHtml(t('offer.no_client', 'Sin cliente'))}</option>`,
       ...clientesCache.map((cliente) => `<option value="${cliente.id_cliente}">${escapeHtml(cliente.descripcion_cliente)}</option>`),
     ].join('');
   };
@@ -719,7 +2796,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return String(value);
     }
 
-    return new Intl.DateTimeFormat('es-ES', {
+    return new Intl.DateTimeFormat(getCurrentLocale(), {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(date);
@@ -730,10 +2807,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const availableStates = estadosCache.filter((estado) => Number(estado.id_estado) !== Number(currentEstadoId));
+    const availableStates = getActiveEstados().filter((estado) => Number(estado.id_estado) !== Number(currentEstadoId));
+    currentOfertaEstadoId = currentEstadoId;
     ofertaEstadoNuevo.innerHTML = [
-      '<option value="">Selecciona un estado</option>',
-      ...availableStates.map((estado) => `<option value="${estado.id_estado}">${escapeHtml(estado.descripcion_estado)}</option>`),
+      `<option value="">${escapeHtml(t('config.select_state', 'Selecciona un estado'))}</option>`,
+      ...availableStates.map((estado) => `<option value="${estado.id_estado}">${escapeHtml(translateEstadoLabel(estado.descripcion_estado))}</option>`),
     ].join('');
   };
 
@@ -742,20 +2820,34 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    currentOfertaEstadoInteracciones = interacciones;
+
     if (!interacciones.length) {
-      ofertaEstadoHistorial.innerHTML = '<p class="crm-history__empty">Sin interacciones registradas.</p>';
+      ofertaEstadoHistorial.innerHTML = `<p class="crm-history__empty">${escapeHtml(t('crm.history_empty', 'Sin interacciones registradas.'))}</p>`;
       return;
     }
 
     ofertaEstadoHistorial.innerHTML = interacciones.map((interaccion) => `
       <article class="crm-history__item">
         <div class="crm-history__meta">
-          <strong>${escapeHtml(interaccion.tipo_interaccion || 'Interacción')}</strong>
+          <strong>${escapeHtml(interaccion.tipo_interaccion || t('crm.interaction', 'Interacción'))}</strong>
           <span>${escapeHtml(formatInteractionDateTime(interaccion.fecha_interaccion) || '')}</span>
         </div>
-        <p>${escapeHtml(interaccion.observaciones || 'Sin comentarios.')}</p>
+        <p class="crm-history__deadline"><strong>${escapeHtml(t('crm.deadline', 'Fecha límite'))}:</strong> ${escapeHtml(interaccion.fecha_limite ? formatDisplayDate(interaccion.fecha_limite) : t('crm.undefined_deadline', 'Sin definir'))}</p>
+        <p>${escapeHtml(interaccion.observaciones || t('crm.no_comments', 'Sin comentarios.'))}</p>
       </article>
     `).join('');
+  };
+
+  const syncOfertaEstadoFechaLimite = () => {
+    if (!ofertaEstadoFechaLimite || !ofertaEstadoSinFechaLimite) {
+      return;
+    }
+
+    ofertaEstadoFechaLimite.disabled = ofertaEstadoSinFechaLimite.checked;
+    if (ofertaEstadoSinFechaLimite.checked) {
+      ofertaEstadoFechaLimite.value = '';
+    }
   };
 
   const openOfertaEditModal = (oferta) => {
@@ -773,6 +2865,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ofertaEditFechaAlta.value = oferta.fecha_alta_oferta ?? '';
     ofertaEditRef.value = oferta.ref_cliente_asunto_email ?? '';
     ofertaEditCliente.value = oferta.id_cliente ? String(oferta.id_cliente) : '';
+    if (ofertaEditEmisor) {
+      ofertaEditEmisor.value = oferta.emisor ?? '';
+    }
     ofertaEditObservaciones.value = oferta.observaciones ?? '';
 
     ofertaEditModal.classList.add('is-visible');
@@ -787,8 +2882,15 @@ document.addEventListener('DOMContentLoaded', () => {
     clearGenericFeedback(ofertaEstadoFeedback);
     ofertaEstadoId.value = oferta.id_oferta ?? '';
     ofertaEstadoNumero.value = oferta.numero_oferta ?? '';
-    ofertaEstadoActual.value = oferta.estado ?? '';
+    ofertaEstadoActual.value = translateEstadoLabel(oferta.estado ?? '');
     ofertaEstadoFecha.value = formatInteractionDateTime(new Date().toISOString());
+    if (ofertaEstadoSinFechaLimite) {
+      ofertaEstadoSinFechaLimite.checked = true;
+    }
+    if (ofertaEstadoFechaLimite) {
+      ofertaEstadoFechaLimite.value = '';
+    }
+    syncOfertaEstadoFechaLimite();
     ofertaEstadoComentario.value = '';
     populateOfertaEstadoOptions(oferta.id_estado);
     renderOfertaEstadoHistorial(oferta.interacciones || []);
@@ -821,7 +2923,60 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ofertaEstadoForm) {
       ofertaEstadoForm.reset();
     }
+    if (ofertaEstadoSinFechaLimite) {
+      ofertaEstadoSinFechaLimite.checked = true;
+    }
+    syncOfertaEstadoFechaLimite();
     renderOfertaEstadoHistorial([]);
+  };
+
+  const openEstadoEditModal = (estado) => {
+    if (!estadoEditModal) {
+      return;
+    }
+
+    clearGenericFeedback(estadoEditFeedback);
+    if (estadoEditId) {
+      estadoEditId.value = estado.id_estado ?? '';
+    }
+    if (estadoEditOrden) {
+      estadoEditOrden.value = estado.orden ?? '';
+    }
+    if (estadoEditDescripcion) {
+      estadoEditDescripcion.value = estado.descripcion_estado ?? '';
+    }
+    if (estadoEditDepartamento) {
+      estadoEditDepartamento.innerHTML = buildDepartamentoOptions(estado.id_departamento);
+      estadoEditDepartamento.value = estado.id_departamento != null ? String(estado.id_departamento) : '';
+    }
+    if (estadoEditEmojiSidebar) {
+      estadoEditEmojiManuallyChanged = false;
+      populateStateEmojiSelect(estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, estado.emoji_sidebar || getSuggestedStateEmoji(estado.descripcion_estado || ''));
+    }
+    if (estadoEditActivo) {
+      estadoEditActivo.checked = estado.activo !== false;
+    }
+
+    estadoEditModal.classList.add('is-visible');
+    estadoEditModal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeEstadoEditModal = () => {
+    if (!estadoEditModal) {
+      return;
+    }
+
+    estadoEditModal.classList.remove('is-visible');
+    estadoEditModal.setAttribute('aria-hidden', 'true');
+    clearGenericFeedback(estadoEditFeedback);
+    if (estadoEditForm) {
+      estadoEditForm.reset();
+    }
+    estadoEditEmojiManuallyChanged = false;
+    populateStateEmojiSelect(estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, getSuggestedStateEmoji(''));
+    if (estadoEditActivo) {
+      estadoEditActivo.checked = true;
+    }
   };
 
   const renderSidebarNav = () => {
@@ -829,23 +2984,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const activeStates = getActiveEstados();
     const totalOffers = estadosCache.reduce((sum, estado) => sum + Number(estado.total_ofertas || 0), 0);
 
     const items = [
-      { view: 'nueva-oferta', icon: '＋', text: 'Insertar Presupuesto' },
-      { view: 'todos', icon: '☰', text: 'Todos', count: totalOffers },
-      ...estadosCache.map((estado) => ({
+      { view: 'nueva-oferta', icon: '＋', text: t('sidebar.new_offer', 'Insertar Presupuesto') },
+      { view: 'todos', icon: '☰', text: t('listing.all', 'Todos'), count: totalOffers },
+      ...activeStates.map((estado) => ({
         view: `estado-${estado.id_estado}`,
-        icon: '•',
-        text: estado.descripcion_estado,
+        icon: getSidebarStateIcon(estado),
+        text: translateEstadoLabel(estado.descripcion_estado),
         count: Number(estado.total_ofertas || 0),
       })),
     ];
 
     const navHtml = items.map((item) => `
-      <button class="nav-item" type="button" data-view="${item.view}" aria-current="false" aria-label="${escapeHtml(item.count !== undefined ? `${item.text} (${item.count})` : item.text)}">
-        <span class="nav-item-icon">${item.icon}</span>
-        <span class="nav-item-text">${escapeHtml(item.text)}</span>
+      <button class="menu-btn nav-item" type="button" data-view="${item.view}" aria-current="false" aria-pressed="false" aria-label="${escapeHtml(item.count !== undefined ? `${item.text} (${item.count})` : item.text)}" title="${escapeHtml(item.count !== undefined ? `${item.text} (${item.count})` : item.text)}">
+        <span class="nav-item-icon emoji">${item.icon}</span>
+        <span class="nav-item-text label">${escapeHtml(item.text)}</span>
         ${item.count !== undefined ? `<span class="nav-item-badge" aria-hidden="true">${item.count}</span>` : ''}
       </button>
     `).join('');
@@ -866,7 +3022,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!processedOfertas.length) {
       ofertasListadoTableBody.innerHTML = `
         <tr>
-          <td colspan="${activeColumns.length}" class="clientes-table__empty">No hay ofertas para esta vista.</td>
+          <td colspan="${activeColumns.length}" class="clientes-table__empty">${escapeHtml(t('listing.empty_for_view', 'No hay ofertas para esta vista.'))}</td>
         </tr>
       `;
       return;
@@ -877,17 +3033,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ${activeColumns.map((column) => {
           if (column.key === 'acciones') {
             return `
-              <td class="table-cell table-cell--actions ${getColumnCellClass('ofertas', 'acciones')}" data-label="Acciones">
+              <td class="table-cell table-cell--actions ${getColumnCellClass('ofertas', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
                 <div class="clientes-table__actions actions-inline">
-                  <button class="btn-inline btn-inline--edit btn-inline--compact" type="button" data-edit-oferta="${oferta.id_oferta}" aria-label="Editar oferta ${escapeHtml(oferta.numero_oferta || oferta.Numero_oferta || oferta.id_oferta)}">Editar</button>
-                  <button class="btn-inline btn-inline--save btn-inline--compact" type="button" data-change-estado-oferta="${oferta.id_oferta}" aria-label="Cambiar estado de la oferta ${escapeHtml(oferta.numero_oferta || oferta.Numero_oferta || oferta.id_oferta)}">Estado</button>
+                  ${renderOfertasActionButtons(oferta)}
                 </div>
               </td>
             `;
           }
 
           const rawValue = oferta[column.key];
-          const displayValue = ['Fecha_email', 'Fecha_alta_oferta'].includes(column.key)
+          const displayValue = ['Fecha_email', 'Fecha_alta_oferta', 'Fecha_limite'].includes(column.key)
             ? formatDisplayDate(rawValue)
             : rawValue;
 
@@ -924,7 +3079,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
           }
 
-          if (column.key === 'Fecha_email' || column.key === 'Fecha_alta_oferta') {
+          if (column.key === 'Fecha_email' || column.key === 'Fecha_alta_oferta' || column.key === 'Fecha_limite') {
             return renderStaticTableCell({
               tableKey: 'ofertas',
               rowId: oferta.id_oferta,
@@ -948,14 +3103,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (ofertasListadoDescription) {
       ofertasListadoDescription.textContent = estadoId
-        ? `Listado de ofertas asociadas al estado ${label}.`
-        : 'Listado de todas las ofertas registradas.';
+        ? tf('listing.by_state_description', 'Listado de ofertas asociadas al estado {label}.', { label })
+        : t('listing.all_description', 'Listado de todas las ofertas registradas.');
     }
 
     if (ofertasListadoTableBody) {
       ofertasListadoTableBody.innerHTML = `
         <tr>
-          <td colspan="${(typeof tableDefinitions.ofertas.getColumns === 'function' ? tableDefinitions.ofertas.getColumns() : tableDefinitions.ofertas.columns).length}" class="clientes-table__empty">Cargando ofertas...</td>
+          <td colspan="${(typeof tableDefinitions.ofertas.getColumns === 'function' ? tableDefinitions.ofertas.getColumns() : tableDefinitions.ofertas.columns).length}" class="clientes-table__empty">${escapeHtml(t('listing.loading', 'Cargando ofertas...'))}</td>
         </tr>
       `;
     }
@@ -972,7 +3127,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const result = await response.json();
       if (!response.ok || result.success === false) {
-        throw new Error(result.message || 'No se pudieron consultar las ofertas');
+        throw new Error(result.message || t('listing.fetch_error', 'No se pudieron consultar las ofertas'));
       }
 
       ofertasListadoCache = Array.isArray(result.ofertas) ? result.ofertas : [];
@@ -982,11 +3137,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (ofertasListadoTableBody) {
         ofertasListadoTableBody.innerHTML = `
           <tr>
-            <td colspan="${(typeof tableDefinitions.ofertas.getColumns === 'function' ? tableDefinitions.ofertas.getColumns() : tableDefinitions.ofertas.columns).length}" class="clientes-table__empty">No se pudo cargar el listado.</td>
+            <td colspan="${(typeof tableDefinitions.ofertas.getColumns === 'function' ? tableDefinitions.ofertas.getColumns() : tableDefinitions.ofertas.columns).length}" class="clientes-table__empty">${escapeHtml(t('listing.load_error', 'No se pudo cargar el listado.'))}</td>
           </tr>
         `;
       }
-      setGenericFeedback(ofertasListadoFeedback, error.message || 'No se pudo cargar el listado de ofertas.', 'error');
+      setGenericFeedback(ofertasListadoFeedback, error.message || t('listing.load_feedback_error', 'No se pudo cargar el listado de ofertas.'), 'error');
     }
   };
 
@@ -1015,13 +3170,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const placeholderOption = document.createElement('option');
     placeholderOption.value = '';
-    placeholderOption.textContent = estados.length ? 'Selecciona un estado' : 'No hay estados creados';
+    placeholderOption.textContent = estados.length ? t('config.select_state', 'Selecciona un estado') : t('config.states_none', 'No hay estados creados');
     estadoColumnasSelect.appendChild(placeholderOption);
 
     estados.forEach((estado) => {
       const option = document.createElement('option');
       option.value = String(estado.id_estado);
-      option.textContent = estado.descripcion_estado;
+      option.textContent = `${estado.activo === false ? '[Inactivo] ' : ''}${translateEstadoLabel(estado.descripcion_estado)}`;
       estadoColumnasSelect.appendChild(option);
     });
 
@@ -1034,15 +3189,16 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const setEstadosMode = (mode) => {
-    estadosModeButtons.forEach((button) => {
-      const isActive = button.dataset.estadosMode === mode;
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    estadosModePanels.forEach((panel) => {
-      panel.classList.toggle('active', panel.dataset.estadosModePanel === mode);
-    });
+    enforceManagerOnlyUi(estadosModeButtons, estadosModePanels, mode, 'crear');
+    if (configColumnCreateForm) {
+      configColumnCreateForm.hidden = !isManagerUser();
+    }
+    if (!isManagerUser()) {
+      clearGenericFeedback(estadoCreateFeedback);
+      if (estadoEditModal?.classList.contains('is-visible')) {
+        closeEstadoEditModal();
+      }
+    }
   };
 
   const renderEstadosTable = () => {
@@ -1051,12 +3207,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const processedEstados = getProcessedRows('estados', estadosCache);
-    const dragEnabled = isEstadosDragEnabled();
+    const canManageStates = isManagerUser();
+    const dragEnabled = canManageStates && isEstadosDragEnabled();
 
     if (!processedEstados.length) {
       estadosTableBody.innerHTML = `
         <tr>
-          <td colspan="4" class="clientes-table__empty">No hay estados creados todavía.</td>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('config.states_empty', 'No hay estados creados todavía.'))}</td>
         </tr>
       `;
       return;
@@ -1064,32 +3221,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     estadosTableBody.innerHTML = processedEstados
       .map((estado) => {
-        const isEditing = editingEstadoId === estado.id_estado;
+        const stateEmoji = getSidebarStateIcon(estado);
+        const isActive = estado.activo !== false;
+        const activeIndicatorClass = isActive ? 'estado-activity-indicator--active' : 'estado-activity-indicator--inactive';
+        const activeLabel = estado.activo !== false ? 'Activo' : 'Inactivo';
         return `
-          <tr data-estado-row="${estado.id_estado}" draggable="${dragEnabled ? 'true' : 'false'}" class="estado-drag-row ${dragEnabled ? '' : 'estado-drag-row--disabled'}">
-            <td class="drag-handle ${dragEnabled ? '' : 'drag-handle--disabled'} column-drag" data-label="" title="${dragEnabled ? 'Arrastrar para reordenar' : 'El drag se desactiva si hay filtros o un orden distinto a Orden asc'}">⠿</td>
-            <td class="${getColumnCellClass('estados', 'orden')}" data-label="Orden">
-              ${isEditing
-                ? `<input class="clientes-table__edit-number" type="number" min="1" step="1" value="${estado.orden ?? ''}" data-edit-estado-orden="${estado.id_estado}" />`
-                : `<div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(estado.orden ?? '')}</div></div>`}
+          <tr data-estado-row="${estado.id_estado}" draggable="${dragEnabled ? 'true' : 'false'}" class="estado-drag-row ${dragEnabled ? '' : 'estado-drag-row--disabled'} ${estado.activo !== false ? '' : 'estado-drag-row--inactive'}">
+            <td class="drag-handle ${dragEnabled ? '' : 'drag-handle--disabled'} column-drag" data-label="" title="${escapeHtml(dragEnabled ? t('table.drag_to_reorder', 'Arrastrar para reordenar') : t('table.drag_disabled', 'El drag se desactiva si hay filtros o un orden distinto a Orden asc'))}">⠿</td>
+            <td class="${getColumnCellClass('estados', 'orden')} estados-table__cell estados-table__cell--order" data-label="${escapeHtml(t('table.order', 'Orden'))}">
+              <div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(estado.orden ?? '')}</div></div>
             </td>
-            ${isEditing
-              ? `
-            <td class="${getColumnCellClass('estados', 'descripcion_estado')}" data-label="Descripción estado">
-              ${isEditing
-                ? `<input class="clientes-table__edit-input" type="text" value="${escapeHtml(estado.descripcion_estado)}" data-edit-estado-input="${estado.id_estado}" maxlength="255" />`
-                : escapeHtml(estado.descripcion_estado)}
+            <td class="${getColumnCellClass('estados', 'descripcion_estado')} estados-table__cell estados-table__cell--description" data-label="${escapeHtml(t('table.state_description', 'Descripción estado'))}">
+              <div class="table-cell__stack table-cell__stack--compact estados-table__stack">
+                <div class="table-cell__content table-cell__content--strong estados-table__title" title="${escapeHtml(estado.descripcion_estado)}"><span class="estados-table__emoji" aria-hidden="true">${escapeHtml(stateEmoji)}</span>${escapeHtml(estado.descripcion_estado)}</div>
+                <span class="estado-activity-indicator ${activeIndicatorClass}" title="${escapeHtml(isActive ? 'Estado activo en sidebar y procesos' : 'Estado inactivo: solo visible en administración')}">
+                  <span class="estado-activity-indicator__dot" aria-hidden="true"></span>
+                  <span class="estado-activity-indicator__label">${escapeHtml(activeLabel)}</span>
+                </span>
+              </div>
             </td>
-              `
-              : renderStaticTableCell({ tableKey: 'estados', rowId: estado.id_estado, columnKey: 'descripcion_estado', value: estado.descripcion_estado, contentClass: 'table-cell__content--strong', title: estado.descripcion_estado })}
-            <td class="table-cell table-cell--actions ${getColumnCellClass('estados', 'acciones')}" data-label="Acciones">
+            <td class="${getColumnCellClass('estados', 'nombre_departamento')} estados-table__cell estados-table__cell--department" data-label="${escapeHtml(t('table.department', 'Departamento'))}">
+              <div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(estado.nombre_departamento || t('table.no_department', 'Sin departamento'))}</div></div>
+            </td>
+            <td class="table-cell table-cell--actions ${getColumnCellClass('estados', 'acciones')} estados-table__cell estados-table__cell--actions" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
               <div class="clientes-table__actions actions-inline">
-                ${isEditing
-                  ? `
-                    <button class="btn-inline btn-inline--save" type="button" data-save-estado="${estado.id_estado}">Guardar</button>
-                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-estado="${estado.id_estado}">Cancelar</button>
-                  `
-                  : `<button class="btn-inline btn-inline--edit" type="button" data-edit-estado="${estado.id_estado}">Editar</button>`}
+                ${canManageStates ? `<button class="btn-inline btn-inline--edit" type="button" data-edit-estado="${estado.id_estado}">${escapeHtml(t('common.edit', 'Editar'))}</button>` : '<span class="table-cell__content table-cell__content--muted">-</span>'}
               </div>
             </td>
           </tr>
@@ -1193,12 +3349,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const processedConfigs = getProcessedRows('configColumnas', configuracionColumnasCache);
-    const dragEnabled = isConfigColumnasDragEnabled();
+    const canManageConfigColumns = isManagerUser();
+    const dragEnabled = canManageConfigColumns && isConfigColumnasDragEnabled();
 
     if (!selectedEstadoId) {
       configColumnasTableBody.innerHTML = `
         <tr>
-          <td colspan="5" class="clientes-table__empty">Selecciona un estado para ver sus columnas configuradas.</td>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('config.columns_empty', 'Selecciona un estado para ver sus columnas configuradas.'))}</td>
         </tr>
       `;
       return;
@@ -1207,7 +3364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!processedConfigs.length) {
       configColumnasTableBody.innerHTML = `
         <tr>
-          <td colspan="5" class="clientes-table__empty">No hay columnas configuradas para este estado.</td>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('config.columns_none', 'No hay columnas configuradas para este estado.'))}</td>
         </tr>
       `;
       return;
@@ -1215,38 +3372,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     configColumnasTableBody.innerHTML = processedConfigs
       .map((config) => {
-        const isEditing = editingConfigId === config.id_config;
+        const isEditing = canManageConfigColumns && editingConfigId === config.id_config;
         return `
           <tr data-config-row="${config.id_config}" draggable="${dragEnabled ? 'true' : 'false'}" class="estado-drag-row ${dragEnabled ? '' : 'estado-drag-row--disabled'}">
-            <td class="drag-handle ${dragEnabled ? '' : 'drag-handle--disabled'} column-drag" data-label="" title="${dragEnabled ? 'Arrastrar para reordenar' : 'El drag se desactiva si hay filtros o un orden distinto a Orden asc'}">⠿</td>
-            <td class="${getColumnCellClass('configColumnas', 'columna')}" data-label="Columna">
+            <td class="drag-handle ${dragEnabled ? '' : 'drag-handle--disabled'} column-drag" data-label="" title="${escapeHtml(dragEnabled ? t('table.drag_to_reorder', 'Arrastrar para reordenar') : t('table.drag_disabled', 'El drag se desactiva si hay filtros o un orden distinto a Orden asc'))}">⠿</td>
+            <td class="${getColumnCellClass('configColumnas', 'columna')}" data-label="${escapeHtml(t('table.column', 'Columna'))}">
               ${isEditing
-                ? `<select class="config-column-table__edit-input" data-edit-config-columna="${config.id_config}">${availableOfferColumns.map((column) => `<option value="${escapeHtml(column.value)}" ${column.value === config.columna ? 'selected' : ''}>${escapeHtml(column.label)}</option>`).join('')}</select>`
+                ? `<select class="config-column-table__edit-input" data-edit-config-columna="${config.id_config}">${availableOfferColumns.map((column) => `<option value="${escapeHtml(column.value)}" ${column.value === config.columna ? 'selected' : ''}>${escapeHtml(getOfferColumnLabel(column.value, column.label))}</option>`).join('')}</select>`
                 : `<div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(config.columna)}</div></div>`}
             </td>
             ${isEditing
               ? `
-            <td class="${getColumnCellClass('configColumnas', 'descripcion_columna')}" data-label="Descripción">
+            <td class="${getColumnCellClass('configColumnas', 'descripcion_columna')}" data-label="${escapeHtml(t('table.description', 'Descripción'))}">
               ${isEditing
                 ? `<input class="config-column-table__edit-input" type="text" value="${escapeHtml(config.descripcion_columna || '')}" data-edit-config-descripcion="${config.id_config}" maxlength="255" />`
                 : escapeHtml(config.descripcion_columna || '')}
             </td>
               `
-              : renderStaticTableCell({ tableKey: 'configColumnas', rowId: config.id_config, columnKey: 'descripcion_columna', value: config.descripcion_columna || '', contentClass: 'text-truncate text-truncate--single table-cell__content--muted', title: config.descripcion_columna || '' })}
-            <td class="${getColumnCellClass('configColumnas', 'orden_columna')}" data-label="Orden">
+              : renderStaticTableCell({ tableKey: 'configColumnas', rowId: config.id_config, columnKey: 'descripcion_columna', value: getConfiguredOfferColumnLabel(config), contentClass: 'text-truncate text-truncate--single table-cell__content--muted', title: getConfiguredOfferColumnLabel(config) })}
+            <td class="${getColumnCellClass('configColumnas', 'orden_columna')}" data-label="${escapeHtml(t('table.order', 'Orden'))}">
               ${isEditing
                 ? `<input class="config-column-table__edit-number" type="number" min="1" step="1" value="${config.orden_columna ?? ''}" data-edit-config-orden="${config.id_config}" />`
                 : `<div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(config.orden_columna ?? '')}</div></div>`}
             </td>
-            <td class="table-cell table-cell--actions ${getColumnCellClass('configColumnas', 'acciones')}" data-label="Acciones">
+            <td class="table-cell table-cell--actions ${getColumnCellClass('configColumnas', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
               <div class="clientes-table__actions actions-inline">
                 ${isEditing
                   ? `
-                    <span class="form-help">Se guarda al salir</span>
-                    <button class="btn-inline btn-inline--delete" type="button" data-delete-config="${config.id_config}">Eliminar</button>
-                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-config="${config.id_config}">Cancelar</button>
+                    <span class="form-help">${escapeHtml(t('config.save_on_exit', 'Se guarda al salir'))}</span>
+                    <button class="btn-inline btn-inline--delete" type="button" data-delete-config="${config.id_config}">${escapeHtml(t('common.delete', 'Eliminar'))}</button>
+                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-config="${config.id_config}">${escapeHtml(t('common.cancel', 'Cancelar'))}</button>
                   `
-                  : `<button class="btn-inline btn-inline--edit" type="button" data-edit-config="${config.id_config}">Editar</button>`}
+                  : canManageConfigColumns
+                    ? `<button class="btn-inline btn-inline--edit" type="button" data-edit-config="${config.id_config}">${escapeHtml(t('common.edit', 'Editar'))}</button>`
+                    : '<span class="table-cell__content table-cell__content--muted">-</span>'}
               </div>
             </td>
           </tr>
@@ -1437,15 +3596,95 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const setClientesMode = (mode) => {
-    clientesModeButtons.forEach((button) => {
-      const isActive = button.dataset.clientesMode === mode;
-      button.classList.toggle('active', isActive);
-      button.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
+    enforceManagerOnlyUi(clientesModeButtons, clientesModePanels, mode, 'crear');
+    if (!isManagerUser()) {
+      clearGenericFeedback(clienteCreateFeedback);
+      editingClienteId = null;
+    }
+  };
 
-    clientesModePanels.forEach((panel) => {
-      panel.classList.toggle('active', panel.dataset.clientesModePanel === mode);
-    });
+  const setProyectosMode = (mode) => {
+    enforceManagerOnlyUi(proyectosModeButtons, proyectosModePanels, mode, 'crear');
+    if (!isManagerUser()) {
+      clearGenericFeedback(projectCreateFeedback);
+      editingProyectoId = null;
+    }
+  };
+
+  const renderProyectosTable = () => {
+    if (!proyectosTableBody) {
+      return;
+    }
+
+    const processedProyectos = getProcessedRows('proyectos', proyectosCache);
+    const canManageProjects = isManagerUser();
+
+    if (!processedProyectos.length) {
+      proyectosTableBody.innerHTML = `
+        <tr>
+          <td colspan="3" class="clientes-table__empty">No hay proyectos creados todavía.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    proyectosTableBody.innerHTML = processedProyectos
+      .map((proyecto) => {
+        const isEditing = canManageProjects && editingProyectoId === proyecto.id_proyecto;
+        return `
+          <tr data-proyecto-row="${proyecto.id_proyecto}">
+            ${renderStaticTableCell({ tableKey: 'proyectos', rowId: proyecto.id_proyecto, columnKey: 'id_proyecto', value: proyecto.id_proyecto })}
+            ${isEditing
+              ? `
+            <td class="${getColumnCellClass('proyectos', 'descripcion_proyecto')}" data-label="Descripción proyecto">
+              <input class="clientes-table__edit-input" type="text" value="${escapeHtml(proyecto.descripcion_proyecto)}" data-edit-proyecto-input="${proyecto.id_proyecto}" maxlength="255" />
+            </td>
+              `
+              : renderStaticTableCell({ tableKey: 'proyectos', rowId: proyecto.id_proyecto, columnKey: 'descripcion_proyecto', value: proyecto.descripcion_proyecto, contentClass: 'table-cell__content--strong', title: proyecto.descripcion_proyecto })}
+            <td class="table-cell table-cell--actions ${getColumnCellClass('proyectos', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
+              <div class="clientes-table__actions actions-inline">
+                ${isEditing
+                  ? `
+                    <button class="btn-inline btn-inline--save" type="button" data-save-proyecto="${proyecto.id_proyecto}">${escapeHtml(t('common.save', 'Guardar'))}</button>
+                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-proyecto="${proyecto.id_proyecto}">${escapeHtml(t('common.cancel', 'Cancelar'))}</button>
+                  `
+                  : canManageProjects
+                    ? `<button class="btn-inline btn-inline--edit" type="button" data-edit-proyecto="${proyecto.id_proyecto}">${escapeHtml(t('common.edit', 'Editar'))}</button>`
+                    : '<span class="table-cell__content table-cell__content--muted">-</span>'}
+              </div>
+            </td>
+          </tr>
+        `;
+      })
+      .join('');
+  };
+
+  const loadProyectos = async ({ silent = false } = {}) => {
+    try {
+      const response = await fetch('/api/proyectos');
+      if (response.status === 401) {
+        handleUnauthorized();
+        return [];
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || 'No se pudieron consultar los proyectos');
+      }
+
+      proyectosCache = Array.isArray(result.proyectos) ? result.proyectos : [];
+      renderProyectosTable();
+      renderProyectoOptions(ofertaEtcProyecto?.value || '');
+      return proyectosCache;
+    } catch (error) {
+      proyectosCache = [];
+      renderProyectosTable();
+      renderProyectoOptions('');
+      if (!silent) {
+        setGenericFeedback(proyectosTableFeedback, error.message || 'No se pudieron cargar los proyectos.', 'error');
+      }
+      return [];
+    }
   };
 
   const renderClientesTable = () => {
@@ -1454,11 +3693,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const processedClientes = getProcessedRows('clientes', clientesCache);
+    const canManageClients = isManagerUser();
 
     if (!processedClientes.length) {
       clientesTableBody.innerHTML = `
         <tr>
-          <td colspan="4" class="clientes-table__empty">No hay clientes creados todavía.</td>
+          <td colspan="4" class="clientes-table__empty">${escapeHtml(t('config.clients_empty', 'No hay clientes creados todavía.'))}</td>
         </tr>
       `;
       return;
@@ -1466,13 +3706,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     clientesTableBody.innerHTML = processedClientes
       .map((cliente) => {
-        const isEditing = editingClienteId === cliente.id_cliente;
+        const isEditing = canManageClients && editingClienteId === cliente.id_cliente;
         return `
           <tr data-cliente-row="${cliente.id_cliente}">
             ${renderStaticTableCell({ tableKey: 'clientes', rowId: cliente.id_cliente, columnKey: 'id_cliente', value: cliente.id_cliente })}
             ${isEditing
               ? `
-            <td class="${getColumnCellClass('clientes', 'descripcion_cliente')}" data-label="Descripción cliente">
+            <td class="${getColumnCellClass('clientes', 'descripcion_cliente')}" data-label="${escapeHtml(t('table.client_description', 'Descripción cliente'))}">
               ${isEditing
                 ? `<input class="clientes-table__edit-input" type="text" value="${escapeHtml(cliente.descripcion_cliente)}" data-edit-cliente-input="${cliente.id_cliente}" maxlength="255" />`
                 : escapeHtml(cliente.descripcion_cliente)}
@@ -1481,21 +3721,23 @@ document.addEventListener('DOMContentLoaded', () => {
               : renderStaticTableCell({ tableKey: 'clientes', rowId: cliente.id_cliente, columnKey: 'descripcion_cliente', value: cliente.descripcion_cliente, contentClass: 'table-cell__content--strong', title: cliente.descripcion_cliente })}
             ${isEditing
               ? `
-            <td class="${getColumnCellClass('clientes', 'dominio')}" data-label="Dominio">
+            <td class="${getColumnCellClass('clientes', 'dominio')}" data-label="${escapeHtml(t('config.domain', 'Dominio'))}">
               ${isEditing
-                ? `<input class="clientes-table__edit-input" type="text" value="${escapeHtml(cliente.dominio || '')}" data-edit-cliente-dominio="${cliente.id_cliente}" maxlength="255" placeholder="cliente.com" />`
+                ? `<input class="clientes-table__edit-input" type="text" value="${escapeHtml(cliente.dominio || '')}" data-edit-cliente-dominio="${cliente.id_cliente}" maxlength="255" placeholder="${escapeHtml(t('config.domain_example', 'cliente.com'))}" />`
                 : escapeHtml(cliente.dominio || '')}
             </td>
               `
               : renderStaticTableCell({ tableKey: 'clientes', rowId: cliente.id_cliente, columnKey: 'dominio', value: cliente.dominio || '', contentClass: 'table-cell__content--muted', title: cliente.dominio || '' })}
-            <td class="table-cell table-cell--actions ${getColumnCellClass('clientes', 'acciones')}" data-label="Acciones">
+            <td class="table-cell table-cell--actions ${getColumnCellClass('clientes', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
               <div class="clientes-table__actions actions-inline">
                 ${isEditing
                   ? `
-                    <button class="btn-inline btn-inline--save" type="button" data-save-cliente="${cliente.id_cliente}">Guardar</button>
-                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-cliente="${cliente.id_cliente}">Cancelar</button>
+                    <button class="btn-inline btn-inline--save" type="button" data-save-cliente="${cliente.id_cliente}">${escapeHtml(t('common.save', 'Guardar'))}</button>
+                    <button class="btn-inline btn-inline--cancel" type="button" data-cancel-cliente="${cliente.id_cliente}">${escapeHtml(t('common.cancel', 'Cancelar'))}</button>
                   `
-                  : `<button class="btn-inline btn-inline--edit" type="button" data-edit-cliente="${cliente.id_cliente}">Editar</button>`}
+                  : canManageClients
+                    ? `<button class="btn-inline btn-inline--edit" type="button" data-edit-cliente="${cliente.id_cliente}">${escapeHtml(t('common.edit', 'Editar'))}</button>`
+                    : '<span class="table-cell__content table-cell__content--muted">-</span>'}
               </div>
             </td>
           </tr>
@@ -1505,20 +3747,37 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const setActiveView = (viewName) => {
+    currentViewName = viewName;
     const navItems = getNavItems();
     const isListadoView = viewName === 'todos' || viewName.startsWith('estado-');
     const panelViewName = isListadoView ? 'listado-ofertas' : viewName;
 
+    if (viewName === 'todos') {
+      currentListadoContext = { viewName, estadoId: null, label: t('listing.all', 'Todos') };
+      currentOfferColumnsConfig = [];
+    }
+
+    if (viewName.startsWith('estado-')) {
+      const estadoId = Number(viewName.replace('estado-', ''));
+      const estado = estadosCache.find((item) => Number(item.id_estado) === estadoId);
+      const label = translateEstadoLabel(estado?.descripcion_estado || t('table.status', 'Estado'));
+      currentListadoContext = { viewName, estadoId, label };
+    }
+
     navItems.forEach((item) => {
       const isActive = item.dataset.view === viewName;
       item.classList.toggle('active', isActive);
+      item.classList.toggle('is-active', isActive);
       item.setAttribute('aria-current', isActive ? 'page' : 'false');
+      item.setAttribute('aria-pressed', isActive ? 'true' : 'false');
     });
 
     configButtons.forEach((configButton) => {
-      const isConfigActive = viewName === 'configuracion' || viewName === 'clientes' || viewName === 'estados';
+      const isConfigActive = viewName === 'configuracion' || viewName === 'clientes' || viewName === 'estados' || viewName === 'usuarios' || viewName === 'proyectos';
       configButton.classList.toggle('active', isConfigActive);
+      configButton.classList.toggle('is-active', isConfigActive);
       configButton.setAttribute('aria-current', isConfigActive ? 'page' : 'false');
+      configButton.setAttribute('aria-pressed', isConfigActive ? 'true' : 'false');
     });
 
     getViewPanels().forEach((panel) => {
@@ -1526,77 +3785,93 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (window.navigationManager && window.navigationManager.setNavigationStack) {
-      window.navigationManager.setNavigationStack(
-        viewName === 'clientes'
-          ? [
-              { label: 'Inicio', target: 'inicio', htmlFile: null },
-              { label: 'Configuración', target: 'configuracion', htmlFile: null },
-              { label: 'Clientes', target: 'clientes', htmlFile: null },
-            ]
-          : viewName === 'estados'
-            ? [
-                { label: 'Inicio', target: 'inicio', htmlFile: null },
-                { label: 'Configuración', target: 'configuracion', htmlFile: null },
-                { label: 'Estados', target: 'estados', htmlFile: null },
-              ]
-          : viewName === 'todos'
-            ? [
-                { label: 'Inicio', target: 'inicio', htmlFile: null },
-                { label: 'Todos', target: 'todos', htmlFile: null },
-              ]
-          : viewName.startsWith('estado-')
-            ? [
-                { label: 'Inicio', target: 'inicio', htmlFile: null },
-                { label: currentListadoContext.label, target: viewName, htmlFile: null },
-              ]
-          : viewName === 'configuracion'
-            ? [
-                { label: 'Inicio', target: 'inicio', htmlFile: null },
-                { label: 'Configuración', target: 'configuracion', htmlFile: null },
-              ]
-            : [
-                { label: 'Inicio', target: 'inicio', htmlFile: null },
-                { label: '+ Insertar Presupuesto', target: 'nueva-oferta', htmlFile: null },
-              ]
-      );
+      window.navigationManager.setNavigationStack(buildNavigationStack(viewName));
     }
 
     if (viewName === 'nueva-oferta') {
       loadNextNumeroOferta();
       loadClientes({ silent: true });
+      loadProyectos({ silent: true });
     }
 
     if (viewName === 'clientes') {
       clearGenericFeedback(clientesTableFeedback);
       loadClientes({ silent: false });
-      setClientesMode('crear');
+      setClientesMode(isManagerUser() ? 'crear' : 'ver');
+      if (!isManagerUser()) {
+        setGenericFeedback(clientesTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
+      }
+    }
+
+    if (viewName === 'usuarios') {
+      clearGenericFeedback(userCreateFeedback);
+      clearGenericFeedback(usuariosTableFeedback);
+      if (isManagerUser()) {
+        Promise.all([
+          loadGeneralUsers({ silent: true }),
+          loadRoles({ silent: true }),
+          loadDepartamentos({ silent: true }),
+          loadUsuarios({ silent: true }),
+        ]);
+        setUsuariosMode('crear');
+      } else {
+        loadUsuarios({ silent: true });
+        setUsuariosMode('ver');
+        setGenericFeedback(usuariosTableFeedback, 'Solo los usuarios con rol Manager pueden añadir o editar usuarios.', 'success');
+      }
+    }
+
+    if (viewName === 'proyectos') {
+      clearGenericFeedback(projectCreateFeedback);
+      clearGenericFeedback(proyectosTableFeedback);
+      loadProyectos({ silent: false });
+      setProyectosMode(isManagerUser() ? 'crear' : 'ver');
+      if (!isManagerUser()) {
+        setGenericFeedback(proyectosTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
+      }
     }
 
     if (viewName === 'estados') {
       clearGenericFeedback(estadosTableFeedback);
       clearGenericFeedback(configColumnasTableFeedback);
+      loadDepartamentos({ silent: true });
       loadEstados({ silent: false });
-      setEstadosMode('crear');
+      setEstadosMode(isManagerUser() ? 'crear' : 'ver');
       loadConfiguracionColumnas({ estadoId: selectedEstadoId, silent: true });
+      if (!isManagerUser()) {
+        setGenericFeedback(estadosTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
+        setGenericFeedback(configColumnasTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
+      }
     }
 
     if (viewName === 'todos') {
-      currentListadoContext = { viewName, estadoId: null, label: 'Todos' };
-      currentOfferColumnsConfig = [];
       setupTableHeaderControls('ofertas');
-      loadOfertasListado({ estadoId: null, label: 'Todos' });
+      loadOfertasListado({ estadoId: null, label: t('listing.all', 'Todos') });
     }
 
     if (viewName.startsWith('estado-')) {
-      const estadoId = Number(viewName.replace('estado-', ''));
-      const estado = estadosCache.find((item) => item.id_estado === estadoId);
-      const label = estado?.descripcion_estado || 'Estado';
-      currentListadoContext = { viewName, estadoId, label };
+      const { estadoId, label } = currentListadoContext;
       loadListadoColumnasEstado(estadoId).then(() => loadOfertasListado({ estadoId, label }));
     }
   };
 
   document.addEventListener('click', (event) => {
+    const actionConfigPopupButton = event.target.closest('[data-open-action-config-popup]');
+    if (actionConfigPopupButton) {
+      if (actionConfigPopup?.classList.contains('is-visible') && actionConfigPopupAnchor === actionConfigPopupButton) {
+        closeActionConfigPopup();
+      } else {
+        openActionConfigPopup(actionConfigPopupButton);
+      }
+      return;
+    }
+
+    const closeActionConfigPopupButton = event.target.closest('[data-close-action-config-popup]');
+    if (closeActionConfigPopupButton) {
+      closeActionConfigPopup();
+      return;
+    }
+
     const clearFilterButton = event.target.closest('[data-clear-filter]');
     if (clearFilterButton) {
       const { tableKey, filterKey } = clearFilterButton.dataset;
@@ -1626,11 +3901,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    document.querySelectorAll('.table-actions-menu[open]').forEach((menu) => {
-      if (!menu.contains(event.target)) {
-        menu.removeAttribute('open');
+    if (actionConfigPopup?.classList.contains('is-visible')) {
+      const clickedInsidePopup = actionConfigPopup.contains(event.target);
+      const clickedToggle = event.target.closest('[data-open-action-config-popup]');
+      if (!clickedInsidePopup && !clickedToggle) {
+        closeActionConfigPopup();
       }
-    });
+    }
 
     const viewButton = event.target.closest('[data-view]');
     if (!viewButton) {
@@ -1658,6 +3935,35 @@ document.addEventListener('DOMContentLoaded', () => {
             setGenericFeedback(ofertasListadoFeedback, error.message || 'No se pudo cargar la oferta.', 'error');
           }
         });
+        return;
+      }
+
+      const bomOfertaButton = event.target.closest('[data-bom-oferta]');
+      if (bomOfertaButton) {
+        const ofertaId = Number(bomOfertaButton.dataset.bomOferta);
+        openBomModal(ofertaId);
+        return;
+      }
+
+      const editMaterialPrecioButton = event.target.closest('[data-edit-material-precio]');
+      if (editMaterialPrecioButton) {
+        const materialId = Number(editMaterialPrecioButton.dataset.editMaterialPrecio);
+        const material = bomMaterialesCache.find((item) => Number(item.id_material_precio) === materialId);
+        if (material) {
+          openBomEditView(material);
+        }
+        return;
+      }
+
+      const backToBomListButton = event.target.closest('[data-back-to-bom-list]');
+      if (backToBomListButton) {
+        openBomListView();
+        return;
+      }
+
+      const closeBomModalButton = event.target.closest('[data-close-bom-modal]');
+      if (closeBomModalButton) {
+        closeBomModal();
         return;
       }
 
@@ -1700,6 +4006,30 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      const closeEstadoModalButton = event.target.closest('[data-close-estado-modal]');
+      if (closeEstadoModalButton) {
+        closeEstadoEditModal();
+        return;
+      }
+
+      const closeOfertaEtcModalButton = event.target.closest('[data-close-oferta-etc-modal]');
+      if (closeOfertaEtcModalButton) {
+        closeOfertaEtcModal();
+        return;
+      }
+
+      const closeOutlookImportModalButton = event.target.closest('[data-close-outlook-import-modal]');
+      if (closeOutlookImportModalButton) {
+        closeOutlookImportModal();
+        return;
+      }
+
+      const outlookMessageButton = event.target.closest('[data-outlook-message-id]');
+      if (outlookMessageButton) {
+        loadOutlookMessageDetail(outlookMessageButton.dataset.outlookMessageId);
+        return;
+      }
+
       const sortButton = event.target.closest('.table-header__sort');
       if (!sortButton) {
         return;
@@ -1729,6 +4059,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderOfertasListado(ofertasListadoCache);
       } else if (tableKey === 'clientes') {
         renderClientesTable();
+      } else if (tableKey === 'proyectos') {
+        renderProyectosTable();
+      } else if (tableKey === 'usuarios') {
+        renderUsuariosTable();
       } else if (tableKey === 'estados') {
         renderEstadosTable();
       } else if (tableKey === 'configColumnas') {
@@ -1741,6 +4075,77 @@ document.addEventListener('DOMContentLoaded', () => {
     if (viewButton instanceof HTMLElement) {
       viewButton.blur();
     }
+  });
+
+  document.addEventListener('dragstart', (event) => {
+    const actionChip = event.target.closest('[data-action-config-item]');
+    if (!actionChip) {
+      return;
+    }
+
+    draggedActionConfigKey = actionChip.dataset.actionConfigItem;
+    actionChip.classList.add('drag-dragging');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggedActionConfigKey);
+    }
+  });
+
+  document.addEventListener('dragend', (event) => {
+    const actionChip = event.target.closest('[data-action-config-item]');
+    if (actionChip) {
+      actionChip.classList.remove('drag-dragging');
+    }
+
+    draggedActionConfigKey = null;
+    document.querySelectorAll('.action-config-zone').forEach((zone) => zone.classList.remove('drag-over'));
+  });
+
+  document.addEventListener('dragover', (event) => {
+    const dropZone = event.target.closest('[data-action-config-zone]');
+    if (!dropZone || !draggedActionConfigKey) {
+      return;
+    }
+
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  });
+
+  document.addEventListener('dragenter', (event) => {
+    const dropZone = event.target.closest('[data-action-config-zone]');
+    if (!dropZone || !draggedActionConfigKey) {
+      return;
+    }
+
+    document.querySelectorAll('.action-config-zone').forEach((zone) => zone.classList.remove('drag-over'));
+    dropZone.classList.add('drag-over');
+  });
+
+  document.addEventListener('dragleave', (event) => {
+    const dropZone = event.target.closest('[data-action-config-zone]');
+    if (!dropZone || dropZone.contains(event.relatedTarget)) {
+      return;
+    }
+
+    dropZone.classList.remove('drag-over');
+  });
+
+  document.addEventListener('drop', (event) => {
+    const dropZone = event.target.closest('[data-action-config-zone]');
+    if (!dropZone || !draggedActionConfigKey) {
+      return;
+    }
+
+    event.preventDefault();
+    dropZone.classList.remove('drag-over');
+
+    if (moveActionConfigItem(draggedActionConfigKey, dropZone.dataset.actionConfigZone)) {
+      refreshActionConfigUi();
+    }
+
+    draggedActionConfigKey = null;
   });
 
   getSidebars().forEach((sidebar) => {
@@ -1777,6 +4182,10 @@ document.addEventListener('DOMContentLoaded', () => {
       renderOfertasListado(ofertasListadoCache);
     } else if (tableKey === 'clientes') {
       renderClientesTable();
+    } else if (tableKey === 'proyectos') {
+      renderProyectosTable();
+    } else if (tableKey === 'usuarios') {
+      renderUsuariosTable();
     } else if (tableKey === 'estados') {
       renderEstadosTable();
     } else if (tableKey === 'configColumnas') {
@@ -1792,8 +4201,129 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (event.key === 'Escape' && ofertaEstadoModal?.classList.contains('is-visible')) {
       closeOfertaEstadoModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && estadoEditModal?.classList.contains('is-visible')) {
+      closeEstadoEditModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && ofertaEtcModal?.classList.contains('is-visible')) {
+      closeOfertaEtcModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && bomModal?.classList.contains('is-visible')) {
+      closeBomModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && outlookImportModal?.classList.contains('is-visible')) {
+      closeOutlookImportModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && actionConfigPopup?.classList.contains('is-visible')) {
+      closeActionConfigPopup();
     }
   });
+
+  window.addEventListener('resize', positionActionConfigPopup);
+  window.addEventListener('scroll', positionActionConfigPopup, true);
+
+  if (openOutlookImportButton) {
+    openOutlookImportButton.addEventListener('click', async (event) => {
+      if (guardReadOnlyAction(event)) {
+        return;
+      }
+
+      setFeedback('La integracion con Outlook esta desactivada temporalmente. El inicio de sesion de la app sigue activo.', 'error');
+    });
+  }
+
+  if (outlookImportSelectedButton) {
+    outlookImportSelectedButton.addEventListener('click', async (event) => {
+      if (guardReadOnlyAction(event)) {
+        return;
+      }
+
+      if (!selectedOutlookMessageImportData) {
+        setGenericFeedback(outlookImportFeedback, t('offer.outlook_select_message', 'Selecciona un correo para ver el detalle.'), 'error');
+        return;
+      }
+
+      await applyImportedEmailData(selectedOutlookMessageImportData);
+      closeOutlookImportModal();
+      setFeedback(t('offer.outlook_import_success', 'Correo de Outlook importado correctamente.'), 'success');
+    });
+  }
+
+  if (bomSearchInput) {
+    bomSearchInput.addEventListener('input', () => {
+      renderBomMaterialesTable();
+    });
+  }
+
+  if (bomEditForm) {
+    bomEditForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const submitButton = bomEditForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+      }
+
+      clearGenericFeedback(bomFeedback);
+
+      try {
+        const formData = new FormData(bomEditForm);
+        const material = String(formData.get('material') || '').trim();
+        const precio = String(formData.get('precio') || '').trim();
+
+        if (!material) {
+          throw new Error('El material es obligatorio.');
+        }
+        if (!precio) {
+          throw new Error('El nuevo precio es obligatorio.');
+        }
+
+        const response = await fetch('/api/materiales-precio', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ material, precio }),
+        });
+
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo guardar el nuevo precio BOM');
+        }
+
+        await loadBomMateriales({ silent: true });
+        if (bomSearchInput && material) {
+          bomSearchInput.value = material;
+        }
+        openBomListView();
+        setGenericFeedback(bomFeedback, result.message || 'Precio BOM guardado correctamente.', 'success');
+      } catch (error) {
+        setGenericFeedback(bomFeedback, error.message || 'No se pudo guardar el nuevo precio BOM.', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
 
   configCards.forEach((card) => {
     card.addEventListener('click', () => {
@@ -1804,6 +4334,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (card.dataset.configTarget === 'estados') {
         setActiveView('estados');
+        return;
+      }
+
+      if (card.dataset.configTarget === 'usuarios') {
+        setActiveView('usuarios');
+        return;
+      }
+
+      if (card.dataset.configTarget === 'proyectos') {
+        setActiveView('proyectos');
       }
     });
   });
@@ -1841,6 +4381,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
+      if (targetView === 'usuarios') {
+        setActiveView('usuarios');
+        return;
+      }
+
+      if (targetView === 'proyectos') {
+        setActiveView('proyectos');
+        return;
+      }
+
       if (targetView.startsWith('estado-')) {
         setActiveView(targetView);
       }
@@ -1855,12 +4405,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  usuariosModeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      setUsuariosMode(button.dataset.usuariosMode);
+      clearGenericFeedback(userCreateFeedback);
+      clearGenericFeedback(usuariosTableFeedback);
+    });
+  });
+
+  proyectosModeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      setProyectosMode(button.dataset.proyectosMode);
+      clearGenericFeedback(projectCreateFeedback);
+      clearGenericFeedback(proyectosTableFeedback);
+    });
+  });
+
   estadosModeButtons.forEach((button) => {
     button.addEventListener('click', () => {
       setEstadosMode(button.dataset.estadosMode);
       clearGenericFeedback(estadoCreateFeedback);
       clearGenericFeedback(estadosTableFeedback);
     });
+  });
+
+  if (estadoCreateDescripcion) {
+    estadoCreateDescripcion.addEventListener('input', () => {
+      if (!estadoCreateEmojiManuallyChanged) {
+        syncStateEmojiFromDescription(estadoCreateDescripcion, estadoEmojiSidebar, estadoEmojiSidebarPicker, true);
+      }
+    });
+  }
+
+  bindStateEmojiPicker(estadoEmojiSidebarPicker, estadoEmojiSidebar, () => {
+      estadoCreateEmojiManuallyChanged = true;
+  });
+
+  if (estadoEditDescripcion) {
+    estadoEditDescripcion.addEventListener('input', () => {
+      if (!estadoEditEmojiManuallyChanged) {
+        syncStateEmojiFromDescription(estadoEditDescripcion, estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, true);
+      }
+    });
+  }
+
+  bindStateEmojiPicker(estadoEditEmojiSidebarPicker, estadoEditEmojiSidebar, () => {
+      estadoEditEmojiManuallyChanged = true;
   });
 
   if (estadoColumnasSelect) {
@@ -1875,28 +4465,109 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (window.navigationManager) {
     if (window.navigationManager.setNavigationStack) {
-      window.navigationManager.setNavigationStack([
-        { label: 'Inicio', target: 'inicio', htmlFile: null },
-        { label: '+ Insertar Presupuesto', target: 'nueva-oferta', htmlFile: null },
-      ]);
+      window.navigationManager.setNavigationStack(buildNavigationStack('nueva-oferta'));
     } else {
       window.navigationManager.updateBreadcrumb();
     }
   }
 
-  window.addEventListener('userLoggedIn', () => {
-    loadAvailableOfferColumns();
-    loadClientes({ silent: true });
-    loadEstados({ silent: true }).then(() => setActiveView('nueva-oferta'));
+  const refreshTranslatedUi = () => {
+    if (currentViewName === 'todos') {
+      currentListadoContext.label = t('listing.all', 'Todos');
+    } else if (currentViewName.startsWith('estado-') && currentListadoContext.estadoId != null) {
+      const currentEstado = estadosCache.find((estado) => Number(estado.id_estado) === Number(currentListadoContext.estadoId));
+      if (currentEstado) {
+        currentListadoContext.label = translateEstadoLabel(currentEstado.descripcion_estado);
+      }
+    }
+
+    setupAllTableHeaderControls();
+    renderSidebarNav();
+    renderClienteOptions(clientesCache);
+    renderGeneralUsersDatalists();
+    renderRoleOptions();
+    renderDepartamentoOptions();
+    populateOfertaEditClienteOptions();
+    renderEstadoOptions(estadosCache);
+    populateOfertaEstadoOptions(currentOfertaEstadoId);
+    renderOfertaEstadoHistorial(currentOfertaEstadoInteracciones);
+    updateOfertaEtcStandbyUi();
+    renderClientesTable();
+    renderUsuariosTable();
+    renderEstadosTable();
+    renderConfigColumnasTable();
+
+    if (currentViewName === 'todos' || currentViewName.startsWith('estado-')) {
+      loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
+    }
+
+    if (window.navigationManager && window.navigationManager.setNavigationStack) {
+      window.navigationManager.setNavigationStack(buildNavigationStack(currentViewName));
+    }
+  };
+
+  const readOnlyActionSelector = [
+    '[data-edit-oferta]',
+    '[data-change-estado-oferta]',
+    '[data-edit-cliente]',
+    '[data-save-cliente]',
+    '[data-edit-estado]',
+    '[data-save-estado]',
+    '[data-edit-config]',
+    '[data-delete-config]',
+  ].join(',');
+
+  document.addEventListener('click', (event) => {
+    if (!isReadOnlyUser()) {
+      return;
+    }
+
+    const blockedAction = event.target.closest(readOnlyActionSelector);
+    if (!blockedAction) {
+      return;
+    }
+
+    guardReadOnlyAction(event);
+  }, true);
+
+  [form, ofertaEditForm, ofertaEstadoForm, clienteCreateForm, userCreateForm, estadoCreateForm, configColumnCreateForm]
+    .filter(Boolean)
+    .forEach((targetForm) => {
+      targetForm.addEventListener('submit', (event) => {
+        guardReadOnlyAction(event);
+      }, true);
+    });
+
+  window.addEventListener('languageChanged', refreshTranslatedUi);
+
+  window.addEventListener('userLoggedIn', async () => {
+    try {
+      await syncCurrentUserFromServer();
+      await loadAvailableOfferColumns();
+      await loadClientes({ silent: true });
+      await loadEstados({ silent: true });
+      await loadProyectos({ silent: true });
+      setActiveView('nueva-oferta');
+    } catch {
+      handleUnauthorized();
+    }
   });
 
   if (mailDropzone && mailFileInput) {
-    mailDropzone.addEventListener('click', () => {
+    mailDropzone.addEventListener('click', (event) => {
+      if (guardReadOnlyAction(event)) {
+        return;
+      }
+
       mailFileInput.click();
     });
 
     mailDropzone.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' || event.key === ' ') {
+        if (guardReadOnlyAction(event)) {
+          return;
+        }
+
         event.preventDefault();
         mailFileInput.click();
       }
@@ -1916,6 +4587,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     mailDropzone.addEventListener('drop', (event) => {
+      if (guardReadOnlyAction(event)) {
+        mailDropzone.classList.remove('is-dragover');
+        return;
+      }
+
       event.preventDefault();
       mailDropzone.classList.remove('is-dragover');
       const file = event.dataTransfer?.files?.[0];
@@ -1927,6 +4603,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     mailFileInput.addEventListener('change', () => {
+      if (guardReadOnlyAction()) {
+        mailFileInput.value = '';
+        return;
+      }
+
       const file = mailFileInput.files?.[0];
       if (file) {
         importMailFile(file);
@@ -1938,41 +4619,44 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
 
+      clearFeedback();
+      clearFormValidationErrors(form);
+      if (!validateOfertaPrincipalForm()) {
+        setFeedback('Revisa los campos obligatorios marcados en rojo.', 'error');
+        return;
+      }
+
       const submitButton = form.querySelector('button[type="submit"]');
       const originalText = submitButton ? submitButton.textContent : '';
 
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Guardando...';
+        submitButton.textContent = 'Continuando...';
       }
 
-      clearFeedback();
-
       try {
-        const response = await fetch('/api/ofertas', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(buildPayload()),
-        });
-
-        const result = await response.json();
-
-        if (!response.ok || result.success === false) {
-          throw new Error(result.message || 'No se pudo guardar la oferta');
+        const duplicateCheck = await checkDuplicateEmailSubject();
+        if (duplicateCheck.exists) {
+          savedOfertaContext = null;
+          setFeedback(duplicateCheck.message || 'Ya existe una oferta con la misma fecha de e-mail y el mismo asunto.', 'error');
+          return;
         }
 
-        if (numeroOfertaField && result.numero_oferta) {
-          numeroOfertaField.value = result.numero_oferta;
-        }
+        savedOfertaContext = { pending: true };
 
-        setFeedback(`Oferta ${result.numero_oferta || ''} guardada correctamente.`, 'success');
-        window.setTimeout(() => {
-          window.location.assign('/');
-        }, 500);
+        await Promise.all([
+          loadDepartamentos({ silent: true }),
+          loadUsuarios({ silent: true }),
+        ]);
+
+        setFeedback(
+          'Cabecera preparada. Completa ahora el ETC para guardar todo el proceso.',
+          'success',
+        );
+        openOfertaEtcModal();
       } catch (error) {
-        setFeedback(error.message || 'Se produjo un error al guardar la oferta.', 'error');
+        savedOfertaContext = null;
+        setFeedback(error.message || 'Se produjo un error al preparar el formulario ETC.', 'error');
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
@@ -1984,10 +4668,123 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('reset', () => {
       window.requestAnimationFrame(() => {
         clearFeedback();
+        clearFormValidationErrors(form);
+        savedOfertaContext = null;
+        pendingOfertaEtcPayload = null;
+        updateOfertaEtcStandbyUi();
         loadNextNumeroOferta();
       });
     });
   }
+
+  if (ofertaEtcForm) {
+    ofertaEtcForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      clearGenericFeedback(ofertaEtcFeedback);
+      clearFormValidationErrors(ofertaEtcForm);
+      const arePriorityFieldsValid = validateOfertaEtcPriorityFields();
+      if (!arePriorityFieldsValid) {
+        setGenericFeedback(ofertaEtcFeedback, 'Revisa los campos obligatorios marcados en rojo.', 'error');
+        return;
+      }
+
+      const submitButton = ofertaEtcForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Aceptando...';
+      }
+
+      try {
+        const payload = buildPendingOfertaEtcPayload();
+        if (!payload.codigo_externo_oferta && !payload.codigo_interno_oferta && !payload.referencia_cliente && !payload.numero_comision && !payload.proyecto) {
+          throw new Error('Indica al menos un identificador ETC: código externo, código interno, referencia cliente, número comisión o proyecto.');
+        }
+
+        if (!savedOfertaContext) {
+          throw new Error('Primero debes guardar la cabecera de la oferta.');
+        }
+
+        pendingOfertaEtcPayload = payload;
+
+        const response = await fetch('/api/ofertas-completa', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            oferta: buildPayload(),
+            oferta_etc: buildOfertaEtcPayloadForInsert(),
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo guardar la oferta completa');
+        }
+
+        const numeroOferta = result.numero_oferta || numeroOfertaField?.value || '';
+        savedOfertaContext = null;
+        pendingOfertaEtcPayload = null;
+        updateOfertaEtcStandbyUi();
+        if (numeroOfertaField && result.numero_oferta) {
+          numeroOfertaField.value = result.numero_oferta;
+        }
+        setGenericFeedback(ofertaEtcFeedback, 'Oferta y ETC guardados correctamente.', 'success');
+        setFeedback(`Oferta ${numeroOferta} guardada correctamente. ETC insertado también.`, 'success');
+        window.setTimeout(() => {
+          closeOfertaEtcModal();
+          window.location.assign('/');
+        }, 400);
+      } catch (error) {
+        setGenericFeedback(ofertaEtcFeedback, error.message || 'No se pudo guardar el ETC.', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  if (ofertaEtcDepartamento) {
+    ofertaEtcDepartamento.addEventListener('change', () => {
+      renderOfertaEtcResponsableOptions({
+        selectedNumOperario: ofertaEtcResponsable?.value || null,
+        preferManager: true,
+      });
+      if (getFieldContainer(ofertaEtcResponsable)?.classList.contains('is-invalid')) {
+        validateRequiredField(ofertaEtcResponsable, 'Este campo es obligatorio.');
+      }
+    });
+  }
+
+  if (ofertaEtcToggleExtended) {
+    ofertaEtcToggleExtended.addEventListener('click', () => {
+      setOfertaEtcExtendedVisibility(Boolean(ofertaEtcExtendedFields?.hidden));
+    });
+  }
+
+  bindFieldValidation(document.getElementById('fecha_email'), 'Este campo es obligatorio.');
+  bindFieldValidation(clienteSelect, 'Este campo es obligatorio.');
+  bindFieldValidation(emisorInput, 'Este campo es obligatorio y debe incluir un correo electrónico.', validateSenderEmailField);
+
+  ofertaEtcPriorityFieldConfigs.forEach(({ field, message }) => {
+    bindFieldValidation(field, message);
+  });
+
+  ofertaEtcIdentifierFields.forEach((field) => {
+    const revalidateIdentifiers = () => {
+      if (ofertaEtcIdentifierFields.some((item) => getFieldContainer(item)?.classList.contains('is-invalid'))) {
+        validateOfertaEtcIdentifierFields();
+      }
+    };
+
+    field.addEventListener('blur', revalidateIdentifiers);
+    field.addEventListener('input', revalidateIdentifiers);
+    field.addEventListener('change', revalidateIdentifiers);
+  });
 
   if (ofertaEditForm) {
     ofertaEditForm.addEventListener('submit', async (event) => {
@@ -2038,6 +4835,21 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (ofertaEstadoForm) {
+    if (ofertaEstadoSinFechaLimite) {
+      ofertaEstadoSinFechaLimite.addEventListener('change', () => {
+        syncOfertaEstadoFechaLimite();
+      });
+    }
+
+    if (ofertaEstadoFechaLimite) {
+      ofertaEstadoFechaLimite.addEventListener('input', () => {
+        if (ofertaEstadoSinFechaLimite && ofertaEstadoFechaLimite.value) {
+          ofertaEstadoSinFechaLimite.checked = false;
+          syncOfertaEstadoFechaLimite();
+        }
+      });
+    }
+
     ofertaEstadoForm.addEventListener('submit', async (event) => {
       event.preventDefault();
 
@@ -2060,6 +4872,7 @@ document.addEventListener('DOMContentLoaded', () => {
           },
           body: JSON.stringify({
             id_estado: formData.get('id_estado'),
+            fecha_limite: ofertaEstadoSinFechaLimite?.checked ? null : (formData.get('fecha_limite') || null),
             comentario: formData.get('comentario'),
           }),
         });
@@ -2074,7 +4887,18 @@ document.addEventListener('DOMContentLoaded', () => {
           throw new Error(result.message || 'No se pudo actualizar el estado');
         }
 
-        setGenericFeedback(ofertaEstadoFeedback, result.message || 'Estado actualizado correctamente.', 'success');
+        const notification = result.notification || null;
+        let feedbackMessage = result.message || 'Estado actualizado correctamente.';
+        let feedbackType = 'success';
+
+        if (notification && notification.sent === false) {
+          feedbackType = notification.success === false ? 'warning' : 'success';
+          feedbackMessage = notification.message
+            ? `${feedbackMessage} Aviso correo: ${notification.message}`
+            : `${feedbackMessage} El aviso por correo no se ha enviado.`;
+        }
+
+        setGenericFeedback(ofertaEstadoFeedback, feedbackMessage, feedbackType);
         await Promise.all([
           loadEstados({ silent: true }),
           loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label }),
@@ -2091,9 +4915,66 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (estadoEditForm) {
+    estadoEditForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(estadosTableFeedback, setEstadosMode);
+        closeEstadoEditModal();
+        return;
+      }
+
+      const submitButton = estadoEditForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+      }
+
+      clearGenericFeedback(estadoEditFeedback);
+
+      try {
+        const formData = new FormData(estadoEditForm);
+        const estadoId = formData.get('id_estado');
+        const payload = Object.fromEntries(formData.entries());
+        payload.activo = Boolean(estadoEditActivo?.checked);
+        payload.emoji_sidebar = estadoEditEmojiSidebar?.value || getSuggestedStateEmoji(estadoEditDescripcion?.value || '');
+        const response = await fetch(`/api/estados/${estadoId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo actualizar el estado');
+        }
+
+        setGenericFeedback(estadoEditFeedback, result.message || 'Estado actualizado correctamente.', 'success');
+        await loadEstados({ silent: true });
+        window.setTimeout(() => closeEstadoEditModal(), 400);
+      } catch (error) {
+        setGenericFeedback(estadoEditFeedback, error.message || 'No se pudo actualizar el estado.', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
   if (clienteCreateForm) {
     clienteCreateForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(clientesTableFeedback, setClientesMode);
+        return;
+      }
 
       const submitButton = clienteCreateForm.querySelector('button[type="submit"]');
       const originalText = submitButton ? submitButton.textContent : '';
@@ -2136,9 +5017,205 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  if (projectCreateForm) {
+    projectCreateForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(proyectosTableFeedback, setProyectosMode);
+        return;
+      }
+
+      const submitButton = projectCreateForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+      }
+
+      clearGenericFeedback(projectCreateFeedback);
+
+      try {
+        const formData = new FormData(projectCreateForm);
+        const response = await fetch('/api/proyectos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(Object.fromEntries(formData.entries())),
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo crear el proyecto');
+        }
+
+        projectCreateForm.reset();
+        setGenericFeedback(projectCreateFeedback, result.message || 'Proyecto creado correctamente.', 'success');
+        await loadProyectos({ silent: true });
+        setProyectosMode('ver');
+      } catch (error) {
+        setGenericFeedback(projectCreateFeedback, error.message || 'No se pudo crear el proyecto.', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  if (userCreateForm) {
+    userCreateForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!isManagerUser()) {
+        setUsuariosMode('ver');
+        setGenericFeedback(usuariosTableFeedback, 'Solo los usuarios con rol Manager pueden añadir o editar usuarios.', 'error');
+        return;
+      }
+
+      const submitButton = userCreateForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Guardando...';
+      }
+
+      clearGenericFeedback(userCreateFeedback);
+
+      try {
+        const formData = new FormData(userCreateForm);
+        const selectedGeneralUser = findGeneralUserByNumOperario(formData.get('num_operario')) || findGeneralUserByNombre(formData.get('nombre'));
+        if (!selectedGeneralUser) {
+          throw new Error('Debes seleccionar un usuario existente de General.Usuarios.');
+        }
+
+        const payload = {
+          num_operario: selectedGeneralUser.num_operario,
+          nombre: selectedGeneralUser.nombre,
+          email: formData.get('email')?.trim() || null,
+          id_rol: formData.get('id_rol'),
+          id_departamento: formData.get('id_departamento') || null,
+        };
+
+        const response = await fetch('/api/usuarios', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo crear el usuario');
+        }
+
+        userCreateForm.reset();
+        if (userNumOperarioInput) {
+          userNumOperarioInput.value = '';
+        }
+        if (userNombreInput) {
+          userNombreInput.value = '';
+        }
+        if (userEmailInput) {
+          userEmailInput.value = '';
+        }
+        renderDepartamentoOptions();
+        setGenericFeedback(userCreateFeedback, result.message || 'Usuario creado correctamente.', 'success');
+        await loadUsuarios({ silent: true });
+        setUsuariosMode('ver');
+      } catch (error) {
+        setGenericFeedback(userCreateFeedback, error.message || 'No se pudo crear el usuario.', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  if (userNumOperarioInput) {
+    const syncFromNumOperario = () => {
+      syncUserFieldsFromGeneralUser(findGeneralUserByNumOperario(userNumOperarioInput.value), 'num_operario');
+    };
+    userNumOperarioInput.addEventListener('change', syncFromNumOperario);
+    userNumOperarioInput.addEventListener('blur', syncFromNumOperario);
+  }
+
+  if (userNombreInput) {
+    const syncFromNombre = () => {
+      syncUserFieldsFromGeneralUser(findGeneralUserByNombre(userNombreInput.value), 'nombre');
+    };
+    userNombreInput.addEventListener('change', syncFromNombre);
+    userNombreInput.addEventListener('blur', syncFromNombre);
+  }
+
+  if (addDepartmentButton) {
+    addDepartmentButton.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        event.preventDefault();
+        setUsuariosMode('ver');
+        setGenericFeedback(usuariosTableFeedback, 'Solo los usuarios con rol Manager pueden añadir o editar usuarios.', 'error');
+        return;
+      }
+
+      if (guardReadOnlyAction(event)) {
+        return;
+      }
+
+      const nombreDepartamento = window.prompt('Nombre del nuevo departamento');
+      if (!nombreDepartamento || !nombreDepartamento.trim()) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/departamentos', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ nombre_departamento: nombreDepartamento.trim() }),
+        });
+
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo crear el departamento');
+        }
+
+        await loadDepartamentos({ silent: true });
+        if (userDepartamentosSelect && result.departamento?.id_departamento) {
+          userDepartamentosSelect.value = String(result.departamento.id_departamento);
+        }
+        setGenericFeedback(userCreateFeedback, result.message || 'Departamento creado correctamente.', 'success');
+      } catch (error) {
+        setGenericFeedback(userCreateFeedback, error.message || 'No se pudo crear el departamento.', 'error');
+      }
+    });
+  }
+
   if (estadoCreateForm) {
     estadoCreateForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(estadosTableFeedback, setEstadosMode);
+        return;
+      }
 
       const submitButton = estadoCreateForm.querySelector('button[type="submit"]');
       const originalText = submitButton ? submitButton.textContent : '';
@@ -2152,12 +5229,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         const formData = new FormData(estadoCreateForm);
+        const payload = Object.fromEntries(formData.entries());
+        payload.emoji_sidebar = estadoEmojiSidebar?.value || getSuggestedStateEmoji(estadoCreateDescripcion?.value || '');
         const response = await fetch('/api/estados', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(Object.fromEntries(formData.entries())),
+          body: JSON.stringify(payload),
         });
 
         const result = await response.json();
@@ -2167,6 +5246,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         estadoCreateForm.reset();
+        estadoCreateEmojiManuallyChanged = false;
+        if (estadoDepartamentoSelect) {
+          estadoDepartamentoSelect.value = '';
+        }
+        populateStateEmojiSelect(estadoEmojiSidebar, estadoEmojiSidebarPicker, getSuggestedStateEmoji(''));
         setGenericFeedback(estadoCreateFeedback, result.message || 'Estado creado correctamente.', 'success');
         await loadEstados({ silent: true });
 
@@ -2189,6 +5273,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (clientesTableBody) {
     clientesTableBody.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        const clienteAction = event.target.closest('[data-edit-cliente], [data-cancel-cliente], [data-save-cliente]');
+        if (clienteAction) {
+          showManagerOnlyFeedback(clientesTableFeedback, setClientesMode);
+        }
+        return;
+      }
+
       const editButton = event.target.closest('[data-edit-cliente]');
       const cancelButton = event.target.closest('[data-cancel-cliente]');
       const saveButton = event.target.closest('[data-save-cliente]');
@@ -2239,53 +5331,151 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  if (estadosTableBody) {
-    estadosTableBody.addEventListener('click', async (event) => {
-      const editButton = event.target.closest('[data-edit-estado]');
-      const cancelButton = event.target.closest('[data-cancel-estado]');
-      const saveButton = event.target.closest('[data-save-estado]');
+  if (proyectosTableBody) {
+    proyectosTableBody.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        const proyectoAction = event.target.closest('[data-edit-proyecto], [data-cancel-proyecto], [data-save-proyecto]');
+        if (proyectoAction) {
+          showManagerOnlyFeedback(proyectosTableFeedback, setProyectosMode);
+        }
+        return;
+      }
+
+      const editButton = event.target.closest('[data-edit-proyecto]');
+      const cancelButton = event.target.closest('[data-cancel-proyecto]');
+      const saveButton = event.target.closest('[data-save-proyecto]');
 
       if (editButton) {
-        editingEstadoId = Number(editButton.dataset.editEstado);
-        clearGenericFeedback(estadosTableFeedback);
-        renderEstadosTable();
+        editingProyectoId = Number(editButton.dataset.editProyecto);
+        clearGenericFeedback(proyectosTableFeedback);
+        renderProyectosTable();
         return;
       }
 
       if (cancelButton) {
-        editingEstadoId = null;
-        clearGenericFeedback(estadosTableFeedback);
-        renderEstadosTable();
+        editingProyectoId = null;
+        clearGenericFeedback(proyectosTableFeedback);
+        renderProyectosTable();
         return;
       }
 
       if (saveButton) {
-        const estadoId = Number(saveButton.dataset.saveEstado);
-        const input = estadosTableBody.querySelector(`[data-edit-estado-input="${estadoId}"]`);
-        const ordenInput = estadosTableBody.querySelector(`[data-edit-estado-orden="${estadoId}"]`);
-        const descripcionEstado = input ? input.value.trim() : '';
-        const ordenEstado = ordenInput && ordenInput.value.trim() !== '' ? Number(ordenInput.value) : null;
+        const proyectoId = Number(saveButton.dataset.saveProyecto);
+        const input = proyectosTableBody.querySelector(`[data-edit-proyecto-input="${proyectoId}"]`);
+        const descripcionProyecto = input ? input.value.trim() : '';
 
         try {
-          const response = await fetch(`/api/estados/${estadoId}`, {
+          const response = await fetch(`/api/proyectos/${proyectoId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ descripcion_estado: descripcionEstado, orden: ordenEstado }),
+            body: JSON.stringify({ descripcion_proyecto: descripcionProyecto }),
           });
 
           const result = await response.json();
-
           if (!response.ok || result.success === false) {
-            throw new Error(result.message || 'No se pudo actualizar el estado');
+            throw new Error(result.message || 'No se pudo actualizar el proyecto');
           }
 
-          editingEstadoId = null;
-          setGenericFeedback(estadosTableFeedback, result.message || 'Estado actualizado correctamente.', 'success');
-          await loadEstados({ silent: true });
+          editingProyectoId = null;
+          setGenericFeedback(proyectosTableFeedback, result.message || 'Proyecto actualizado correctamente.', 'success');
+          await loadProyectos({ silent: true });
         } catch (error) {
-          setGenericFeedback(estadosTableFeedback, error.message || 'No se pudo actualizar el estado.', 'error');
+          setGenericFeedback(proyectosTableFeedback, error.message || 'No se pudo actualizar el proyecto.', 'error');
+        }
+      }
+    });
+  }
+
+  if (usuariosTableBody) {
+    usuariosTableBody.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        const usuarioAction = event.target.closest('[data-edit-usuario], [data-cancel-usuario], [data-save-usuario]');
+        if (usuarioAction) {
+          showManagerOnlyFeedback(usuariosTableFeedback, setUsuariosMode);
+        }
+        return;
+      }
+
+      const editButton = event.target.closest('[data-edit-usuario]');
+      const cancelButton = event.target.closest('[data-cancel-usuario]');
+      const saveButton = event.target.closest('[data-save-usuario]');
+
+      if (editButton) {
+        editingUsuarioId = Number(editButton.dataset.editUsuario);
+        clearGenericFeedback(usuariosTableFeedback);
+        renderUsuariosTable();
+        return;
+      }
+
+      if (cancelButton) {
+        editingUsuarioId = null;
+        clearGenericFeedback(usuariosTableFeedback);
+        renderUsuariosTable();
+        return;
+      }
+
+      if (saveButton) {
+        const numOperario = Number(saveButton.dataset.saveUsuario);
+        const usuario = usuariosCache.find((item) => Number(item.num_operario) === numOperario);
+        const emailInput = usuariosTableBody.querySelector(`[data-edit-usuario-email="${numOperario}"]`);
+        const rolInput = usuariosTableBody.querySelector(`[data-edit-usuario-rol="${numOperario}"]`);
+        const departamentoInput = usuariosTableBody.querySelector(`[data-edit-usuario-departamento="${numOperario}"]`);
+
+        try {
+          const response = await fetch(`/api/usuarios/${numOperario}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              num_operario: numOperario,
+              nombre: usuario?.nombre || '',
+              email: emailInput ? emailInput.value.trim() : '',
+              id_rol: rolInput ? rolInput.value : '',
+              id_departamento: departamentoInput ? departamentoInput.value : '',
+            }),
+          });
+
+          if (response.status === 401) {
+            handleUnauthorized();
+            return;
+          }
+
+          const result = await response.json();
+          if (!response.ok || result.success === false) {
+            throw new Error(result.message || 'No se pudo actualizar el usuario');
+          }
+
+          editingUsuarioId = null;
+          setGenericFeedback(usuariosTableFeedback, result.message || 'Usuario actualizado correctamente.', 'success');
+          await loadUsuarios({ silent: true });
+        } catch (error) {
+          setGenericFeedback(usuariosTableFeedback, error.message || 'No se pudo actualizar el usuario.', 'error');
+        }
+      }
+    });
+  }
+
+  if (estadosTableBody) {
+    estadosTableBody.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        const estadoAction = event.target.closest('[data-edit-estado]');
+        if (estadoAction) {
+          showManagerOnlyFeedback(estadosTableFeedback, setEstadosMode);
+        }
+        return;
+      }
+
+      const editButton = event.target.closest('[data-edit-estado]');
+
+      if (editButton) {
+        const estadoId = Number(editButton.dataset.editEstado);
+        const estado = estadosCache.find((item) => Number(item.id_estado) === estadoId);
+        clearGenericFeedback(estadosTableFeedback);
+        if (estado) {
+          openEstadoEditModal(estado);
         }
       }
     });
@@ -2294,6 +5484,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (configColumnCreateForm) {
     configColumnCreateForm.addEventListener('submit', async (event) => {
       event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(configColumnasTableFeedback);
+        return;
+      }
 
       if (!selectedEstadoId) {
         setGenericFeedback(configColumnCreateFeedback, 'Debes seleccionar un estado antes de guardar columnas.', 'error');
@@ -2366,9 +5561,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     configColumnasTableBody.addEventListener('click', async (event) => {
+      if (!isManagerUser()) {
+        const configAction = event.target.closest('[data-edit-config], [data-cancel-config], [data-delete-config]');
+        if (configAction) {
+          showManagerOnlyFeedback(configColumnasTableFeedback);
+        }
+        return;
+      }
+
       const editButton = event.target.closest('[data-edit-config]');
       const cancelButton = event.target.closest('[data-cancel-config]');
       const deleteButton = event.target.closest('[data-delete-config]');
+        const ofertaId = Number(bomOfertaButton.dataset.bomOferta);
+        openBomModal(ofertaId);
+        return;
 
       if (editButton) {
         editingConfigId = Number(editButton.dataset.editConfig);
@@ -2455,42 +5661,31 @@ document.addEventListener('DOMContentLoaded', () => {
   // Verificar sesión con el servidor al cargar: si no hay sesión, el loginModal mostrará el modal
   // Si hay sesión válida, cargar la vista principal
   const initApp = async () => {
+    ofertasActionColumnVisibility = loadActionColumnVisibility();
+    updateOfertaEtcStandbyUi();
     setupAllTableHeaderControls();
+    await loadStateEmojiSuggestions();
+    populateStateEmojiSelect(estadoEmojiSidebar, estadoEmojiSidebarPicker, estadoEmojiSidebar?.value || getSuggestedStateEmoji(estadoCreateDescripcion?.value || ''));
+    populateStateEmojiSelect(estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, estadoEditEmojiSidebar?.value || getSuggestedStateEmoji(estadoEditDescripcion?.value || ''));
     try {
-      const res = await fetch('/api/session/check');
-      const data = await res.json();
-      if (data.authenticated) {
-        // Sincronizar localStorage con los datos del servidor
-        if (data.user) {
-          const stored = JSON.parse(localStorage.getItem('usuarioSGA') || 'null');
-          if (!stored || !stored.id) {
-            localStorage.setItem('usuarioSGA', JSON.stringify({ ...data.user, success: true }));
-            if (window.LoginModal && window.LoginModal.updateUserWidget) {
-              window.LoginModal.updateUserWidget();
-            }
-          }
-        }
+      const authenticatedUser = await syncCurrentUserFromServer();
+      if (authenticatedUser) {
         await loadAvailableOfferColumns();
         await loadEstados({ silent: true });
         await loadClientes({ silent: true });
+        await loadProyectos({ silent: true });
         setActiveView('nueva-oferta');
+        if (outlookAuthError) {
+          setGenericFeedback(feedback, outlookAuthError, 'error');
+        }
       } else {
-        // Sesión inválida: limpiar localStorage para que loginModal muestre el modal
-        localStorage.removeItem('usuarioSGA');
         await loadAvailableOfferColumns();
         renderSidebarNav();
       }
     } catch {
-      // Error de red: intentar con localStorage como fallback
-      if (isAuthenticated()) {
-        await loadAvailableOfferColumns();
-        await loadEstados({ silent: true });
-        await loadClientes({ silent: true });
-        setActiveView('nueva-oferta');
-      } else {
-        await loadAvailableOfferColumns();
-        renderSidebarNav();
-      }
+      setCurrentUser(null);
+      await loadAvailableOfferColumns();
+      renderSidebarNav();
     }
   };
 

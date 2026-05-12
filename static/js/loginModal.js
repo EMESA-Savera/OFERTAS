@@ -8,12 +8,39 @@ const LOGIN_MODAL_CONFIG = {
   STYLES_LOADED: false
 };
 
+const loginModalUrl = new URL(window.location.href);
+const pendingAuthError = loginModalUrl.searchParams.get('auth_error') || '';
+if (pendingAuthError) {
+  loginModalUrl.searchParams.delete('auth_error');
+  const cleanUrl = `${loginModalUrl.pathname}${loginModalUrl.search ? loginModalUrl.search : ''}${loginModalUrl.hash}`;
+  window.history.replaceState({}, document.title, cleanUrl);
+}
+
 // Estado global del modal
 let loginModalState = {
   isOpen: false,
   checkInterval: null,
   originalUrl: null
 };
+let currentSessionUser = null;
+let outlookConnectionState = {
+  checked: false,
+  connected: false,
+  mailbox: '',
+  disconnectUrl: '/api/outlook/disconnect'
+};
+
+function setSessionUser(user) {
+  currentSessionUser = user && typeof user === 'object' ? { ...user, success: true } : null;
+
+  if (currentSessionUser) {
+    localStorage.setItem('usuarioSGA', JSON.stringify(currentSessionUser));
+  } else {
+    localStorage.removeItem('usuarioSGA');
+  }
+
+  return currentSessionUser;
+}
 
 // Debug de autenticación (sin datos sensibles)
 function debugAuthSnapshot(context = 'snapshot') {
@@ -57,22 +84,22 @@ function createLoginModalHTML() {
     <div id="loginModalOverlay" class="login-modal-overlay">
       <div class="login-modal-container">
         <div class="login-modal-header">
-          <h2 data-original-text="Acceso Requerido">🔐 Acceso Requerido</h2>
-          <p data-original-text="Debes iniciar sesión para continuar">Debes iniciar sesión para continuar</p>
+          <h2 data-translate-key="auth.access_required">🔐 Acceso Requerido</h2>
+          <p data-translate-key="auth.login_to_continue">Debes iniciar sesión para continuar</p>
         </div>
         
         <form class="login-modal-form" id="loginModalForm">
           <div class="login-modal-field">
             <label for="loginModalUsername" 
                    class="login-modal-label"
-                   data-original-text="Usuario (Número de Operario)">Usuario (Número de Operario)</label>
+                   data-translate-key="auth.username_label">Usuario (Número de Operario)</label>
             <input 
               type="text" 
               id="loginModalUsername" 
               name="username" 
               class="login-modal-input" 
               placeholder="Ingresa tu número de operario"
-              data-original-placeholder="Ingresa tu número de operario"
+              data-translate-key-placeholder="auth.username_placeholder"
               required 
               autocomplete="username"
             >
@@ -81,14 +108,14 @@ function createLoginModalHTML() {
           <div class="login-modal-field">
             <label for="loginModalPassword" 
                    class="login-modal-label"
-                   data-original-text="Contraseña">Contraseña</label>
+                   data-translate-key="auth.password">Contraseña</label>
             <input 
               type="password" 
               id="loginModalPassword" 
               name="password" 
               class="login-modal-input" 
               placeholder="Ingresa tu contraseña"
-              data-original-placeholder="Ingresa tu contraseña"
+              data-translate-key-placeholder="auth.password_placeholder"
               required 
               autocomplete="current-password"
             >
@@ -98,14 +125,14 @@ function createLoginModalHTML() {
           
           <div class="login-modal-buttons">
             <button type="submit" class="login-modal-btn-primary" id="loginModalSubmit">
-              <span class="login-modal-btn-text" data-original-text="Iniciar Sesión">Iniciar Sesión</span>
+              <span class="login-modal-btn-text" data-translate-key="auth.login_button">Iniciar Sesión</span>
               <span class="login-modal-spinner" style="display: none;">⟳</span>
             </button>
           </div>
         </form>
         
         <div class="login-modal-footer">
-          <small data-original-text="Tip: Una vez que inicies sesión, podrás continuar con tu trabajo normal">💡 Tip: Una vez que inicies sesión, podrás continuar con tu trabajo normal</small>
+          <small data-translate-key="auth.login_tip">💡 Tip: Una vez que inicies sesión, podrás continuar con tu trabajo normal</small>
         </div>
       </div>
     </div>
@@ -114,15 +141,35 @@ function createLoginModalHTML() {
 
 // Función para verificar si hay usuario logueado
 function checkUserSession() {
+  const hasSession = !!(currentSessionUser && currentSessionUser.id);
+  if (!hasSession) {
+    console.log('🔐 [AUTH] No hay sesión válida en memoria');
+  }
+  return hasSession;
+}
+
+async function syncSessionFromServer() {
   try {
-    const usuarioSGA = JSON.parse(localStorage.getItem('usuarioSGA'));
-    const hasSession = !!(usuarioSGA && usuarioSGA.id);
-    if (!hasSession) {
-      console.log('🔐 [AUTH] No hay sesión válida (falta usuarioSGA.id)');
+    const response = await fetch('/api/session/check', { credentials: 'same-origin' });
+    if (!response.ok) {
+      return false;
     }
-    return hasSession;
+
+    const payload = await response.json();
+    if (payload && payload.authenticated && payload.user) {
+      setSessionUser(payload.user);
+      if (typeof updateUserWidget === 'function') {
+        updateUserWidget();
+      }
+      return true;
+    }
+
+    setSessionUser(null);
+    if (typeof updateUserWidget === 'function') {
+      updateUserWidget();
+    }
+    return false;
   } catch {
-    console.log('🔐 [AUTH] No hay sesión válida (JSON inválido en usuarioSGA)');
     return false;
   }
 }
@@ -158,6 +205,10 @@ function showLoginModal() {
   }, 10);
   
   loginModalState.isOpen = true;
+
+  if (pendingAuthError) {
+    showLoginMessage(pendingAuthError, 'error');
+  }
   
   console.log('🔐 Modal de login mostrado - Usuario no autenticado');
 }
@@ -249,7 +300,7 @@ async function handleLoginSubmit(event) {
     
     if (response.ok && userData.success !== false) {
       // Guardar usuario en localStorage
-      localStorage.setItem('usuarioSGA', JSON.stringify(userData));
+      setSessionUser(userData);
       console.log('✅ [AUTH] Login API correcto, usuario persistido en localStorage', {
         id: userData.id,
         num_operario: userData.num_operario,
@@ -329,21 +380,27 @@ function clearLoginMessage() {
 
 
 // Función para verificar automáticamente la sesión
-function startSessionCheck() {
+async function startSessionCheck() {
   // Detener verificación previa si existe
   if (loginModalState.checkInterval) {
     clearInterval(loginModalState.checkInterval);
   }
   
   // Verificación inicial
-  if (!checkUserSession()) {
+  const hasSession = await syncSessionFromServer();
+  if (!hasSession) {
     showLoginModal();
+  } else if (loginModalState.isOpen) {
+    hideLoginModal();
   }
   
   // Verificación periódica
-  loginModalState.checkInterval = setInterval(() => {
-    if (!checkUserSession() && !loginModalState.isOpen) {
+  loginModalState.checkInterval = setInterval(async () => {
+    const stillAuthenticated = await syncSessionFromServer();
+    if (!stillAuthenticated && !loginModalState.isOpen) {
       showLoginModal();
+    } else if (stillAuthenticated && loginModalState.isOpen) {
+      hideLoginModal();
     }
   }, LOGIN_MODAL_CONFIG.AUTO_CHECK_INTERVAL);
 }
@@ -372,11 +429,7 @@ function requireUser(callback, errorMessage = 'Debes iniciar sesión para realiz
 
 // Función para obtener el usuario actual
 function getCurrentUser() {
-  try {
-    return JSON.parse(localStorage.getItem('usuarioSGA'));
-  } catch {
-    return null;
-  }
+  return currentSessionUser;
 }
 
 // Función para cerrar sesión
@@ -385,7 +438,7 @@ async function logoutUser() {
     await fetch('/api/logout', { method: 'POST' });
 
     // Limpiar localStorage
-    localStorage.removeItem('usuarioSGA');
+    setSessionUser(null);
     
     // Detener verificación automática
     stopSessionCheck();
@@ -404,7 +457,10 @@ async function logoutUser() {
     
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
-    alert('Error al cerrar sesión');
+    const translatedError = window.GlobalHeader && window.GlobalHeader.translate
+      ? window.GlobalHeader.translate('auth.logout_error')
+      : 'Error al cerrar sesión';
+    alert(translatedError);
   }
 }
 
@@ -419,12 +475,105 @@ function createUserWidget() {
   updateUserWidget();
 }
 
+function resetOutlookConnectionState() {
+  outlookConnectionState = {
+    checked: false,
+    connected: false,
+    mailbox: '',
+    disconnectUrl: '/api/outlook/disconnect'
+  };
+}
+
+async function refreshOutlookConnectionState() {
+  const user = getCurrentUser();
+  if (!user || !user.nombre) {
+    resetOutlookConnectionState();
+    return outlookConnectionState;
+  }
+
+  try {
+    const response = await fetch('/api/outlook/status', { credentials: 'same-origin' });
+    if (response.status === 401) {
+      resetOutlookConnectionState();
+      return outlookConnectionState;
+    }
+
+    const result = await response.json();
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'No se pudo consultar el estado de Outlook');
+    }
+
+    outlookConnectionState = {
+      checked: true,
+      connected: !!result.connected,
+      mailbox: result.mailbox || result.account?.username || '',
+      disconnectUrl: result.disconnect_url || '/api/outlook/disconnect'
+    };
+  } catch (error) {
+    console.warn('No se pudo consultar el estado de Outlook:', error);
+    outlookConnectionState = {
+      ...outlookConnectionState,
+      checked: true,
+      connected: false,
+      mailbox: ''
+    };
+  }
+
+  return outlookConnectionState;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getOutlookWidgetMarkup(translate) {
+  if (!outlookConnectionState.checked || !outlookConnectionState.connected) {
+    return `
+      <button class="outlook-connect-btn"
+              type="button"
+              onclick="LoginModal.connectOutlook()"
+              title="${translate('auth.outlook_connect_tooltip')}"
+              aria-label="${translate('auth.outlook_connect_tooltip')}"
+              data-translate-key="auth.outlook_connect_button"
+              data-translate-key-title="auth.outlook_connect_tooltip"
+              data-translate-key-aria-label="auth.outlook_connect_tooltip">
+        ${translate('auth.outlook_connect_button')}
+      </button>
+    `;
+  }
+
+  const mailbox = escapeHtml(outlookConnectionState.mailbox || translate('auth.outlook_connected_badge'));
+  return `
+    <span class="outlook-connected-badge" title="${mailbox}" aria-label="${mailbox}">
+      ${translate('auth.outlook_connected_badge')}: ${mailbox}
+    </span>
+    <button class="outlook-disconnect-btn"
+            type="button"
+            onclick="LoginModal.disconnectOutlook()"
+            title="${translate('auth.outlook_disconnect_tooltip')}"
+            aria-label="${translate('auth.outlook_disconnect_tooltip')}"
+            data-translate-key="auth.outlook_disconnect_button"
+            data-translate-key-title="auth.outlook_disconnect_tooltip"
+            data-translate-key-aria-label="auth.outlook_disconnect_tooltip">
+      ${translate('auth.outlook_disconnect_button')}
+    </button>
+  `;
+}
+
 // Función para actualizar el widget de usuario
 function updateUserWidget() {
   const container = document.getElementById('loginWidgetContainer');
   if (!container) return;
   
   const user = getCurrentUser();
+  const translate = window.GlobalHeader && window.GlobalHeader.translate
+    ? window.GlobalHeader.translate
+    : (key) => key;
   
   if (user && user.nombre) {
     container.innerHTML = `
@@ -436,15 +585,64 @@ function updateUserWidget() {
             </svg>
         </span>
         <span class="user-name">${user.nombre}</span>
-        <button class="logout-btn" onclick="LoginModal.logout()" title="Cerrar Sesión">
-          Salir
+        <span class="outlook-connection-slot">${getOutlookWidgetMarkup(translate)}</span>
+        <button class="logout-btn"
+                onclick="LoginModal.logout()"
+                title="${translate('auth.logout_tooltip')}"
+                aria-label="${translate('auth.logout_tooltip')}"
+                data-translate-key="auth.logout_button"
+                data-translate-key-title="auth.logout_tooltip"
+                data-translate-key-aria-label="auth.logout_tooltip">
+          ${translate('auth.logout_button')}
         </button>
       </div>
     `;
     container.style.display = 'flex';
+
+    if (window.GlobalHeader && window.GlobalHeader.translatePage) {
+      window.GlobalHeader.translatePage();
+    }
+
+    if (!outlookConnectionState.checked) {
+      refreshOutlookConnectionState().then(() => {
+        const latestUser = getCurrentUser();
+        if (latestUser && latestUser.nombre) {
+          updateUserWidget();
+        }
+      });
+    }
   } else {
+    resetOutlookConnectionState();
     container.innerHTML = '';
     container.style.display = 'none';
+  }
+}
+
+function connectOutlook() {
+  window.location.href = '/auth/outlook/login';
+}
+
+async function disconnectOutlook() {
+  const translate = window.GlobalHeader && window.GlobalHeader.translate
+    ? window.GlobalHeader.translate
+    : (key) => key;
+
+  try {
+    const response = await fetch(outlookConnectionState.disconnectUrl || '/api/outlook/disconnect', {
+      method: 'POST',
+      credentials: 'same-origin'
+    });
+    const result = await response.json();
+
+    if (!response.ok || result.success === false) {
+      throw new Error(result.message || 'No se pudo desconectar Outlook');
+    }
+
+    resetOutlookConnectionState();
+    updateUserWidget();
+  } catch (error) {
+    console.error('Error al desconectar Outlook:', error);
+    alert(error.message || translate('auth.outlook_disconnect_error'));
   }
 }
 
@@ -508,6 +706,57 @@ function createUserWidgetStyles() {
     .logout-btn:active {
       transform: translateY(0);
     }
+
+    .outlook-connection-slot {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .outlook-connect-btn,
+    .outlook-disconnect-btn {
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .outlook-connect-btn {
+      background: #1f7a45;
+      color: white;
+    }
+
+    .outlook-connect-btn:hover,
+    .outlook-disconnect-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .outlook-disconnect-btn {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .outlook-connected-badge {
+      display: inline-flex;
+      align-items: center;
+      max-width: 190px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border-radius: 999px;
+      padding: 4px 10px;
+      background: rgba(31, 122, 69, 0.22);
+      border: 1px solid rgba(104, 211, 145, 0.35);
+      font-size: 12px;
+      color: #e8fff1;
+    }
     
     /* Responsive para móviles */
     @media (max-width: 768px) {
@@ -524,11 +773,29 @@ function createUserWidgetStyles() {
         padding: 2px 6px;
         font-size: 11px;
       }
+
+      .outlook-connect-btn,
+      .outlook-disconnect-btn,
+      .outlook-connected-badge {
+        font-size: 11px;
+      }
+
+      .outlook-connected-badge {
+        max-width: 110px;
+      }
     }
   `;
   
   document.head.appendChild(styles);
 }
+
+  window.addEventListener('languageChanged', () => {
+    if (loginModalState.isOpen && window.GlobalHeader && window.GlobalHeader.translatePage) {
+      window.GlobalHeader.translatePage();
+    }
+
+    updateUserWidget();
+  });
 
 // API pública del módulo
 window.LoginModal = {
@@ -539,6 +806,8 @@ window.LoginModal = {
   requireUser: requireUser,
   getCurrentUser: getCurrentUser,
   logout: logoutUser,
+  connectOutlook: connectOutlook,
+  disconnectOutlook: disconnectOutlook,
   
   // Inicialización manual (para uso desde globalHeader.js)
   init: function() {

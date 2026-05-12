@@ -3,7 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    (function () {
+      const aliases = { es: 'es', en: 'en', cs: 'cs', cz: 'cs' };
+      let lang = 'es';
+      try {
+        const saved = localStorage.getItem('language') || localStorage.getItem('appLanguage');
+        const browser = navigator.language ? navigator.language.split('-')[0] : 'es';
+        lang = aliases[String(saved || browser || 'es').toLowerCase()] || 'es';
+      } catch {
+        lang = 'es';
+      }
+      document.documentElement.lang = lang;
+      document.documentElement.dataset.language = lang;
+    })();
+  </script>
   <title>{% block title %}Presupuestos{% endblock %}</title>
+  <script id="pageI18nConfig" type="application/json">{"title": {{ self.title()|striptags|trim|tojson }}, "titleKey": {{ self.app_header_title_key()|striptags|trim|tojson }}}</script>
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/Logo_EMESA.png') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='css/ofertas.css') }}" />
@@ -11,7 +27,8 @@
 </head>
 <body>
   {% block body %}{% endblock %}
-  <script src="{{ url_for('static', filename='js/globalHeader.js') }}" data-title="{% block app_header_title %}Presupuestos{% endblock %}"></script>
+  <script src="{{ url_for('static', filename='js/i18n.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/globalHeader.js') }}" data-title="{% block app_header_title %}Presupuestos{% endblock %}" data-title-key="{% block app_header_title_key %}{% endblock %}"></script>
   <script src="{{ url_for('static', filename='js/navigationManager.js') }}"></script>
   <script src="{{ url_for('static', filename='js/ofertas.js') }}"></script>
 </body>

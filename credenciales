@@ -1,0 +1,54 @@
+Nombre para mostrar
+:
+Offers SCCZ
+ 
+Id. de aplicación (cliente)
+:
+93fd266f-337a-4cc1-87df-aa55e5a637f9
+ 
+ 
+Identificador de objeto
+:
+06245dce-4399-4223-9461-ded9956e8511
+ 
+ 
+Id. de directorio (inquilino)
+:
+69181b66-5af0-4bb7-a76d-6f904c038b59
+ 
+ 
+Tipos de cuenta compatibles
+:
+Solo mi organización
+ 
+Credenciales de cliente
+:
+Agregar un certificado o secreto
+ 
+URI de redirección
+:
+2 web, 0 SPA, 0 cliente público
+ 
+URI de id. de aplicación
+:
+Agregar un URI de id. de aplicación
+ 
+Aplicación administrada en directorio local
+:
+Offers SCCZ
+ 
+ 
+Microsoft Azure
+ 
+Estos son los datos de tu app
+ 
+para cuando metas Oauth, tendrás que coger estos tennant y demás datos que tienes por ahi en algún .env
+ 
+cualquier duda, me dices
+ 
+okey
+ 
+Valor de secreto: 7S48Q~1-qizHbB6DNkLS74tjjtgIZaA6trBRzdBP
+ 
+ID de secreto: a1983670-ed9a-4126-8830-d39c28fa87f7
+ 

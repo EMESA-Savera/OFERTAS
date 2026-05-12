@@ -1,0 +1,36 @@
+{
+  "default": "📌",
+  "choices": [
+    { "emoji": "📌", "label": "General" },
+    { "emoji": "🕒", "label": "Pendiente" },
+    { "emoji": "⏳", "label": "En espera" },
+    { "emoji": "🛠️", "label": "Tecnico" },
+    { "emoji": "💼", "label": "Ventas" },
+    { "emoji": "🛒", "label": "Compras" },
+    { "emoji": "📤", "label": "Enviada" },
+    { "emoji": "📦", "label": "Pedido" },
+    { "emoji": "📞", "label": "Seguimiento" },
+    { "emoji": "🤝", "label": "Negociacion" },
+    { "emoji": "💶", "label": "Presupuesto" },
+    { "emoji": "⛔", "label": "Anulada" },
+    { "emoji": "✅", "label": "Completada" },
+    { "emoji": "🔍", "label": "Revision" },
+    { "emoji": "💬", "label": "Cliente" }
+  ],
+  "rules": [
+    { "emoji": "🛠️", "keywords": ["tecn", "soporte", "ingenier", "revision tecnica"] },
+    { "emoji": "💼", "keywords": ["venta", "ventas", "comercial", "oportunidad", "crm"] },
+    { "emoji": "🛒", "keywords": ["compra", "proveedor", "suministro", "adquisicion"] },
+    { "emoji": "📤", "keywords": ["envi", "enviado", "enviada", "emitida", "mandada"] },
+    { "emoji": "📦", "keywords": ["pedido", "orden", "order", "compra realizada"] },
+    { "emoji": "📞", "keywords": ["seguimiento", "llamada", "contacto", "contactar", "callback"] },
+    { "emoji": "🤝", "keywords": ["negoci", "acuerdo", "cierre", "reunion comercial"] },
+    { "emoji": "💶", "keywords": ["presupuesto", "precio", "importe", "tarifa", "coste"] },
+    { "emoji": "⛔", "keywords": ["anulad", "cancel", "rechaz", "cerrad"] },
+    { "emoji": "✅", "keywords": ["aceptad", "aprob", "ok", "complet", "finaliz"] },
+    { "emoji": "🔍", "keywords": ["revision", "analisis", "estudio", "validacion"] },
+    { "emoji": "💬", "keywords": ["cliente", "espera cliente", "respuesta"] },
+    { "emoji": "🕒", "keywords": ["pend", "cola", "backlog"] },
+    { "emoji": "⏳", "keywords": ["espera", "bloqueado", "hold", "pausa"] }
+  ]
+}
