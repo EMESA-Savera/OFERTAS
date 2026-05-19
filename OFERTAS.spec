@@ -26,7 +26,7 @@ datas += collect_tree("templates", "templates")
 datas += collect_tree("static", "static")
 datas += collect_tree("sql", "sql")
 
-for single_file in ("requirements.txt", ".env", ".env.example", "README.md"):
+for single_file in ("requirements.txt", ".env", ".env.production", ".env.example", "README.md"):
     file_path = project_root / single_file
     if file_path.exists():
         datas.append((str(file_path), "."))

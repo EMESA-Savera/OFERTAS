@@ -22,7 +22,7 @@ def collect_tree(source, target):
 
 
 datas = []
-for source_dir in ("templates", "static", "sql", "docs", "skills", "tools"):
+for source_dir in ("templates", "static", "sql", "docs", "skills", "tools", "certificados_ofertas", "Instalaccion_Manual_CA_Windows"):
     datas += collect_tree(source_dir, source_dir)
 
 for single_file in ("requirements.txt", ".env.production", ".env.example", "README.md"):
@@ -69,7 +69,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,

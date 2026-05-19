@@ -22,6 +22,31 @@ CREATE TABLE [ofertas].[listado_ofertas](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
+/****** Object:  Table [ofertas].[oferta_correos_importados]    Script Date: 30/04/2026 11:23:53 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ofertas].[oferta_correos_importados](
+	[id_correo_importado] [int] IDENTITY(1,1) NOT NULL,
+	[id_oferta] [int] NOT NULL,
+	[source_type] [nvarchar](32) NULL,
+	[conversation_id] [nvarchar](255) NULL,
+	[internet_message_id] [nvarchar](512) NULL,
+	[in_reply_to_message_id] [nvarchar](512) NULL,
+	[reference_message_ids_json] [nvarchar](max) NULL,
+	[subject] [nvarchar](500) NULL,
+	[sender_name] [nvarchar](255) NULL,
+	[sender_email] [nvarchar](255) NULL,
+	[received_at] [datetime2](0) NULL,
+	[body_sha256] [char](64) NULL,
+	[fecha_registro] [datetime2](0) NOT NULL,
+ CONSTRAINT [pk_oferta_correos_importados] PRIMARY KEY CLUSTERED 
+(
+	[id_correo_importado] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
 /****** Object:  Table [ofertas].[oferta_interacciones]    Script Date: 30/04/2026 11:23:53 ******/
 SET ANSI_NULLS ON
 GO

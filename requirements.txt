@@ -8,3 +8,4 @@ msal>=1.31,<2.0
 requests>=2.31,<3.0
 msal>=1.30,<2.0
 requests>=2.31,<3.0
+truststore>=0.10,<1.0

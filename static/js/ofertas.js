@@ -54,6 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const userNombreInput = document.getElementById('user_nombre');
   const userEmailInput = document.getElementById('user_email');
   const addDepartmentButton = document.getElementById('addDepartmentButton');
+  const departmentCreatePrompt = document.getElementById('departmentCreatePrompt');
+  const departmentCreatePromptInput = document.getElementById('departmentCreatePromptInput');
+  const departmentCreatePromptFeedback = document.getElementById('departmentCreatePromptFeedback');
+  const departmentCreatePromptConfirm = document.getElementById('departmentCreatePromptConfirm');
   const userRoleSelect = document.getElementById('user_rol');
   const userDepartamentosSelect = document.getElementById('user_departamentos');
   const estadoCreateForm = document.getElementById('estadoCreateForm');
@@ -86,6 +90,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ofertasListadoDescription = document.getElementById('ofertasListadoDescription');
   const ofertasListadoTableBody = document.getElementById('ofertasListadoTableBody');
   const ofertasListadoFeedback = document.getElementById('ofertasListadoFeedback');
+  const offerDeletePrompt = document.getElementById('offerDeletePrompt');
+  const offerDeletePromptMessage = document.getElementById('offerDeletePromptMessage');
+  const offerDeletePromptPassword = document.getElementById('offerDeletePromptPassword');
+  const offerDeletePromptFeedback = document.getElementById('offerDeletePromptFeedback');
+  const offerDeletePromptConfirm = document.getElementById('offerDeletePromptConfirm');
+  const offerReassignPrompt = document.getElementById('offerReassignPrompt');
+  const offerReassignPromptMessage = document.getElementById('offerReassignPromptMessage');
+  const offerReassignPromptDepartment = document.getElementById('offerReassignPromptDepartment');
+  const offerReassignPromptUser = document.getElementById('offerReassignPromptUser');
+  const offerReassignPromptFeedback = document.getElementById('offerReassignPromptFeedback');
+  const offerReassignPromptConfirm = document.getElementById('offerReassignPromptConfirm');
+  const offerCenterModal = document.getElementById('offerCenterModal');
+  const offerCenterRoot = document.getElementById('offerCenterRoot');
+  const offerCenterFeedback = document.getElementById('offerCenterFeedback');
+  const offerCenterAttachmentInput = document.getElementById('offerCenterAttachmentInput');
+  const offerCenterHistoryModal = document.getElementById('offerCenterHistoryModal');
+  const offerCenterChatPanel = document.getElementById('offerCenterChatPanel');
+  const offerCenterChatTitle = document.getElementById('offerCenterChatTitle');
+  const offerCenterChatMessages = document.getElementById('offerCenterChatMessages');
+  const offerCenterChatForm = document.getElementById('offerCenterChatForm');
+  const offerCenterChatInput = document.getElementById('offerCenterChatInput');
+  const offerCenterChatSubmit = document.getElementById('offerCenterChatSubmit');
+  const offerAttachmentPreviewModal = document.getElementById('offerAttachmentPreviewModal');
+  const offerAttachmentPreviewTitle = document.getElementById('offerAttachmentPreviewTitle');
+  const offerAttachmentPreviewMeta = document.getElementById('offerAttachmentPreviewMeta');
+  const offerAttachmentPreviewActions = document.getElementById('offerAttachmentPreviewActions');
+  const offerAttachmentPreviewBody = document.getElementById('offerAttachmentPreviewBody');
+  const offerAttachmentsGalleryModal = document.getElementById('offerAttachmentsGalleryModal');
+  const offerAttachmentsGalleryBody = document.getElementById('offerAttachmentsGalleryBody');
+  const offerCenterHeroTitle = document.getElementById('offerCenterHeroTitle');
+  const offerCenterHeroMeta = document.getElementById('offerCenterHeroMeta');
+  const offerCenterHeroBadges = document.getElementById('offerCenterHeroBadges');
+  const offerCenterEmailGrid = document.getElementById('offerCenterEmailGrid');
+  const offerCenterHistory = document.getElementById('offerCenterHistory');
   const ofertaEditModal = document.getElementById('ofertaEditModal');
   const ofertaEditForm = document.getElementById('ofertaEditForm');
   const ofertaEditFeedback = document.getElementById('ofertaEditFeedback');
@@ -178,12 +216,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   let availableOfferColumns = [];
   let currentOfferColumnsConfig = [];
   let editingConfigId = null;
+  let offerDeletePromptResolver = null;
+  let offerDeletePromptPreviousFocus = null;
+  let offerReassignPromptResolver = null;
+  let offerReassignPromptPreviousFocus = null;
+  let departmentCreatePromptResolver = null;
+  let departmentCreatePromptPreviousFocus = null;
+  let pendingOfferReassignContext = null;
   let skipConfigAutoSaveId = null;
   let selectedEstadoId = '';
   let currentViewName = 'nueva-oferta';
   let currentListadoContext = { viewName: 'todos', estadoId: null, label: 'Todos' };
   let currentOfertaEstadoId = null;
   let currentOfertaEstadoInteracciones = [];
+  let currentOfferCenterOferta = null;
+  let offerCenterReturnContext = null;
+  let currentOfferChatMessages = [];
+  let currentOfferAttachmentPreview = null;
+  let offerAttachmentPreviewReturnToGallery = false;
+  let importedEmailAttachmentToken = null;
+  let importedEmailMetadata = null;
   let pendingOfertaEtcPayload = null;
   let savedOfertaContext = null;
   let currentAuthenticatedUser = null;
@@ -196,6 +248,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let currentBomMaterial = null;
   const expandedTableCells = new Set();
   const ACTION_COLUMN_VISIBILITY_KEY = 'ofertasActionColumnVisibility';
+  const INLINE_ATTACHMENT_CARD_LIMIT = 4;
   const OPTIONAL_ACTION_KEYS = Object.freeze(['edit', 'bom']);
   const DEFAULT_ACTION_COLUMN_VISIBILITY = Object.freeze({
     visible: ['edit', 'bom'],
@@ -208,19 +261,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   let draggedActionConfigKey = null;
   let actionConfigPopup = null;
   let actionConfigPopupAnchor = null;
+  const GLOBAL_CONFIG_SCOPE_ID = '-1';
   const tableStates = {
-    ofertas: { filters: {}, sortKey: 'numero_oferta', sortDirection: 'asc' },
-    clientes: { filters: {}, sortKey: null, sortDirection: 'asc' },
-    proyectos: { filters: {}, sortKey: null, sortDirection: 'asc' },
-    usuarios: { filters: {}, sortKey: 'num_operario', sortDirection: 'asc' },
-    estados: { filters: {}, sortKey: 'orden', sortDirection: 'asc' },
-    configColumnas: { filters: {}, sortKey: 'orden_columna', sortDirection: 'asc' },
+    ofertas: { filters: {}, sortKey: 'numero_oferta', sortDirection: 'asc', quickFiltersOpen: false },
+    clientes: { filters: {}, sortKey: null, sortDirection: 'asc', quickFiltersOpen: false },
+    proyectos: { filters: {}, sortKey: null, sortDirection: 'asc', quickFiltersOpen: false },
+    usuarios: { filters: {}, sortKey: 'num_operario', sortDirection: 'asc', quickFiltersOpen: false },
+    estados: { filters: {}, sortKey: 'orden', sortDirection: 'asc', quickFiltersOpen: false },
+    configColumnas: { filters: {}, sortKey: 'orden_columna', sortDirection: 'asc', quickFiltersOpen: false },
   };
   const tableDefinitions = {
     ofertas: {
       tableElement: () => ofertasListadoTableBody?.closest('table'),
       getColumns: () => {
-        const configuredColumns = currentListadoContext.estadoId && currentOfferColumnsConfig.length
+        const configuredColumns = currentOfferColumnsConfig.length
           ? currentOfferColumnsConfig.map((config) => ({
               key: config.columna,
               label: getConfiguredOfferColumnLabel(config),
@@ -237,6 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ];
 
         return [
+          { key: 'vista', label: '', sortable: false, searchable: false },
           ...configuredColumns,
           { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
         ];
@@ -245,7 +300,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     clientes: {
       tableElement: () => clientesTableBody?.closest('table'),
       columns: [
-        { key: 'id_cliente', label: 'ID', sortable: true, searchable: true },
+        { key: 'id_cliente', label: t('literal.table.id', 'ID'), sortable: true, searchable: true },
         { key: 'descripcion_cliente', label: t('table.client_description', 'Descripción cliente'), sortable: true, searchable: true },
         { key: 'dominio', label: t('config.domain', 'Dominio'), sortable: true, searchable: true },
         { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
@@ -254,19 +309,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     proyectos: {
       tableElement: () => proyectosTableBody?.closest('table'),
       columns: [
-        { key: 'id_proyecto', label: 'ID', sortable: true, searchable: true },
-        { key: 'descripcion_proyecto', label: 'Descripción proyecto', sortable: true, searchable: true },
+        { key: 'id_proyecto', label: t('literal.table.id', 'ID'), sortable: true, searchable: true },
+        { key: 'descripcion_proyecto', label: t('literal.projects.project_description', 'Descripción proyecto'), sortable: true, searchable: true },
         { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
     usuarios: {
       tableElement: () => usuariosTableBody?.closest('table'),
       columns: [
-        { key: 'num_operario', label: 'Nº operario', sortable: true, searchable: true },
-        { key: 'nombre', label: 'Nombre', sortable: true, searchable: true },
-        { key: 'email', label: 'Email', sortable: true, searchable: true },
-        { key: 'rol', label: 'Rol', sortable: true, searchable: true },
-        { key: 'departamentos', label: 'Departamentos', sortable: true, searchable: true },
+        { key: 'num_operario', label: t('literal.users.operator_number', 'Nº operario'), sortable: true, searchable: true },
+        { key: 'nombre', label: t('literal.users.name', 'Nombre'), sortable: true, searchable: true },
+        { key: 'email', label: t('literal.users.email', 'Email'), sortable: true, searchable: true },
+        { key: 'rol', label: t('literal.users.role', 'Rol'), sortable: true, searchable: true },
+        { key: 'departamentos', label: t('literal.users.departments', 'Departamentos'), sortable: true, searchable: true },
         { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
@@ -370,6 +425,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       return t('common.edit', 'Editar');
     }
     return 'BOM';
+  };
+
+  const isGlobalConfigScope = (estadoId) => String(estadoId) === GLOBAL_CONFIG_SCOPE_ID;
+
+  const getVisibleEstados = (estados = estadosCache) => estados.filter((estado) => !isGlobalConfigScope(estado?.id_estado));
+
+  const getListadoConfigScopeId = (estadoId) => (estadoId == null ? GLOBAL_CONFIG_SCOPE_ID : String(estadoId));
+
+  const isConfigScopeActiveForCurrentListado = (estadoId) => {
+    if (currentViewName !== 'todos' && !currentViewName.startsWith('estado-')) {
+      return false;
+    }
+
+    return String(estadoId) === getListadoConfigScopeId(currentListadoContext.estadoId);
   };
 
   const renderActionConfigChip = (actionKey, { locked = false } = {}) => {
@@ -561,13 +630,92 @@ document.addEventListener('DOMContentLoaded', async () => {
       <button class="btn-inline btn-inline--save btn-inline--compact" type="button" data-change-estado-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.change_status_aria', 'Cambiar estado de la oferta {number}', { number: offerNumber }))}">${escapeHtml(t('table.status', 'Estado'))}</button>
     `);
 
+    if (canReassignOffer(oferta)) {
+      buttons.push(`
+        <button class="btn-inline btn-inline--compact" type="button" data-reassign-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.reassign_aria', 'Reasignar la oferta {number}', { number: offerNumber }))}">${escapeHtml(t('offer.reassign', 'Reasignar'))}</button>
+      `);
+    }
+
     if (isActionVisible('bom')) {
       buttons.push(`
         <button class="btn-inline btn-inline--compact" type="button" data-bom-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.bom_aria', 'Abrir BOM de la oferta {number}', { number: offerNumber }))}">BOM</button>
       `);
     }
 
+    if (currentViewName === 'todos' && isManagerUser()) {
+      buttons.push(`
+        <button class="btn-inline btn-inline--delete btn-inline--compact" type="button" data-delete-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.delete_aria', 'Eliminar oferta {number}', { number: offerNumber }))}">${escapeHtml(t('common.delete', 'Eliminar'))}</button>
+      `);
+    }
+
     return buttons.join('');
+  };
+
+  const renderOfertaViewButton = (oferta) => {
+    const offerNumber = oferta.numero_oferta || oferta.id_oferta;
+    const unreadBadge = renderUnreadBadge(oferta?.chat_unread_count, 'chat-unread-badge--icon');
+    return `
+      <button class="btn-inline btn-inline--compact btn-inline--icon${unreadBadge ? ' btn-inline--with-badge' : ''}" type="button" data-view-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.view_center_aria', 'Abrir centro de la oferta {number}', { number: offerNumber }))}" title="${escapeHtml(tf('offer.view_center', 'Ver oferta {number}', { number: offerNumber }))}">
+        <span aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
+            <path d="M1.5 12s3.8-6.5 10.5-6.5S22.5 12 22.5 12s-3.8 6.5-10.5 6.5S1.5 12 1.5 12Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+            <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"></circle>
+          </svg>
+        </span>
+        ${unreadBadge}
+      </button>
+    `;
+  };
+
+  const normalizeUnreadCount = (value) => {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) && numericValue > 0 ? Math.floor(numericValue) : 0;
+  };
+
+  const formatUnreadBadgeCount = (value) => {
+    const unreadCount = normalizeUnreadCount(value);
+    if (!unreadCount) {
+      return '';
+    }
+
+    return unreadCount > 99 ? '99+' : String(unreadCount);
+  };
+
+  const renderUnreadBadge = (value, className = '') => {
+    const label = formatUnreadBadgeCount(value);
+    if (!label) {
+      return '';
+    }
+
+    return `<span class="chat-unread-badge${className ? ` ${className}` : ''}">${escapeHtml(label)}</span>`;
+  };
+
+  const syncOfferChatUnreadState = ({ ofertaId, unreadCount }) => {
+    const normalizedOfertaId = Number(ofertaId);
+    const normalizedUnreadCount = normalizeUnreadCount(unreadCount);
+    if (!normalizedOfertaId) {
+      return;
+    }
+
+    ofertasListadoCache = ofertasListadoCache.map((item) => Number(item.id_oferta) === normalizedOfertaId
+      ? {
+        ...item,
+        chat_unread_count: normalizedUnreadCount,
+        chat_has_unread: normalizedUnreadCount > 0,
+      }
+      : item);
+
+    if (currentOfferCenterOferta && Number(currentOfferCenterOferta.id_oferta) === normalizedOfertaId) {
+      currentOfferCenterOferta = {
+        ...currentOfferCenterOferta,
+        chat_unread_count: normalizedUnreadCount,
+        chat_has_unread: normalizedUnreadCount > 0,
+      };
+
+      renderOfferCenterEmail(currentOfferCenterOferta);
+    }
+
+    renderOfertasListado(ofertasListadoCache);
   };
 
   const moveActionConfigItem = (actionKey, targetZone) => {
@@ -687,24 +835,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     return labelMap[columnName]?.() || fallbackLabel || columnName;
   }
 
+  function normalizeConfiguredColumnLabel(value) {
+    return String(value || '')
+      .trim()
+      .toLocaleLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  function getOfferColumnSystemAliases(columnName) {
+    const aliasMap = {
+      id_oferta: ['id oferta'],
+      estado: ['estado', 'stav', 'status'],
+      fecha_email: ['fecha e-mail', 'fecha email', 'datum e-mailu', 'email date'],
+      fecha_alta_oferta: ['fecha alta', 'fecha alta oferta', 'fecha creación', 'fecha creacion', 'datum vytvoreni', 'datum vytvoreni nabidky', 'created date'],
+      fecha_limite: ['fecha limite', 'fecha límite', 'termin', 'deadline'],
+      numero_oferta: ['nº oferta', 'no oferta', 'numero oferta', 'número oferta', 'cislo nabidky', 'quote no'],
+      ref_cliente_asunto_email: ['asunto', 'ref. cliente / asunto e-mail', 'ref cliente / asunto e-mail', 'ref. zakaznika / predmet e-mailu', 'client ref / email subject'],
+      cliente: ['cliente', 'zakaznik', 'customer'],
+      emisor: ['emisor', 'odesilatel', 'sender'],
+      observaciones_oferta: ['observaciones', 'observaciones oferta', 'poznamky', 'poznamky k nabidce', 'offer notes', 'notes'],
+      tipo_interaccion: ['cambio estado', 'cambio de estado', 'tipos interaccion', 'tipos interacción', 'typy interakci', 'interaction types'],
+      fecha_interaccion: ['fechas interaccion', 'fechas interacción', 'data interakci', 'interaction dates'],
+      observaciones_interaccion: ['comentarios', 'comentario', 'observaciones interaccion', 'observaciones interacción', 'poznamky interakci', 'interaction notes'],
+    };
+
+    return aliasMap[columnName] || [];
+  }
+
+  function getConfiguredOfferColumnLabelOverride(columnName, configuredLabel) {
+    const normalizedConfigured = normalizeConfiguredColumnLabel(configuredLabel);
+    const overrideMap = {
+      ref_cliente_asunto_email: {
+        asunto: t('table.subject', 'Asunto'),
+      },
+      observaciones_oferta: {
+        comentario: t('table.comments', 'Comentarios'),
+        comentarios: t('table.comments', 'Comentarios'),
+      },
+      tipo_interaccion: {
+        'cambio estado': t('table.status_change', 'Cambio estado'),
+        'cambio de estado': t('table.status_change', 'Cambio estado'),
+      },
+      observaciones_interaccion: {
+        comentario: t('table.comments', 'Comentarios'),
+        comentarios: t('table.comments', 'Comentarios'),
+      },
+    };
+
+    return overrideMap[columnName]?.[normalizedConfigured] || null;
+  }
+
   function shouldTranslateConfiguredLabel(columnName, configuredLabel) {
     if (!configuredLabel) {
       return true;
     }
 
-    const normalizedConfigured = String(configuredLabel).trim().toLocaleLowerCase();
+    const normalizedConfigured = normalizeConfiguredColumnLabel(configuredLabel);
     const candidates = [
       columnName,
       getOfferColumnLabel(columnName, columnName),
       availableOfferColumns.find((column) => column.value === columnName)?.label,
+      ...getOfferColumnSystemAliases(columnName),
     ].filter(Boolean);
 
-    return candidates.some((candidate) => String(candidate).trim().toLocaleLowerCase() === normalizedConfigured);
+    return candidates.some((candidate) => normalizeConfiguredColumnLabel(candidate) === normalizedConfigured);
   }
 
   function getConfiguredOfferColumnLabel(config) {
     if (!config) {
       return '';
+    }
+
+    const configuredLabelOverride = getConfiguredOfferColumnLabelOverride(config.columna, config.descripcion_columna);
+    if (configuredLabelOverride) {
+      return configuredLabelOverride;
     }
 
     if (shouldTranslateConfiguredLabel(config.columna, config.descripcion_columna)) {
@@ -726,6 +931,57 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     return stateMap[normalized] || label;
+  }
+
+  function translateDepartmentLabel(label) {
+    const normalized = String(label || '').trim().toLocaleLowerCase();
+    const departmentMap = {
+      administracion: t('department.administration', 'Administración'),
+      administración: t('department.administration', 'Administración'),
+      tecnico: t('department.technical', 'Técnico'),
+      técnico: t('department.technical', 'Técnico'),
+      compras: t('department.purchasing', 'Compras'),
+      prueba: t('department.test', 'Prueba'),
+    };
+
+    return departmentMap[normalized] || label;
+  }
+
+  function translateRoleLabel(label) {
+    const normalized = String(label || '').trim().toLocaleLowerCase();
+    const roleMap = {
+      manager: t('role.manager', 'Manager'),
+      estandar: t('role.standard', 'Estandar'),
+      estándar: t('role.standard', 'Estandar'),
+      standard: t('role.standard', 'Standard'),
+    };
+
+    return roleMap[normalized] || label;
+  }
+
+  function translateInteractionTypeLabel(label) {
+    const normalized = normalizeConfiguredColumnLabel(label);
+    const typeMap = {
+      reasignacion: t('crm.reassignment', 'Reasignación'),
+    };
+
+    return typeMap[normalized] || label;
+  }
+
+  function translateInteractionSummary(value) {
+    return String(value || '')
+      .split('|')
+      .map((segment) => String(segment || '').trim())
+      .filter(Boolean)
+      .map((segment) => {
+        const transitionParts = segment.split(/\s*->\s*/).map((part) => String(part || '').trim()).filter(Boolean);
+        if (transitionParts.length === 2) {
+          return `${translateEstadoLabel(transitionParts[0])} -> ${translateEstadoLabel(transitionParts[1])}`;
+        }
+
+        return translateInteractionTypeLabel(segment);
+      })
+      .join(' | ');
   }
 
   function getSidebarStateIcon(label) {
@@ -802,10 +1058,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const emoji = String(choice.emoji || '').trim();
       const optionLabel = String(choice.label || emoji || 'Emoji').trim();
       const isSelected = emoji === normalizedSelectedValue;
-      return `
-        <button
-          class="estado-emoji-picker__option${isSelected ? ' is-selected' : ''}"
+      return `<button
           type="button"
+          class="estado-emoji-picker__option${isSelected ? ' is-selected' : ''}"
           data-emoji-option="${escapeHtml(emoji)}"
           aria-label="${escapeHtml(optionLabel)}"
           aria-pressed="${isSelected ? 'true' : 'false'}"
@@ -871,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   };
 
-  const getActiveEstados = () => estadosCache.filter((estado) => estado.activo !== false);
+  const getActiveEstados = () => getVisibleEstados(estadosCache).filter((estado) => estado.activo !== false);
 
   const loadStateEmojiSuggestions = async () => {
     if (stateEmojiSuggestionsPromise) {
@@ -914,6 +1169,270 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     element.textContent = '';
     element.className = 'form-feedback';
+  };
+
+  const OFFER_DELETE_CONFIRM_PASSWORD = '12345';
+
+  const renderOfferReassignUserOptions = ({ departmentId, selectedNumOperario = '' } = {}) => {
+    if (!offerReassignPromptUser) {
+      return [];
+    }
+
+    const users = getEtcResponsableUsers(departmentId);
+    const placeholder = users.length
+      ? t('offer.reassign_select_user', 'Selecciona un usuario')
+      : t('offer.reassign_no_users', 'No hay usuarios configurados en este departamento');
+
+    offerReassignPromptUser.innerHTML = [
+      `<option value="">${escapeHtml(placeholder)}</option>`,
+      ...users.map((usuario) => `<option value="${escapeHtml(usuario.num_operario)}">${escapeHtml(buildResponsableLabel(usuario))}</option>`),
+    ].join('');
+
+    offerReassignPromptUser.value = selectedNumOperario ? String(selectedNumOperario) : '';
+    offerReassignPromptUser.disabled = !users.length;
+    if (offerReassignPromptConfirm) {
+      offerReassignPromptConfirm.disabled = !users.length;
+    }
+
+    return users;
+  };
+
+  const closeOfferDeletePrompt = (confirmed = false) => {
+    if (!offerDeletePrompt) {
+      return confirmed;
+    }
+
+    offerDeletePrompt.classList.remove('is-visible');
+    offerDeletePrompt.setAttribute('aria-hidden', 'true');
+    if (offerDeletePromptMessage) {
+      offerDeletePromptMessage.textContent = '';
+    }
+    if (offerDeletePromptPassword) {
+      offerDeletePromptPassword.value = '';
+    }
+    clearGenericFeedback(offerDeletePromptFeedback);
+
+    const resolver = offerDeletePromptResolver;
+    offerDeletePromptResolver = null;
+
+    if (offerDeletePromptPreviousFocus && typeof offerDeletePromptPreviousFocus.focus === 'function') {
+      offerDeletePromptPreviousFocus.focus();
+    }
+    offerDeletePromptPreviousFocus = null;
+
+    if (resolver) {
+      resolver(confirmed);
+    }
+
+    return confirmed;
+  };
+
+  const confirmOfferDeletePrompt = () => {
+    if (!offerDeletePromptPassword) {
+      return closeOfferDeletePrompt(true);
+    }
+
+    if (offerDeletePromptPassword.value !== OFFER_DELETE_CONFIRM_PASSWORD) {
+      setGenericFeedback(offerDeletePromptFeedback, t('offer.delete_password_error', 'La contraseña de confirmación no es correcta.'), 'error');
+      offerDeletePromptPassword.focus();
+      offerDeletePromptPassword.select();
+      return false;
+    }
+
+    return closeOfferDeletePrompt(true);
+  };
+
+  const openOfferDeletePrompt = ({ offerNumber }) => {
+    if (!offerDeletePrompt || !offerDeletePromptMessage) {
+      return Promise.resolve(true);
+    }
+
+    if (offerDeletePromptResolver) {
+      closeOfferDeletePrompt(false);
+    }
+
+    offerDeletePromptPreviousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    offerDeletePromptMessage.textContent = tf('offer.delete_confirm', '¿Seguro que quieres eliminar la oferta {number}? Esta acción no se puede deshacer.', { number: offerNumber });
+    if (offerDeletePromptPassword) {
+      offerDeletePromptPassword.value = '';
+    }
+    clearGenericFeedback(offerDeletePromptFeedback);
+    offerDeletePrompt.classList.add('is-visible');
+    offerDeletePrompt.setAttribute('aria-hidden', 'false');
+
+    return new Promise((resolve) => {
+      offerDeletePromptResolver = resolve;
+      window.requestAnimationFrame(() => {
+        if (offerDeletePromptPassword) {
+          offerDeletePromptPassword.focus();
+        } else if (offerDeletePromptConfirm) {
+          offerDeletePromptConfirm.focus();
+        }
+      });
+    });
+  };
+
+  const closeOfferReassignPrompt = (result = null) => {
+    if (!offerReassignPrompt) {
+      return result;
+    }
+
+    offerReassignPrompt.classList.remove('is-visible');
+    offerReassignPrompt.setAttribute('aria-hidden', 'true');
+    if (offerReassignPromptMessage) {
+      offerReassignPromptMessage.textContent = '';
+    }
+    if (offerReassignPromptDepartment) {
+      offerReassignPromptDepartment.textContent = '';
+    }
+    if (offerReassignPromptUser) {
+      offerReassignPromptUser.innerHTML = `<option value="">${escapeHtml(t('offer.reassign_select_user', 'Selecciona un usuario'))}</option>`;
+      offerReassignPromptUser.disabled = false;
+    }
+    if (offerReassignPromptConfirm) {
+      offerReassignPromptConfirm.disabled = false;
+    }
+    clearGenericFeedback(offerReassignPromptFeedback);
+    pendingOfferReassignContext = null;
+
+    const resolver = offerReassignPromptResolver;
+    offerReassignPromptResolver = null;
+
+    if (offerReassignPromptPreviousFocus && typeof offerReassignPromptPreviousFocus.focus === 'function') {
+      offerReassignPromptPreviousFocus.focus();
+    }
+    offerReassignPromptPreviousFocus = null;
+
+    if (resolver) {
+      resolver(result);
+    }
+
+    return result;
+  };
+
+  const confirmOfferReassignPrompt = () => {
+    const selectedNumOperario = offerReassignPromptUser?.value ? Number(offerReassignPromptUser.value) : NaN;
+    if (!Number.isFinite(selectedNumOperario)) {
+      setGenericFeedback(offerReassignPromptFeedback, t('offer.reassign_user_required', 'Debes seleccionar un usuario para reasignar la oferta.'), 'error');
+      offerReassignPromptUser?.focus();
+      return null;
+    }
+
+    return closeOfferReassignPrompt({
+      numOperarioResponsable: selectedNumOperario,
+      oferta: pendingOfferReassignContext?.oferta || null,
+    });
+  };
+
+  const openOfferReassignPrompt = async ({ oferta }) => {
+    if (!offerReassignPrompt || !offerReassignPromptMessage || !offerReassignPromptUser) {
+      return null;
+    }
+
+    if (offerReassignPromptResolver) {
+      closeOfferReassignPrompt(null);
+    }
+
+    const departmentId = Number(oferta?.id_departamento_estado);
+    if (!Number.isFinite(departmentId)) {
+      throw new Error(t('offer.reassign_department_missing', 'La oferta no tiene un departamento válido para reasignación.'));
+    }
+
+    if (!usuariosCache.length) {
+      await loadUsuarios({ silent: true });
+    }
+
+    const users = renderOfferReassignUserOptions({ departmentId });
+    pendingOfferReassignContext = { oferta, departmentId };
+    offerReassignPromptPreviousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    offerReassignPromptMessage.textContent = tf('offer.reassign_confirm', 'Selecciona a qué usuario del departamento quieres reasignar la oferta {number}.', {
+      number: oferta?.numero_oferta || oferta?.id_oferta || '',
+    });
+    if (offerReassignPromptDepartment) {
+      const departmentName = users[0]?.nombre_departamento || t('offer.reassign_department_unknown', 'Departamento sin nombre');
+      offerReassignPromptDepartment.textContent = tf('offer.reassign_department_label', 'Departamento: {department}', { department: departmentName });
+    }
+    clearGenericFeedback(offerReassignPromptFeedback);
+    offerReassignPrompt.classList.add('is-visible');
+    offerReassignPrompt.setAttribute('aria-hidden', 'false');
+
+    return new Promise((resolve) => {
+      offerReassignPromptResolver = resolve;
+      window.requestAnimationFrame(() => {
+        if (users.length) {
+          offerReassignPromptUser.focus();
+        } else if (offerReassignPromptConfirm) {
+          offerReassignPromptConfirm.focus();
+        }
+      });
+    });
+  };
+
+  const closeDepartmentCreatePrompt = (value = null) => {
+    if (!departmentCreatePrompt) {
+      return value;
+    }
+
+    departmentCreatePrompt.classList.remove('is-visible');
+    departmentCreatePrompt.setAttribute('aria-hidden', 'true');
+    if (departmentCreatePromptInput) {
+      departmentCreatePromptInput.value = '';
+    }
+    if (departmentCreatePromptConfirm) {
+      departmentCreatePromptConfirm.disabled = false;
+    }
+    clearGenericFeedback(departmentCreatePromptFeedback);
+
+    const resolver = departmentCreatePromptResolver;
+    departmentCreatePromptResolver = null;
+
+    if (departmentCreatePromptPreviousFocus && typeof departmentCreatePromptPreviousFocus.focus === 'function') {
+      departmentCreatePromptPreviousFocus.focus();
+    }
+    departmentCreatePromptPreviousFocus = null;
+
+    if (resolver) {
+      resolver(value);
+    }
+
+    return value;
+  };
+
+  const confirmDepartmentCreatePrompt = () => {
+    const value = departmentCreatePromptInput?.value?.trim() || '';
+    if (!value) {
+      setGenericFeedback(departmentCreatePromptFeedback, t('literal.users.department_prompt_required', 'Debes indicar un nombre de departamento.'), 'error');
+      departmentCreatePromptInput?.focus();
+      return null;
+    }
+
+    return closeDepartmentCreatePrompt(value);
+  };
+
+  const openDepartmentCreatePrompt = () => {
+    if (!departmentCreatePrompt || !departmentCreatePromptInput) {
+      return Promise.resolve(null);
+    }
+
+    if (departmentCreatePromptResolver) {
+      closeDepartmentCreatePrompt(null);
+    }
+
+    departmentCreatePromptPreviousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    departmentCreatePromptInput.value = '';
+    if (departmentCreatePromptConfirm) {
+      departmentCreatePromptConfirm.disabled = false;
+    }
+    clearGenericFeedback(departmentCreatePromptFeedback);
+    departmentCreatePrompt.classList.add('is-visible');
+    departmentCreatePrompt.setAttribute('aria-hidden', 'false');
+
+    return new Promise((resolve) => {
+      departmentCreatePromptResolver = resolve;
+      window.requestAnimationFrame(() => {
+        departmentCreatePromptInput.focus();
+      });
+    });
   };
 
   const setFeedback = (message, type = 'success') => {
@@ -1054,8 +1573,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return '';
     }
 
-    const departamento = usuario.nombre_departamento || usuario.departamentos || '';
-    const role = usuario.rol || '';
+    const departamento = translateDepartmentLabel(usuario.nombre_departamento || usuario.departamentos || '');
+    const role = translateRoleLabel(usuario.rol || usuario.nombre_rol || '');
     const suffix = [departamento, role].filter(Boolean).join(' · ');
     return suffix
       ? `${usuario.nombre} (${usuario.num_operario}) · ${suffix}`
@@ -1083,7 +1602,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     ofertaEtcExtendedFields.hidden = !isVisible;
-    ofertaEtcToggleExtended.textContent = isVisible ? 'Ocultar ext. formulario' : 'Ext. formulario';
+    ofertaEtcToggleExtended.textContent = isVisible
+      ? t('literal.etc.hide_extended_form', 'Ocultar ext. formulario')
+      : t('literal.etc.extended_form', 'Ext. formulario');
     ofertaEtcToggleExtended.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
   };
 
@@ -1100,8 +1621,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       : (selectedUser || manager || users[0] || null);
 
     const emptyLabel = ofertaEtcDepartamento?.value && !users.length
-      ? 'No hay usuarios configurados en este departamento'
-      : 'Selecciona un responsable';
+      ? t('literal.etc.no_users_in_department', 'No hay usuarios configurados en este departamento')
+      : t('literal.etc.select_responsible', 'Selecciona un responsable');
 
     ofertaEtcResponsable.innerHTML = [
       `<option value="">${escapeHtml(emptyLabel)}</option>`,
@@ -1315,6 +1836,55 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const normalizeSearchValue = (value) => String(value ?? '').toLocaleLowerCase();
 
+  const DATE_FILTER_COLUMN_KEYS = new Set(['fecha_alta_oferta', 'fecha_email', 'fecha_limite', 'fecha_interaccion']);
+
+  const isDateFilterColumn = (columnKey) => DATE_FILTER_COLUMN_KEYS.has(String(columnKey || '').toLowerCase());
+
+  const normalizeDateFilterValue = (value) => {
+    if (!value || typeof value !== 'object') {
+      return { from: '', to: '' };
+    }
+
+    return {
+      from: String(value.from || ''),
+      to: String(value.to || ''),
+    };
+  };
+
+  const hasActiveFilterValue = (value) => {
+    if (!value) {
+      return false;
+    }
+
+    if (typeof value === 'object') {
+      return Boolean(String(value.from || '').trim() || String(value.to || '').trim());
+    }
+
+    return Boolean(String(value).trim());
+  };
+
+  const parseTableDateValue = (value, bound = 'from') => {
+    if (!value) {
+      return null;
+    }
+
+    const normalizedValue = String(value).trim();
+    if (!normalizedValue) {
+      return null;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(normalizedValue)) {
+      return new Date(`${normalizedValue}T${bound === 'to' ? '23:59:59.999' : '00:00:00.000'}`);
+    }
+
+    const parsedDate = new Date(normalizedValue);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return null;
+    }
+
+    return parsedDate;
+  };
+
   const compareTableValues = (left, right) => {
     const leftValue = left ?? '';
     const rightValue = right ?? '';
@@ -1337,9 +1907,32 @@ document.addEventListener('DOMContentLoaded', async () => {
   const getProcessedRows = (tableKey, rows) => {
     const state = tableStates[tableKey];
     const filteredRows = rows.filter((row) => Object.entries(state.filters).every(([key, value]) => {
-      if (!value) {
+      if (!hasActiveFilterValue(value)) {
         return true;
       }
+
+      // Fecha desactivada temporalmente: volvemos al filtrado anterior por texto.
+      // if (isDateFilterColumn(key) && typeof value === 'object') {
+      //   const { from, to } = normalizeDateFilterValue(value);
+      //   const rowDate = parseTableDateValue(row[key]);
+      //   if (!rowDate) {
+      //     return false;
+      //   }
+      //
+      //   const fromDate = from ? parseTableDateValue(from, 'from') : null;
+      //   const toDate = to ? parseTableDateValue(to, 'to') : null;
+      //
+      //   if (fromDate && rowDate < fromDate) {
+      //     return false;
+      //   }
+      //
+      //   if (toDate && rowDate > toDate) {
+      //     return false;
+      //   }
+      //
+      //   return true;
+      // }
+
       return normalizeSearchValue(row[key]).includes(normalizeSearchValue(value));
     }));
 
@@ -1359,7 +1952,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const state = tableStates.estados;
-    const hasFilters = Object.values(state.filters).some((value) => String(value || '').trim() !== '');
+    const hasFilters = Object.values(state.filters).some((value) => hasActiveFilterValue(value));
     return !hasFilters && state.sortKey === 'orden' && state.sortDirection === 'asc';
   };
 
@@ -1369,8 +1962,84 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const state = tableStates.configColumnas;
-    const hasFilters = Object.values(state.filters).some((value) => String(value || '').trim() !== '');
+    const hasFilters = Object.values(state.filters).some((value) => hasActiveFilterValue(value));
     return !hasFilters && state.sortKey === 'orden_columna' && state.sortDirection === 'asc';
+  };
+
+  const normalizeDisabledDateFilters = (tableKey) => {
+    const state = tableStates[tableKey];
+    if (!state) {
+      return;
+    }
+
+    Object.keys(state.filters).forEach((filterKey) => {
+      if (typeof state.filters[filterKey] === 'object') {
+        state.filters[filterKey] = '';
+      }
+    });
+  };
+
+  const resetTableFilters = (tableKey) => {
+    const state = tableStates[tableKey];
+    if (!state) {
+      return;
+    }
+
+    state.filters = {};
+  };
+
+  // Filtros rápidos de fecha desactivados temporalmente.
+  // const cloneQuickDateFilters = (state, dateColumns) => dateColumns.reduce((accumulator, column) => {
+  //   accumulator[column.key] = normalizeDateFilterValue(state.filters[column.key]);
+  //   return accumulator;
+  // }, {});
+  //
+  // const closeQuickFilters = (tableKey) => {
+  //   const state = tableStates[tableKey];
+  //   if (!state || !state.quickFiltersOpen) {
+  //     return;
+  //   }
+  //
+  //   state.quickFiltersOpen = false;
+  //   state.quickFiltersDraft = null;
+  //   setupTableHeaderControls(tableKey);
+  // };
+  //
+  // const closeAllQuickFilters = (exceptTableKey = null) => {
+  //   Object.keys(tableStates).forEach((tableKey) => {
+  //     if (tableKey === exceptTableKey) {
+  //       return;
+  //     }
+  //
+  //     closeQuickFilters(tableKey);
+  //   });
+  // };
+  //
+  // const applyQuickFilters = (tableKey) => {
+  //   const state = tableStates[tableKey];
+  //   if (!state) {
+  //     return;
+  //   }
+  //
+  //   const draftEntries = Object.entries(state.quickFiltersDraft || {});
+  //   draftEntries.forEach(([filterKey, value]) => {
+  //     state.filters[filterKey] = normalizeDateFilterValue(value);
+  //   });
+  //
+  //   state.quickFiltersOpen = false;
+  //   state.quickFiltersDraft = null;
+  //   setupTableHeaderControls(tableKey);
+  //   rerenderTable(tableKey);
+  // };
+  //
+  // const renderTableQuickDateFilters = (tableKey, table, columns) => {
+  //   ...
+  // };
+  const renderTableQuickDateFilters = (tableKey, table) => {
+    const tableWrap = table?.closest('.clientes-table-wrap');
+    const parentElement = tableWrap?.parentElement;
+    const quickFilters = parentElement?.querySelector(`:scope > [data-table-quick-filters="${tableKey}"]`);
+    quickFilters?.remove();
   };
 
   const setupTableHeaderControls = (tableKey) => {
@@ -1381,9 +2050,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    normalizeDisabledDateFilters(tableKey);
+
     table.classList.add('table-compact', 'table-hover', 'table-card-mobile', `table-view--${sanitizeColumnClassName(tableKey)}`);
 
     const columns = typeof definition.getColumns === 'function' ? definition.getColumns() : definition.columns;
+    // renderTableQuickDateFilters(tableKey, table, columns);
+    renderTableQuickDateFilters(tableKey, table);
 
     headerRow.innerHTML = columns.map((column) => {
       const state = tableStates[tableKey];
@@ -1394,6 +2067,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         classes.push(column.className);
       }
       const filterValue = state.filters[column.key] || '';
+      const hasFilterValue = hasActiveFilterValue(filterValue);
       const filterPlaceholder = getFilterPlaceholder(tableKey, column.key, column.label);
       const headerActions = tableKey === 'ofertas' && column.key === 'acciones'
         ? renderOfertasActionHeaderConfig()
@@ -1410,14 +2084,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${column.searchable ? `
               <div class="table-header__filter-wrap">
                 <span class="table-header__filter-icon" aria-hidden="true">⌕</span>
-                <input class="table-header__filter" type="text" value="${escapeHtml(filterValue)}" placeholder="${escapeHtml(filterPlaceholder)}" aria-label="${escapeHtml(filterPlaceholder)}" data-filter-key="${column.key}" />
-                ${filterValue ? `<button class="table-header__filter-clear" type="button" data-clear-filter="true" data-table-key="${tableKey}" data-filter-key="${column.key}" aria-label="${escapeHtml(tf('table.clear_filter', 'Limpiar filtro {label}', { label: column.label }))}">×</button>` : ''}
+                <input class="table-header__filter" type="text" value="${escapeHtml(filterValue)}" placeholder="${escapeHtml(filterPlaceholder)}" aria-label="${escapeHtml(filterPlaceholder)}" data-filter-key="${column.key}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" />
+                ${hasFilterValue ? `<button class="table-header__filter-clear" type="button" data-clear-filter="true" data-table-key="${tableKey}" data-filter-key="${column.key}" aria-label="${escapeHtml(tf('table.clear_filter', 'Limpiar filtro {label}', { label: column.label }))}">×</button>` : ''}
               </div>
             ` : ''}
           </div>
         </th>
       `;
     }).join('');
+
+    requestAnimationFrame(() => {
+      const currentState = tableStates[tableKey];
+      headerRow.querySelectorAll('.table-header__filter').forEach((input) => {
+        const filterKey = input.dataset.filterKey;
+        input.value = String(currentState?.filters?.[filterKey] || '');
+        input.setAttribute('autocomplete', 'off');
+      });
+    });
 
     headerRow.dataset.enhanced = 'true';
   };
@@ -1658,7 +2341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     bomEditView.hidden = false;
   };
 
-  const closeBomModal = () => {
+  const closeBomModal = ({ reopenOfferCenter = false } = {}) => {
     if (!bomModal) {
       return;
     }
@@ -1677,6 +2360,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       bomEditForm.reset();
     }
     openBomListView();
+    if (reopenOfferCenter) {
+      reopenOfferCenterFromReturnContext();
+    }
   };
 
   const loadBomMateriales = async ({ silent = false } = {}) => {
@@ -1693,7 +2379,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const result = await response.json();
     if (!response.ok || result.success === false) {
-      throw new Error(result.message || 'No se pudieron cargar los materiales BOM');
+      throw new Error(result.message || t('literal.feedback.bom_load_error', 'No se pudieron cargar los materiales BOM'));
     }
 
     bomMaterialesCache = Array.isArray(result.materiales) ? result.materiales : [];
@@ -1710,11 +2396,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentBomOfertaContext = oferta || { id_oferta: ofertaId, numero_oferta: ofertaId };
 
     if (bomModalTitle) {
-      bomModalTitle.textContent = 'Materiales y precios';
+      bomModalTitle.textContent = t('literal.bom.title', 'Materiales y precios');
     }
     if (bomModalOffer) {
       const offerReference = currentBomOfertaContext?.numero_oferta || `#${currentBomOfertaContext?.id_oferta ?? ofertaId}`;
-      bomModalOffer.textContent = `Oferta ${offerReference}. El cambio de precio inserta una nueva versión y conserva el histórico.`;
+      bomModalOffer.textContent = tf('literal.bom.offer_context', 'Oferta {offerReference}. El cambio de precio inserta una nueva versión y conserva el histórico.', { offerReference });
     }
     if (bomSearchInput) {
       bomSearchInput.value = '';
@@ -1727,7 +2413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await loadBomMateriales();
     } catch (error) {
-      setGenericFeedback(bomFeedback, error.message || 'No se pudieron cargar los materiales BOM.', 'error');
+      setGenericFeedback(bomFeedback, error.message || t('literal.feedback.bom_load_error', 'No se pudieron cargar los materiales BOM.'), 'error');
       renderBomMaterialesTable();
     }
   };
@@ -1747,7 +2433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const sender = message.sender_name || message.sender_email || t('common.not_available', 'No disponible');
       return `
         <button class="outlook-import__item ${isSelected ? 'is-selected' : ''}" type="button" data-outlook-message-id="${escapeHtml(message.id)}">
-          <strong>${escapeHtml(message.subject || '(sin asunto)')}</strong>
+          <strong>${escapeHtml(message.subject || t('literal.bom.no_subject', '(sin asunto)'))}</strong>
           <span>${escapeHtml(sender)}</span>
           <small>${escapeHtml(formatDisplayDateTime(message.received_at) || '')}</small>
         </button>
@@ -1776,10 +2462,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     outlookMessageDetail.innerHTML = `
       <div class="outlook-import__detail-meta">
-        <p><strong>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}:</strong> ${escapeHtml(message.subject || '(sin asunto)')}</p>
+        <p><strong>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}:</strong> ${escapeHtml(message.subject || t('literal.bom.no_subject', '(sin asunto)'))}</p>
         <p><strong>${escapeHtml(t('offer.fields.sender', 'QUIÉN LO ENVÍA'))}:</strong> ${escapeHtml(sender)}</p>
         <p><strong>${escapeHtml(t('offer.fields.email_date', 'FECHA e-mail'))}:</strong> ${escapeHtml(formatDisplayDateTime(message.received_at) || '—')}</p>
-        <p><strong>Para:</strong> ${escapeHtml(recipients)}</p>
+        <p><strong>${escapeHtml(t('literal.bom.to', 'Para:'))}</strong> ${escapeHtml(recipients)}</p>
       </div>
       <div class="outlook-import__detail-body">${escapedBody || '<span class="table-cell__placeholder">—</span>'}</div>
     `;
@@ -1953,16 +2639,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const getColumnLabel = (tableKey, columnKey) => getColumnDefinition(tableKey, columnKey)?.label || columnKey;
 
   const getFilterPlaceholder = (tableKey, columnKey, label) => {
+    const normalizedColumnKey = String(columnKey || '').trim().toLowerCase();
     const placeholders = {
       ofertas: {
         numero_oferta: t('table.filter_offer_number', 'Filtrar nº oferta'),
         fecha_alta_oferta: t('table.filter_date', 'Filtrar fecha'),
         fecha_email: t('table.filter_date', 'Filtrar fecha'),
         fecha_limite: t('table.filter_date', 'Filtrar fecha'),
+        ref_cliente_asunto_email: t('table.filter_subject', 'Filtrar asunto'),
         cliente: t('table.filter_client', 'Filtrar cliente'),
         emisor: t('table.filter_sender', 'Filtrar emisor'),
         observaciones_oferta: t('table.search_notes', 'Buscar observación'),
+        observaciones_interaccion: t('table.search_comments', 'Buscar comentarios'),
         estado: t('table.filter_status', 'Filtrar estado'),
+        tipo_interaccion: t('table.filter_status_change', 'Filtrar cambio estado'),
       },
       clientes: {
         id_cliente: t('table.filter_id', 'Filtrar ID'),
@@ -1974,10 +2664,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         descripcion_proyecto: t('table.filter_description', 'Filtrar descripción'),
       },
       usuarios: {
-        num_operario: 'Filtrar nº operario',
-        nombre: 'Filtrar nombre',
-        rol: 'Filtrar rol',
-        departamentos: 'Filtrar departamentos',
+        num_operario: t('literal.filters.users.operator_number', 'Filtrar nº operario'),
+        nombre: t('literal.filters.users.name', 'Filtrar nombre'),
+        rol: t('literal.filters.users.role', 'Filtrar rol'),
+        departamentos: t('literal.filters.users.departments', 'Filtrar departamentos'),
       },
       estados: {
         orden: t('table.filter_order', 'Filtrar orden'),
@@ -1991,13 +2681,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       },
     };
 
-    return placeholders[tableKey]?.[columnKey] || tf('table.filter_generic', 'Filtrar {label}', { label: String(label || columnKey).toLowerCase() });
+    return placeholders[tableKey]?.[normalizedColumnKey] || tf('table.filter_generic', 'Filtrar {label}', { label: String(label || normalizedColumnKey || columnKey).toLowerCase() });
   };
 
   const getColumnCellClass = (tableKey, columnKey) => {
     const sharedClass = `column-${sanitizeColumnClassName(columnKey)}`;
     const specificClasses = {
       ofertas: {
+        vista: 'column-view',
         numero_oferta: 'column-primary column-offer-number',
         fecha_alta_oferta: 'column-secondary column-date',
         fecha_email: 'column-secondary column-date',
@@ -2006,6 +2697,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         emisor: 'column-secondary column-sender',
         observaciones_oferta: 'column-observaciones',
         estado: 'column-status',
+        vista: 'column-view',
         acciones: 'column-actions',
       },
       clientes: {
@@ -2081,7 +2773,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const renderTableCell = ({ tableKey, rowId, columnKey, value, label, className = '', contentClass = '', expandable = true, title = '' }) => {
-    const normalizedValue = String(value ?? '');
+    const resolvedValue = tableKey === 'ofertas' && String(columnKey || '').trim().toLowerCase() === 'tipo_interaccion'
+      ? translateInteractionSummary(value)
+      : value;
+    const normalizedValue = String(resolvedValue ?? '');
     const columnLabel = label || getColumnLabel(tableKey, columnKey);
     const classes = ['table-cell', getColumnCellClass(tableKey, columnKey)];
     if (className) {
@@ -2220,6 +2915,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    importedEmailAttachmentToken = data.imported_email_attachment_token || null;
+    importedEmailMetadata = data.imported_email_metadata || null;
+
     if (!clientesCache.length) {
       await loadClientes({ silent: true });
     }
@@ -2247,6 +2945,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (clienteSelect) {
       clienteSelect.value = data.id_cliente ? String(data.id_cliente) : '';
     }
+  };
+
+  const focusImportedOffer = async (ofertaId) => {
+    if (!ofertaId) {
+      return false;
+    }
+
+    await loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
+    let oferta = ofertasListadoCache.find((item) => String(item.id_oferta) === String(ofertaId));
+
+    if (!oferta) {
+      await loadOfertasListado({ estadoId: null, label: t('listing.all', 'Todos') });
+      oferta = ofertasListadoCache.find((item) => String(item.id_oferta) === String(ofertaId));
+    }
+
+    if (!oferta) {
+      return false;
+    }
+
+    openOfferCenterModal(oferta);
+    return true;
+  };
+
+  const handleImportedEmailResult = async (result, { feedbackTarget = feedback, closeOutlook = false } = {}) => {
+    if ((result?.mode || '') === 'synced_existing_offer') {
+      importedEmailAttachmentToken = null;
+      importedEmailMetadata = null;
+      savedOfertaContext = null;
+      pendingOfertaEtcPayload = null;
+      updateOfertaEtcStandbyUi();
+
+      if (closeOutlook) {
+        closeOutlookImportModal();
+      }
+
+      const openedOffer = await focusImportedOffer(result.id_oferta);
+      const successMessage = result.message || 'Correo sincronizado con una oferta existente.';
+      if (feedbackTarget === outlookImportFeedback) {
+        setGenericFeedback(outlookImportFeedback, successMessage, 'success');
+      }
+      setFeedback(successMessage, 'success');
+      if (!openedOffer && feedbackTarget && feedbackTarget !== outlookImportFeedback) {
+        setGenericFeedback(feedbackTarget, successMessage, 'success');
+      }
+      return true;
+    }
+
+    await applyImportedEmailData(result?.data || {});
+    return false;
   };
 
   const importMailFile = async (file) => {
@@ -2287,7 +3034,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error(result.message || 'No se pudo importar el correo');
       }
 
-      await applyImportedEmailData(result.data || {});
+      await handleImportedEmailResult(result);
       setFeedback(result.message || 'Correo importado correctamente.', 'success');
     } catch (error) {
       setFeedback(error.message || 'No se pudo importar el correo.', 'error');
@@ -2369,7 +3116,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     return String(user.rol || user.nombre_rol || '').trim().toLowerCase() === 'manager';
   };
 
+  const getCurrentUserDepartmentIds = () => {
+    const user = getCurrentUser();
+    const departments = Array.isArray(user?.departamentos) ? user.departamentos : [];
+
+    return departments
+      .map((department) => (department && typeof department === 'object' ? department.id_departamento : department))
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value));
+  };
+
+  const canReassignOffer = (oferta) => {
+    if (!isManagerUser() || !oferta) {
+      return false;
+    }
+
+    const departmentId = Number(oferta.id_departamento_estado);
+    if (!Number.isFinite(departmentId)) {
+      return false;
+    }
+
+    return getCurrentUserDepartmentIds().includes(departmentId);
+  };
+
   const MANAGER_ONLY_MESSAGE = 'Solo los usuarios con rol Manager pueden añadir o editar configuraciones.';
+  const OFFER_DELETE_MANAGER_ONLY_MESSAGE = 'Solo los usuarios con rol Manager pueden eliminar ofertas.';
 
   const enforceManagerOnlyUi = (buttons, panels, requestedMode, createModeName = 'crear') => {
     const resolvedMode = isManagerUser() ? requestedMode : 'ver';
@@ -2507,8 +3278,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     userRoleSelect.innerHTML = [
-      '<option value="">Selecciona un rol</option>',
-      ...rolesCache.map((role) => `<option value="${escapeHtml(role.id_rol)}">${escapeHtml(role.nombre_rol)}</option>`),
+      `<option value="">${escapeHtml(t('literal.users.select_role', 'Selecciona un rol'))}</option>`,
+      ...rolesCache.map((role) => `<option value="${escapeHtml(role.id_rol)}">${escapeHtml(translateRoleLabel(role.nombre_rol))}</option>`),
     ].join('');
   };
 
@@ -2516,16 +3287,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const normalizedSelectedValue = String(selectedValue ?? '');
 
     return [
-      '<option value="">Selecciona un rol</option>',
+      `<option value="">${escapeHtml(t('literal.users.select_role', 'Selecciona un rol'))}</option>`,
       ...rolesCache.map((role) => {
         const optionValue = String(role.id_rol ?? '');
         const isSelected = optionValue === normalizedSelectedValue ? ' selected' : '';
-        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(role.nombre_rol)}</option>`;
+        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(translateRoleLabel(role.nombre_rol))}</option>`;
       }),
     ].join('');
   };
 
-  const buildDepartamentoOptions = (selectedValue = '', emptyLabel = 'Sin departamento') => {
+  const buildDepartamentoOptions = (selectedValue = '', emptyLabel = t('literal.etc.no_department', 'Sin departamento')) => {
     const normalizedSelectedValue = String(selectedValue ?? '');
 
     return [
@@ -2533,7 +3304,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       ...departamentosCache.map((departamento) => {
         const optionValue = String(departamento.id_departamento ?? '');
         const isSelected = optionValue === normalizedSelectedValue ? ' selected' : '';
-        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(departamento.nombre_departamento)}</option>`;
+        return `<option value="${escapeHtml(optionValue)}"${isSelected}>${escapeHtml(translateDepartmentLabel(departamento.nombre_departamento))}</option>`;
       }),
     ].join('');
   };
@@ -2694,7 +3465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!processedUsuarios.length) {
       usuariosTableBody.innerHTML = `
         <tr>
-          <td colspan="6" class="clientes-table__empty">No hay usuarios creados todavía.</td>
+          <td colspan="6" class="clientes-table__empty">${escapeHtml(t('literal.users.empty', 'No hay usuarios creados todavía.'))}</td>
         </tr>
       `;
       return;
@@ -2709,29 +3480,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         ${renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'nombre', value: usuario.nombre, contentClass: 'table-cell__content--strong', title: usuario.nombre })}
         ${isEditing
           ? `
-            <td class="${getColumnCellClass('usuarios', 'email')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Email')}">
+            <td class="${getColumnCellClass('usuarios', 'email')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml(t('literal.users.email', 'Email'))}">
               <input class="usuarios-table__edit-input" type="email" value="${escapeHtml(usuario.email || '')}" data-edit-usuario-email="${escapeHtml(usuario.num_operario)}" maxlength="255" />
             </td>
           `
           : renderTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'email', value: usuario.email || '', contentClass: 'table-cell__content--muted', title: usuario.email || '' })}
         ${isEditing
           ? `
-            <td class="${getColumnCellClass('usuarios', 'rol')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Rol')}">
+            <td class="${getColumnCellClass('usuarios', 'rol')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml(t('literal.users.role', 'Rol'))}">
               <select class="usuarios-table__edit-input usuarios-table__edit-select" data-edit-usuario-rol="${escapeHtml(usuario.num_operario)}">
                 ${buildRoleOptions(usuario.id_rol || '')}
               </select>
             </td>
           `
-          : renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'rol', value: usuario.rol, contentClass: 'table-cell__content--muted' })}
+          : renderStaticTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'rol', value: translateRoleLabel(usuario.rol || usuario.nombre_rol), contentClass: 'table-cell__content--muted' })}
         ${isEditing
           ? `
-            <td class="${getColumnCellClass('usuarios', 'departamentos')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml('Departamentos')}">
+            <td class="${getColumnCellClass('usuarios', 'departamentos')} usuarios-table__cell usuarios-table__cell--editing" data-label="${escapeHtml(t('literal.users.departments', 'Departamentos'))}">
               <select class="usuarios-table__edit-input usuarios-table__edit-select" data-edit-usuario-departamento="${escapeHtml(usuario.num_operario)}">
                 ${buildDepartamentoOptions(usuario.id_departamento || '')}
               </select>
             </td>
           `
-          : renderTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'departamentos', value: usuario.departamentos, contentClass: 'table-cell__content--muted', title: usuario.departamentos })}
+          : renderTableCell({ tableKey: 'usuarios', rowId: usuario.num_operario, columnKey: 'departamentos', value: translateDepartmentLabel(usuario.departamentos), contentClass: 'table-cell__content--muted', title: translateDepartmentLabel(usuario.departamentos) })}
         <td class="table-cell table-cell--actions ${getColumnCellClass('usuarios', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
           <div class="clientes-table__actions actions-inline ${isEditing ? 'usuarios-table__actions usuarios-table__actions--editing' : ''}">
             ${isEditing
@@ -2815,28 +3586,754 @@ document.addEventListener('DOMContentLoaded', async () => {
     ].join('');
   };
 
-  const renderOfertaEstadoHistorial = (interacciones = []) => {
-    if (!ofertaEstadoHistorial) {
+  const renderOfferHistory = (targetElement, interacciones = []) => {
+    if (!targetElement) {
       return;
     }
-
-    currentOfertaEstadoInteracciones = interacciones;
 
     if (!interacciones.length) {
-      ofertaEstadoHistorial.innerHTML = `<p class="crm-history__empty">${escapeHtml(t('crm.history_empty', 'Sin interacciones registradas.'))}</p>`;
+      targetElement.innerHTML = `<p class="crm-history__empty">${escapeHtml(t('crm.history_empty', 'Sin interacciones registradas.'))}</p>`;
       return;
     }
 
-    ofertaEstadoHistorial.innerHTML = interacciones.map((interaccion) => `
+    targetElement.innerHTML = interacciones.map((interaccion) => `
       <article class="crm-history__item">
         <div class="crm-history__meta">
-          <strong>${escapeHtml(interaccion.tipo_interaccion || t('crm.interaction', 'Interacción'))}</strong>
+          <strong>${escapeHtml(translateInteractionSummary(interaccion.tipo_interaccion || t('crm.interaction', 'Interacción')))}</strong>
           <span>${escapeHtml(formatInteractionDateTime(interaccion.fecha_interaccion) || '')}</span>
         </div>
         <p class="crm-history__deadline"><strong>${escapeHtml(t('crm.deadline', 'Fecha límite'))}:</strong> ${escapeHtml(interaccion.fecha_limite ? formatDisplayDate(interaccion.fecha_limite) : t('crm.undefined_deadline', 'Sin definir'))}</p>
         <p>${escapeHtml(interaccion.observaciones || t('crm.no_comments', 'Sin comentarios.'))}</p>
       </article>
     `).join('');
+  };
+
+  const renderOfertaEstadoHistorial = (interacciones = []) => {
+    if (!ofertaEstadoHistorial) {
+      return;
+    }
+
+    currentOfertaEstadoInteracciones = interacciones;
+    renderOfferHistory(ofertaEstadoHistorial, interacciones);
+  };
+
+  const splitOfferConversation = (rawText) => {
+    const normalized = String(rawText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    if (!normalized) {
+      return [];
+    }
+
+    const lines = normalized.split('\n');
+    const segments = [];
+    const currentLines = [];
+    const hardDividerRegex = /^(?:-{2,}\s*(?:original message|mensaje original|quoted message)\s*-*|_{5,})$/i;
+    const wroteRegex = /^on\s.+wrote:$/i;
+    const headerLineRegex = /^(from|de|sent|enviado|to|para|cc|subject|asunto)\s*:/i;
+
+    const pushSegment = () => {
+      const text = currentLines.join('\n').trim();
+      if (text) {
+        segments.push(text);
+      }
+      currentLines.length = 0;
+    };
+
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const trimmed = line.trim();
+
+      if (!trimmed) {
+        if (currentLines.length && currentLines[currentLines.length - 1] !== '') {
+          currentLines.push('');
+        }
+        continue;
+      }
+
+      const nextLines = lines.slice(index, index + 4).map((item) => item.trim()).filter(Boolean);
+      const headerMatches = nextLines.filter((item) => headerLineRegex.test(item)).length;
+      const startsQuotedBlock = hardDividerRegex.test(trimmed) || wroteRegex.test(trimmed) || headerMatches >= 2;
+
+      if (startsQuotedBlock) {
+        pushSegment();
+        continue;
+      }
+
+      currentLines.push(trimmed);
+    }
+
+    pushSegment();
+    return segments.length ? segments : [normalized];
+  };
+
+  const renderOfferConversation = (bodyText) => {
+    const segments = splitOfferConversation(bodyText);
+    if (!segments.length) {
+      return `<p>${escapeHtml(t('crm.no_comments', 'Sin comentarios.'))}</p>`;
+    }
+
+    const sanitizeConversationSegmentForDisplay = (segment) => {
+      const lines = String(segment || '').split('\n');
+      const sanitizedLines = [];
+      let skippingSafeLinksBlock = false;
+
+      const isSafeLinksLine = (line) => /safelinks\.protection\.outlook\.com/i.test(line);
+      const isSafeLinksContinuationLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          return false;
+        }
+
+        const normalized = trimmed.toLowerCase();
+        if (
+          normalized.startsWith('url=')
+          || normalized.startsWith('&')
+          || normalized.startsWith('data=')
+          || normalized.startsWith('reserved=')
+          || normalized.includes('safelinks.protection.outlook.com')
+        ) {
+          return true;
+        }
+
+        return trimmed.length > 90 && !/\s{2,}/.test(trimmed) && /[%=?&/]/.test(trimmed);
+      };
+
+      lines.forEach((line) => {
+        const trimmed = line.trim();
+
+        if (isSafeLinksLine(trimmed)) {
+          skippingSafeLinksBlock = true;
+          return;
+        }
+
+        if (skippingSafeLinksBlock) {
+          if (!trimmed) {
+            skippingSafeLinksBlock = false;
+            return;
+          }
+
+          if (isSafeLinksContinuationLine(trimmed)) {
+            return;
+          }
+
+          skippingSafeLinksBlock = false;
+        }
+
+        sanitizedLines.push(line);
+      });
+
+      return sanitizedLines.join('\n').trim();
+    };
+
+    const visibleSegments = segments
+      .map((segment) => sanitizeConversationSegmentForDisplay(segment))
+      .filter(Boolean);
+
+    if (!visibleSegments.length) {
+      return `<p>${escapeHtml(t('crm.no_comments', 'Sin comentarios.'))}</p>`;
+    }
+
+    return `
+      <div class="offer-center__conversation">
+        ${visibleSegments.map((segment, index) => {
+          const title = index === 0
+            ? t('offer.current_message', 'Mensaje actual')
+            : tf('offer.previous_message', 'Correo anterior {index}', { index });
+
+          return `
+            <article class="offer-center__thread-card">
+              <header class="offer-center__thread-header">
+                <strong>${escapeHtml(title)}</strong>
+              </header>
+              <div class="offer-center__thread-body">${escapeHtml(segment).replace(/\n/g, '<br>')}</div>
+            </article>
+          `;
+        }).join('')}
+      </div>
+    `;
+  };
+
+  const formatFileSize = (sizeBytes) => {
+    const normalized = Number(sizeBytes);
+    if (!Number.isFinite(normalized) || normalized <= 0) {
+      return '0 B';
+    }
+
+    if (normalized < 1024) {
+      return `${normalized} B`;
+    }
+    if (normalized < 1024 * 1024) {
+      return `${(normalized / 1024).toFixed(1)} KB`;
+    }
+    return `${(normalized / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getAttachmentExtensionLabel = (attachment) => {
+    const fileName = String(attachment?.original_name || attachment?.stored_name || '').trim();
+    const extension = fileName.includes('.') ? fileName.split('.').pop() : 'file';
+    return String(extension || 'file').toUpperCase().slice(0, 5);
+  };
+
+  const renderAttachmentThumb = (attachment, variant = 'inline') => {
+    const isImage = attachment?.preview_kind === 'image' && attachment?.preview_url;
+    const extensionLabel = getAttachmentExtensionLabel(attachment);
+
+    return `
+      <div class="offer-center__attachment-thumb offer-center__attachment-thumb--${variant}${isImage ? ' is-image' : ''}">
+        ${isImage
+          ? `<img src="${attachment.preview_url}" alt="${escapeHtml(attachment?.original_name || t('common.attachment', 'Adjunto'))}" loading="lazy" />`
+          : '<div class="offer-center__attachment-thumb-empty"></div>'}
+        <span class="offer-center__attachment-ext">${escapeHtml(extensionLabel)}</span>
+      </div>
+    `;
+  };
+
+  const renderAttachmentCard = (attachment, mode = 'inline') => {
+    const originalName = attachment?.original_name || attachment?.stored_name || t('common.file', 'Archivo');
+    const sizeLabel = formatFileSize(attachment?.size_bytes);
+
+    if (mode === 'inline') {
+      return `
+        <article class="offer-center__attachment-card offer-center__attachment-card--inline">
+          <button class="offer-center__attachment-card-button" type="button" data-offer-attachment-preview="${attachment?.stored_name || ''}">
+            ${renderAttachmentThumb(attachment, 'inline')}
+            <span class="offer-center__attachment-card-name">${escapeHtml(originalName)}</span>
+          </button>
+        </article>
+      `;
+    }
+
+    return `
+      <article class="offer-center__attachment-card offer-center__attachment-card--gallery">
+        <button class="offer-center__attachment-card-button" type="button" data-offer-attachment-preview="${attachment?.stored_name || ''}">
+          ${renderAttachmentThumb(attachment, 'gallery')}
+          <span class="offer-center__attachment-card-name">${escapeHtml(originalName)}</span>
+          <span class="offer-center__attachment-card-size">${escapeHtml(sizeLabel)}</span>
+        </button>
+        <div class="offer-center__attachment-card-actions">
+          <button class="btn-inline btn-inline--edit" type="button" data-offer-attachment-preview="${attachment?.stored_name || ''}">${escapeHtml(t('common.preview', 'Vista previa'))}</button>
+          <a class="btn-inline" href="${attachment?.download_url || '#'}" target="_blank" rel="noopener">${escapeHtml(t('common.download', 'Descargar'))}</a>
+        </div>
+      </article>
+    `;
+  };
+
+  const renderOfferAttachmentStrip = (attachments) => {
+    const items = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+    if (!items.length) {
+      return `<p class="offer-center__attachments-empty">${escapeHtml(t('offer.attachments_empty', 'Sin archivos adjuntos todavía.'))}</p>`;
+    }
+
+    const visibleItems = items.slice(0, INLINE_ATTACHMENT_CARD_LIMIT);
+    const hiddenCount = Math.max(items.length - visibleItems.length, 0);
+
+    return `
+      <div class="offer-center__attachments-strip">
+        ${visibleItems.map((attachment) => renderAttachmentCard(attachment, 'inline')).join('')}
+        ${hiddenCount > 0 ? `
+          <button class="offer-center__attachments-more" type="button" data-open-offer-attachments-gallery="true">
+            + ${hiddenCount}
+          </button>
+        ` : ''}
+      </div>
+    `;
+  };
+
+  const renderOfferAttachmentsGallery = (attachments) => {
+    const items = Array.isArray(attachments) ? attachments.filter(Boolean) : [];
+    if (!items.length) {
+      return `<p class="attachments-gallery__empty">${escapeHtml(t('offer.attachments_empty', 'Sin archivos adjuntos todavía.'))}</p>`;
+    }
+
+    return `
+      <div class="attachments-gallery__grid">
+        ${items.map((attachment) => renderAttachmentCard(attachment, 'gallery')).join('')}
+      </div>
+    `;
+  };
+
+  const openOfferAttachmentsGalleryModal = () => {
+    if (!offerAttachmentsGalleryModal || !offerAttachmentsGalleryBody) {
+      return;
+    }
+
+    offerAttachmentsGalleryBody.innerHTML = renderOfferAttachmentsGallery(currentOfferCenterOferta?.adjuntos || []);
+    offerAttachmentsGalleryModal.classList.add('is-visible');
+    offerAttachmentsGalleryModal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeOfferAttachmentsGalleryModal = () => {
+    if (!offerAttachmentsGalleryBody || !offerAttachmentsGalleryModal) {
+      return;
+    }
+
+    offerAttachmentsGalleryBody.innerHTML = '';
+    offerAttachmentsGalleryModal.classList.remove('is-visible');
+    offerAttachmentsGalleryModal.setAttribute('aria-hidden', 'true');
+  };
+
+  const renderAttachmentPreviewFallback = (attachment) => `
+    <div class="attachment-preview__fallback">
+      <strong>${escapeHtml(t('offer.preview_unavailable', 'Este formato no se puede previsualizar directamente en el navegador.'))}</strong>
+      <p>${escapeHtml(attachment?.original_name || t('common.file', 'Archivo'))}</p>
+      <div class="attachment-preview__fallback-actions">
+        <a class="btn-inline" href="${attachment?.download_url || '#'}" target="_blank" rel="noopener">${escapeHtml(t('common.download_file', 'Descargar archivo'))}</a>
+      </div>
+    </div>
+  `;
+
+  const closeOfferAttachmentPreviewModal = () => {
+    const shouldReturnToGallery = offerAttachmentPreviewReturnToGallery;
+    offerAttachmentPreviewReturnToGallery = false;
+    currentOfferAttachmentPreview = null;
+    if (offerAttachmentPreviewTitle) {
+      offerAttachmentPreviewTitle.textContent = t('common.preview', 'Vista previa');
+    }
+    if (offerAttachmentPreviewMeta) {
+      offerAttachmentPreviewMeta.innerHTML = '';
+    }
+    if (offerAttachmentPreviewActions) {
+      offerAttachmentPreviewActions.innerHTML = '';
+    }
+    if (offerAttachmentPreviewBody) {
+      offerAttachmentPreviewBody.innerHTML = '';
+    }
+    if (offerAttachmentPreviewModal) {
+      offerAttachmentPreviewModal.classList.remove('is-visible');
+      offerAttachmentPreviewModal.setAttribute('aria-hidden', 'true');
+    }
+
+    if (shouldReturnToGallery) {
+      openOfferAttachmentsGalleryModal();
+    }
+  };
+
+  const openOfferAttachmentPreviewModal = async (attachment) => {
+    if (!offerAttachmentPreviewModal || !offerAttachmentPreviewBody || !attachment) {
+      return;
+    }
+
+    currentOfferAttachmentPreview = attachment;
+    if (offerAttachmentPreviewTitle) {
+      offerAttachmentPreviewTitle.textContent = attachment.original_name || t('common.preview', 'Vista previa');
+    }
+    if (offerAttachmentPreviewMeta) {
+      offerAttachmentPreviewMeta.innerHTML = `
+        <span>${escapeHtml(attachment.mime_type || 'application/octet-stream')}</span>
+        <span>${escapeHtml(formatFileSize(attachment.size_bytes))}</span>
+      `;
+    }
+    if (offerAttachmentPreviewActions) {
+      offerAttachmentPreviewActions.innerHTML = attachment.download_url
+        ? `<a class="btn-inline" href="${attachment.download_url}" target="_blank" rel="noopener">${escapeHtml(t('common.download', 'Descargar'))}</a>`
+        : '';
+    }
+
+    offerAttachmentPreviewModal.classList.add('is-visible');
+    offerAttachmentPreviewModal.setAttribute('aria-hidden', 'false');
+    offerAttachmentPreviewBody.innerHTML = `<div class="attachment-preview__loading">${escapeHtml(t('offer.preview_loading', 'Cargando vista previa...'))}</div>`;
+
+    try {
+      if (attachment.preview_kind === 'image') {
+        offerAttachmentPreviewBody.innerHTML = `
+          <div class="attachment-preview__image-wrap">
+            <img class="attachment-preview__image" src="${attachment.preview_url}" alt="${escapeHtml(attachment.original_name || t('common.attachment', 'Adjunto'))}" />
+          </div>
+        `;
+        return;
+      }
+
+      if (attachment.preview_kind === 'inline') {
+        offerAttachmentPreviewBody.innerHTML = `
+          <iframe class="attachment-preview__frame" src="${attachment.preview_url}" title="${escapeHtml(attachment.original_name || t('common.preview', 'Vista previa'))}" loading="lazy"></iframe>
+        `;
+        return;
+      }
+
+      if (attachment.preview_kind === 'text') {
+        const response = await fetch(attachment.preview_url, { method: 'GET' });
+        if (response.status === 401) {
+          handleUnauthorized();
+          closeOfferAttachmentPreviewModal();
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(t('offer.preview_error', 'No se pudo cargar la vista previa del archivo.'));
+        }
+
+        const textContent = await response.text();
+        offerAttachmentPreviewBody.innerHTML = `
+          <pre class="attachment-preview__text">${escapeHtml(textContent || '')}</pre>
+        `;
+        return;
+      }
+
+      offerAttachmentPreviewBody.innerHTML = renderAttachmentPreviewFallback(attachment);
+    } catch (error) {
+      offerAttachmentPreviewBody.innerHTML = `
+        <div class="attachment-preview__fallback">
+          <strong>${escapeHtml(error.message || t('offer.preview_error_generic', 'No se pudo cargar la vista previa.'))}</strong>
+          <div class="attachment-preview__fallback-actions">
+            <a class="btn-inline" href="${attachment?.download_url || '#'}" target="_blank" rel="noopener">${escapeHtml(t('common.download_file', 'Descargar archivo'))}</a>
+          </div>
+        </div>
+      `;
+    }
+  };
+
+  const uploadOfferAttachments = async (fileList) => {
+    if (!currentOfferCenterOferta?.id_oferta) {
+      setGenericFeedback(offerCenterFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+      if (offerCenterAttachmentInput) {
+        offerCenterAttachmentInput.value = '';
+      }
+      return;
+    }
+
+    const files = Array.from(fileList || []).filter(Boolean);
+    if (!files.length) {
+      if (offerCenterAttachmentInput) {
+        offerCenterAttachmentInput.value = '';
+      }
+      return;
+    }
+
+    const uploadData = new FormData();
+    files.forEach((file) => uploadData.append('archivos', file));
+  setGenericFeedback(offerCenterFeedback, files.length === 1 ? t('offer.uploading_file', 'Subiendo archivo...') : t('offer.uploading_files', 'Subiendo archivos...'), 'success');
+
+    try {
+      const response = await fetch(`/api/ofertas/${currentOfferCenterOferta.id_oferta}/adjuntos`, {
+        method: 'POST',
+        body: uploadData,
+      });
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || t('offer.upload_files_error', 'No se pudieron subir los archivos.'));
+      }
+
+      currentOfferCenterOferta = {
+        ...currentOfferCenterOferta,
+        adjuntos: Array.isArray(result.all_adjuntos) ? result.all_adjuntos : [],
+      };
+      renderOfferCenterEmail(currentOfferCenterOferta);
+      setGenericFeedback(offerCenterFeedback, result.message || t('offer.upload_files_success', 'Archivos subidos correctamente.'), 'success');
+    } catch (error) {
+      setGenericFeedback(offerCenterFeedback, error.message || t('offer.upload_files_error', 'No se pudieron subir los archivos.'), 'error');
+    } finally {
+      if (offerCenterAttachmentInput) {
+        offerCenterAttachmentInput.value = '';
+      }
+    }
+  };
+
+  const renderOfferCenterEmail = (oferta) => {
+    if (!offerCenterEmailGrid) {
+      return;
+    }
+
+    const offerNumber = oferta.numero_oferta || oferta.id_oferta;
+    const sender = oferta.emisor || t('common.not_available', 'No disponible');
+    const subject = oferta.ref_cliente_asunto_email || t('common.not_available', 'No disponible');
+    const notes = oferta.observaciones || t('crm.no_comments', 'Sin comentarios.');
+    const chatUnreadBadge = renderUnreadBadge(oferta?.chat_unread_count, 'chat-unread-badge--inline');
+
+    offerCenterEmailGrid.innerHTML = `
+      <section class="offer-center__mail-panel">
+        <article class="offer-center__mail-meta-item">
+          <span>${escapeHtml(t('offer.fields.sender', 'QUIÉN LO ENVÍA'))}</span>
+          <strong>${escapeHtml(sender)}</strong>
+        </article>
+        <div class="offer-center__mail-row">
+          <article class="offer-center__mail-meta-item offer-center__mail-meta-item--subject">
+            <span>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}</span>
+            <strong>${escapeHtml(subject)}</strong>
+          </article>
+          <aside class="offer-center__actions offer-center__actions--inline offer-center__actions--hero" aria-label="${escapeHtml(t('table.actions', 'Acciones'))}">
+            <button class="btn-inline btn-inline--edit btn-inline--compact" type="button" data-edit-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.edit_aria', 'Editar oferta {number}', { number: offerNumber }))}">${escapeHtml(t('common.edit', 'Editar'))}</button>
+            <button class="btn-inline btn-inline--save btn-inline--compact" type="button" data-change-estado-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.change_status_aria', 'Cambiar estado de la oferta {number}', { number: offerNumber }))}">${escapeHtml(t('table.status', 'Estado'))}</button>
+            <button class="btn-inline btn-inline--success" type="button" data-offer-center-action="upload-files">${escapeHtml(t('offer.upload_files', 'Subir archivos'))}</button>
+            <button class="btn-inline btn-inline--compact" type="button" data-bom-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.bom_aria', 'Abrir BOM de la oferta {number}', { number: offerNumber }))}">BOM</button>
+            <button class="btn-inline btn-inline--compact" type="button" data-offer-center-action="history">${escapeHtml(t('common.history', 'Histórico'))}</button>
+            <button class="btn-inline btn-inline--save${chatUnreadBadge ? ' btn-inline--with-badge' : ''}" type="button" data-offer-center-action="chat">${escapeHtml(t('offer.chat_label', 'Chat'))}${chatUnreadBadge}</button>
+          </aside>
+        </div>
+        <article class="offer-center__mail-attachments offer-center__mail-attachments--strip">
+          <span>${escapeHtml(t('common.files', 'ARCHIVOS'))}</span>
+          ${renderOfferAttachmentStrip(oferta.adjuntos || [])}
+        </article>
+        <article class="offer-center__mail-body">
+          <span>${escapeHtml(t('offer.fields.notes', 'OBSERVACIONES'))}</span>
+          ${renderOfferConversation(notes)}
+        </article>
+      </section>
+    `;
+  };
+
+  const clearOfferCenterReturnContext = () => {
+    offerCenterReturnContext = null;
+  };
+
+  const setOfferCenterReturnContext = (oferta) => {
+    if (!oferta?.id_oferta) {
+      offerCenterReturnContext = null;
+      return;
+    }
+
+    offerCenterReturnContext = { ...oferta };
+  };
+
+  const reopenOfferCenterFromReturnContext = () => {
+    if (!offerCenterReturnContext) {
+      return;
+    }
+
+    const oferta = offerCenterReturnContext;
+    offerCenterReturnContext = null;
+    openOfferCenterModal(oferta);
+  };
+
+  const setOfferCenterChatOpen = (isOpen) => {
+    if (!offerCenterRoot || !offerCenterChatPanel) {
+      return;
+    }
+
+    offerCenterRoot.classList.toggle('offer-center--chat-open', Boolean(isOpen));
+    offerCenterChatPanel.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+  };
+
+  const openOfferCenterHistoryModal = () => {
+    if (!offerCenterHistoryModal || !currentOfferCenterOferta) {
+      return;
+    }
+
+    renderOfferHistory(offerCenterHistory, currentOfferCenterOferta.interacciones || []);
+    offerCenterHistoryModal.classList.add('is-visible');
+    offerCenterHistoryModal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeOfferCenterHistoryModal = () => {
+    if (!offerCenterHistoryModal) {
+      return;
+    }
+
+    offerCenterHistoryModal.classList.remove('is-visible');
+    offerCenterHistoryModal.setAttribute('aria-hidden', 'true');
+  };
+
+  const setOfferCenterChatBusy = (isBusy) => {
+    if (offerCenterChatInput) {
+      offerCenterChatInput.disabled = isBusy;
+    }
+    if (offerCenterChatSubmit) {
+      offerCenterChatSubmit.disabled = isBusy;
+      offerCenterChatSubmit.setAttribute('aria-label', isBusy ? t('offer.chat_sending', 'Enviando mensaje') : t('offer.chat_send', 'Enviar mensaje'));
+    }
+  };
+
+  const renderOfferChatMessages = (messages = []) => {
+    if (!offerCenterChatMessages) {
+      return;
+    }
+
+    currentOfferChatMessages = Array.isArray(messages) ? messages : [];
+    if (!currentOfferChatMessages.length) {
+      offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(t('offer.chat_empty', 'Todavia no hay mensajes en este chat.'))}</p>`;
+      return;
+    }
+
+    const currentUser = getCurrentUser();
+    offerCenterChatMessages.innerHTML = currentOfferChatMessages.map((message) => {
+      const isOwnMessage = currentUser && (
+        String(message.author_operario || '') === String(currentUser.num_operario || '')
+        || String(message.author_email || '').toLowerCase() === String(currentUser.email || '').toLowerCase()
+      );
+      const authorLabel = message.author_name || t('literal.users.title', 'Usuario');
+
+      return `
+        <article class="offer-center__chat-message${isOwnMessage ? ' offer-center__chat-message--own' : ''}">
+          <strong class="offer-center__chat-message-author">${escapeHtml(authorLabel)}</strong>
+          <p class="offer-center__chat-message-body">${escapeHtml(message.message || '').replace(/\n/g, '<br>')}</p>
+          <span class="offer-center__chat-message-time">${escapeHtml(formatDisplayDateTime(message.created_at) || '')}</span>
+        </article>
+      `;
+    }).join('');
+
+    offerCenterChatMessages.scrollTop = offerCenterChatMessages.scrollHeight;
+  };
+
+  const closeOfferChatPanel = () => {
+    setOfferCenterChatOpen(false);
+    currentOfferChatMessages = [];
+    if (offerCenterChatMessages) {
+      offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(t('offer.chat_empty', 'Todavia no hay mensajes en este chat.'))}</p>`;
+    }
+    if (offerCenterChatInput) {
+      offerCenterChatInput.value = '';
+      offerCenterChatInput.disabled = false;
+    }
+    if (offerCenterChatSubmit) {
+      offerCenterChatSubmit.disabled = false;
+      offerCenterChatSubmit.setAttribute('aria-label', t('offer.chat_send', 'Enviar mensaje'));
+    }
+  };
+
+  const loadOfferChatMessages = async ({ focusComposer = false } = {}) => {
+    const ofertaId = Number(currentOfferCenterOferta?.id_oferta);
+    if (!ofertaId) {
+      return false;
+    }
+
+    offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(t('offer.chat_loading', 'Cargando mensajes...'))}</p>`;
+
+    try {
+      const response = await fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}/chat`);
+      const result = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return false;
+      }
+
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.message || t('offer.chat_error_load', 'No se pudo cargar el chat.'));
+      }
+
+      renderOfferChatMessages(result.messages || []);
+
+      if (focusComposer) {
+        offerCenterChatInput?.focus();
+      }
+      return true;
+    } catch (error) {
+      if (offerCenterChatMessages) {
+        offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(error.message || t('offer.chat_error_retrieve', 'No se pudieron recuperar los mensajes.'))}</p>`;
+      }
+      return false;
+    }
+  };
+
+  const markOfferChatAsRead = async () => {
+    const ofertaId = Number(currentOfferCenterOferta?.id_oferta);
+    if (!ofertaId) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}/chat/read`, {
+        method: 'POST',
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return false;
+      }
+
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.message || 'No se pudo actualizar el estado del chat.');
+      }
+
+      syncOfferChatUnreadState({ ofertaId, unreadCount: result.chat_unread_count || 0 });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const openOfferChatPanel = async () => {
+    if (!currentOfferCenterOferta) {
+      setGenericFeedback(offerCenterFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+      return;
+    }
+
+    setOfferCenterChatOpen(true);
+    if (offerCenterChatTitle) {
+      const offerReference = currentOfferCenterOferta.numero_oferta || `${t('offer.offer_label', 'Oferta')} #${currentOfferCenterOferta.id_oferta || '-'}`;
+      offerCenterChatTitle.textContent = tf('offer.chat_title_with_offer', 'Chat · {offer}', { offer: offerReference });
+    }
+
+    const loaded = await loadOfferChatMessages({ focusComposer: true });
+    if (loaded) {
+      await markOfferChatAsRead();
+    }
+  };
+
+  const openOfferCenterModal = (oferta) => {
+    if (!offerCenterModal) {
+      return;
+    }
+
+    currentOfferCenterOferta = oferta || null;
+    closeOfferChatPanel();
+    clearGenericFeedback(offerCenterFeedback);
+
+    if (offerCenterHeroTitle) {
+      offerCenterHeroTitle.textContent = oferta?.numero_oferta || `${t('offer.budget', 'Presupuesto')} #${oferta?.id_oferta || '-'}`;
+    }
+
+    if (offerCenterHeroMeta) {
+      const metaItems = [
+        {
+          label: t('offer.fields.email_date', 'FECHA e-mail'),
+          value: formatDisplayDate(oferta?.fecha_email) || t('common.not_available', 'No disponible'),
+        },
+        {
+          label: t('offer.fields.offer_created_date', 'FECHA ALTA OFERTA'),
+          value: formatDisplayDate(oferta?.fecha_alta_oferta) || t('common.not_available', 'No disponible'),
+        },
+      ];
+
+      offerCenterHeroMeta.innerHTML = metaItems.map((item) => `
+        <div class="offer-center__meta-item">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+        </div>
+      `).join('');
+    }
+
+    if (offerCenterHeroBadges) {
+      const badgeItems = [
+        { label: t('table.status', 'Estado'), value: translateEstadoLabel(oferta?.estado || t('crm.no_status', 'Sin estado')) },
+        { label: t('offer.fields.client', 'CLIENTE'), value: oferta?.cliente || (oferta?.id_cliente ? `#${oferta.id_cliente}` : t('common.not_available', 'No disponible')) },
+      ];
+      offerCenterHeroBadges.innerHTML = badgeItems.map((item) => `
+        <div class="offer-center__badge">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value)}</strong>
+        </div>
+      `).join('');
+    }
+    renderOfferCenterEmail(oferta || {});
+
+    offerCenterModal.classList.add('is-visible');
+    offerCenterModal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeOfferCenterModal = ({ preserveReturnContext = false } = {}) => {
+    if (!offerCenterModal) {
+      return;
+    }
+
+    closeOfferAttachmentPreviewModal();
+    closeOfferAttachmentsGalleryModal();
+    closeOfferCenterHistoryModal();
+    closeOfferChatPanel();
+    offerCenterModal.classList.remove('is-visible');
+    offerCenterModal.setAttribute('aria-hidden', 'true');
+    currentOfferCenterOferta = null;
+    if (!preserveReturnContext) {
+      clearOfferCenterReturnContext();
+    }
+    clearGenericFeedback(offerCenterFeedback);
+    if (offerCenterAttachmentInput) {
+      offerCenterAttachmentInput.value = '';
+    }
   };
 
   const syncOfertaEstadoFechaLimite = () => {
@@ -2899,7 +4396,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ofertaEstadoModal.setAttribute('aria-hidden', 'false');
   };
 
-  const closeOfertaEditModal = () => {
+  const closeOfertaEditModal = ({ reopenOfferCenter = false } = {}) => {
     if (!ofertaEditModal) {
       return;
     }
@@ -2910,9 +4407,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (ofertaEditForm) {
       ofertaEditForm.reset();
     }
+    if (reopenOfferCenter) {
+      reopenOfferCenterFromReturnContext();
+    }
   };
 
-  const closeOfertaEstadoModal = () => {
+  const closeOfertaEstadoModal = ({ reopenOfferCenter = false } = {}) => {
     if (!ofertaEstadoModal) {
       return;
     }
@@ -2928,6 +4428,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     syncOfertaEstadoFechaLimite();
     renderOfertaEstadoHistorial([]);
+    if (reopenOfferCenter) {
+      reopenOfferCenterFromReturnContext();
+    }
   };
 
   const openEstadoEditModal = (estado) => {
@@ -3031,6 +4534,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     ofertasListadoTableBody.innerHTML = processedOfertas.map((oferta) => `
       <tr class="table-row table-row--oferta">
         ${activeColumns.map((column) => {
+          const normalizedColumnKey = String(column.key || '').trim().toLowerCase();
+
+          if (column.key === 'vista') {
+            return `
+              <td class="table-cell table-cell--view ${getColumnCellClass('ofertas', 'vista')}" data-label="">
+                <div class="clientes-table__actions clientes-table__actions--view">
+                  ${renderOfertaViewButton(oferta)}
+                </div>
+              </td>
+            `;
+          }
+
           if (column.key === 'acciones') {
             return `
               <td class="table-cell table-cell--actions ${getColumnCellClass('ofertas', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
@@ -3041,14 +4556,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
           }
 
-          const rawValue = oferta[column.key];
-          const displayValue = ['Fecha_email', 'Fecha_alta_oferta', 'Fecha_limite'].includes(column.key)
+          const rawValue = oferta[column.key] ?? oferta[normalizedColumnKey];
+          const displayValue = ['fecha_email', 'fecha_alta_oferta', 'fecha_limite'].includes(normalizedColumnKey)
             ? formatDisplayDate(rawValue)
             : rawValue;
 
-          if (column.key === 'Estado') {
+          if (normalizedColumnKey === 'estado') {
             return `
-              <td class="table-cell ${getColumnCellClass('ofertas', 'Estado')}" data-label="${escapeHtml(column.label)}">
+              <td class="table-cell ${getColumnCellClass('ofertas', normalizedColumnKey)}" data-label="${escapeHtml(column.label)}">
                 <div class="table-cell__stack table-cell__stack--compact">
                   ${renderStatusBadge(displayValue)}
                 </div>
@@ -3056,11 +4571,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
           }
 
-          if (column.key === 'Observaciones_oferta') {
+          if (normalizedColumnKey === 'observaciones_oferta') {
             return renderStaticTableCell({
               tableKey: 'ofertas',
               rowId: oferta.id_oferta,
-              columnKey: column.key,
+              columnKey: normalizedColumnKey,
               label: column.label,
               value: displayValue,
               contentClass: 'text-truncate text-truncate--single table-cell__content--muted',
@@ -3068,29 +4583,29 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
           }
 
-          if (column.key === 'Numero_oferta' || column.key === 'Cliente') {
+          if (normalizedColumnKey === 'numero_oferta' || normalizedColumnKey === 'cliente') {
             return renderStaticTableCell({
               tableKey: 'ofertas',
               rowId: oferta.id_oferta,
-              columnKey: column.key,
+              columnKey: normalizedColumnKey,
               label: column.label,
               value: displayValue,
               contentClass: 'table-cell__content--strong',
             });
           }
 
-          if (column.key === 'Fecha_email' || column.key === 'Fecha_alta_oferta' || column.key === 'Fecha_limite') {
+          if (normalizedColumnKey === 'fecha_email' || normalizedColumnKey === 'fecha_alta_oferta' || normalizedColumnKey === 'fecha_limite') {
             return renderStaticTableCell({
               tableKey: 'ofertas',
               rowId: oferta.id_oferta,
-              columnKey: column.key,
+              columnKey: normalizedColumnKey,
               label: column.label,
               value: displayValue,
               contentClass: 'table-cell__content--muted',
             });
           }
 
-          return renderTableCell({ tableKey: 'ofertas', rowId: oferta.id_oferta, columnKey: column.key, label: column.label, value: displayValue });
+          return renderTableCell({ tableKey: 'ofertas', rowId: oferta.id_oferta, columnKey: normalizedColumnKey, label: column.label, value: displayValue });
         }).join('')}
       </tr>
     `).join('');
@@ -3165,22 +4680,29 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    const visibleEstados = getVisibleEstados(estados);
+
     const currentValue = selectedEstadoId || estadoColumnasSelect.value;
     estadoColumnasSelect.innerHTML = '';
 
     const placeholderOption = document.createElement('option');
     placeholderOption.value = '';
-    placeholderOption.textContent = estados.length ? t('config.select_state', 'Selecciona un estado') : t('config.states_none', 'No hay estados creados');
+    placeholderOption.textContent = visibleEstados.length ? t('config.select_state', 'Selecciona un estado') : t('config.states_none', 'No hay estados creados');
     estadoColumnasSelect.appendChild(placeholderOption);
 
-    estados.forEach((estado) => {
+    const globalOption = document.createElement('option');
+    globalOption.value = GLOBAL_CONFIG_SCOPE_ID;
+    globalOption.textContent = t('listing.all', 'Todos');
+    estadoColumnasSelect.appendChild(globalOption);
+
+    visibleEstados.forEach((estado) => {
       const option = document.createElement('option');
       option.value = String(estado.id_estado);
-      option.textContent = `${estado.activo === false ? '[Inactivo] ' : ''}${translateEstadoLabel(estado.descripcion_estado)}`;
+      option.textContent = `${estado.activo === false ? t('literal.states.inactive_prefix', '[Inactivo] ') : ''}${translateEstadoLabel(estado.descripcion_estado)}`;
       estadoColumnasSelect.appendChild(option);
     });
 
-    if (estados.some((estado) => String(estado.id_estado) === String(currentValue))) {
+    if (String(currentValue) === GLOBAL_CONFIG_SCOPE_ID || visibleEstados.some((estado) => String(estado.id_estado) === String(currentValue))) {
       estadoColumnasSelect.value = String(currentValue);
       selectedEstadoId = String(currentValue);
     } else {
@@ -3206,7 +4728,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const processedEstados = getProcessedRows('estados', estadosCache);
+    const processedEstados = getProcessedRows('estados', getVisibleEstados(estadosCache));
     const canManageStates = isManagerUser();
     const dragEnabled = canManageStates && isEstadosDragEnabled();
 
@@ -3224,7 +4746,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const stateEmoji = getSidebarStateIcon(estado);
         const isActive = estado.activo !== false;
         const activeIndicatorClass = isActive ? 'estado-activity-indicator--active' : 'estado-activity-indicator--inactive';
-        const activeLabel = estado.activo !== false ? 'Activo' : 'Inactivo';
+        const activeLabel = estado.activo !== false ? t('literal.states.active', 'Activo') : t('literal.states.inactive', 'Inactivo');
+        const translatedStateLabel = translateEstadoLabel(estado.descripcion_estado);
+        const translatedDepartmentLabel = translateDepartmentLabel(estado.nombre_departamento || t('table.no_department', 'Sin departamento'));
         return `
           <tr data-estado-row="${estado.id_estado}" draggable="${dragEnabled ? 'true' : 'false'}" class="estado-drag-row ${dragEnabled ? '' : 'estado-drag-row--disabled'} ${estado.activo !== false ? '' : 'estado-drag-row--inactive'}">
             <td class="drag-handle ${dragEnabled ? '' : 'drag-handle--disabled'} column-drag" data-label="" title="${escapeHtml(dragEnabled ? t('table.drag_to_reorder', 'Arrastrar para reordenar') : t('table.drag_disabled', 'El drag se desactiva si hay filtros o un orden distinto a Orden asc'))}">⠿</td>
@@ -3233,15 +4757,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             </td>
             <td class="${getColumnCellClass('estados', 'descripcion_estado')} estados-table__cell estados-table__cell--description" data-label="${escapeHtml(t('table.state_description', 'Descripción estado'))}">
               <div class="table-cell__stack table-cell__stack--compact estados-table__stack">
-                <div class="table-cell__content table-cell__content--strong estados-table__title" title="${escapeHtml(estado.descripcion_estado)}"><span class="estados-table__emoji" aria-hidden="true">${escapeHtml(stateEmoji)}</span>${escapeHtml(estado.descripcion_estado)}</div>
-                <span class="estado-activity-indicator ${activeIndicatorClass}" title="${escapeHtml(isActive ? 'Estado activo en sidebar y procesos' : 'Estado inactivo: solo visible en administración')}">
+                <div class="table-cell__content table-cell__content--strong estados-table__title" title="${escapeHtml(translatedStateLabel)}"><span class="estados-table__emoji" aria-hidden="true">${escapeHtml(stateEmoji)}</span>${escapeHtml(translatedStateLabel)}</div>
+                <span class="estado-activity-indicator ${activeIndicatorClass}" title="${escapeHtml(isActive ? t('literal.states.active_title', 'Estado activo en sidebar y procesos') : t('literal.states.inactive_title', 'Estado inactivo: solo visible en administración'))}">
                   <span class="estado-activity-indicator__dot" aria-hidden="true"></span>
                   <span class="estado-activity-indicator__label">${escapeHtml(activeLabel)}</span>
                 </span>
               </div>
             </td>
             <td class="${getColumnCellClass('estados', 'nombre_departamento')} estados-table__cell estados-table__cell--department" data-label="${escapeHtml(t('table.department', 'Departamento'))}">
-              <div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(estado.nombre_departamento || t('table.no_department', 'Sin departamento'))}</div></div>
+              <div class="table-cell__stack"><div class="table-cell__content table-cell__content--plain">${escapeHtml(translatedDepartmentLabel)}</div></div>
             </td>
             <td class="table-cell table-cell--actions ${getColumnCellClass('estados', 'acciones')} estados-table__cell estados-table__cell--actions" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
               <div class="clientes-table__actions actions-inline">
@@ -3492,8 +5016,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
           }
 
-          if (currentListadoContext.estadoId === Number(selectedEstadoId)) {
-            await loadListadoColumnasEstado(Number(selectedEstadoId));
+          if (isConfigScopeActiveForCurrentListado(selectedEstadoId)) {
+            await loadListadoColumnasEstado(selectedEstadoId);
             await loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
           }
         } catch {
@@ -3533,8 +5057,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     editingConfigId = null;
     setGenericFeedback(configColumnasTableFeedback, result.message || 'Columna de configuración actualizada correctamente.', 'success');
     await loadConfiguracionColumnas({ estadoId: selectedEstadoId, silent: true });
-    if (currentListadoContext.estadoId === Number(selectedEstadoId)) {
-      await loadListadoColumnasEstado(Number(selectedEstadoId));
+    if (isConfigScopeActiveForCurrentListado(selectedEstadoId)) {
+      await loadListadoColumnasEstado(selectedEstadoId);
       await loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
     }
 
@@ -3551,7 +5075,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error(result.message || 'No se pudieron consultar los estados');
       }
 
-      estadosCache = Array.isArray(result.estados) ? result.estados : [];
+      estadosCache = getVisibleEstados(Array.isArray(result.estados) ? result.estados : []);
       renderSidebarNav();
       renderEstadoOptions(estadosCache);
       renderEstadosTable();
@@ -3567,6 +5091,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return [];
     }
   };
+
+  const refreshOfferCounters = async () => loadEstados({ silent: true });
 
   const loadConfiguracionColumnas = async ({ estadoId = selectedEstadoId, silent = false } = {}) => {
     if (!estadoId) {
@@ -3590,9 +5116,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const loadListadoColumnasEstado = async (estadoId) => {
-    currentOfferColumnsConfig = estadoId ? await fetchConfiguracionColumnas(estadoId) : [];
+    const configScopeId = getListadoConfigScopeId(estadoId);
+    currentOfferColumnsConfig = configScopeId ? await fetchConfiguracionColumnas(configScopeId) : [];
     setupTableHeaderControls('ofertas');
     return currentOfferColumnsConfig;
+  };
+
+  const resetConfigViewEditingState = (viewName) => {
+    if (viewName === 'clientes') {
+      editingClienteId = null;
+      return;
+    }
+
+    if (viewName === 'proyectos') {
+      editingProyectoId = null;
+      return;
+    }
+
+    if (viewName === 'usuarios') {
+      editingUsuarioId = null;
+      return;
+    }
+
+    if (viewName === 'estados') {
+      editingConfigId = null;
+      skipConfigAutoSaveId = null;
+      closeEstadoEditModal();
+    }
   };
 
   const setClientesMode = (mode) => {
@@ -3622,7 +5172,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!processedProyectos.length) {
       proyectosTableBody.innerHTML = `
         <tr>
-          <td colspan="3" class="clientes-table__empty">No hay proyectos creados todavía.</td>
+          <td colspan="3" class="clientes-table__empty">${escapeHtml(t('literal.projects.empty', 'No hay proyectos creados todavía.'))}</td>
         </tr>
       `;
       return;
@@ -3636,7 +5186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${renderStaticTableCell({ tableKey: 'proyectos', rowId: proyecto.id_proyecto, columnKey: 'id_proyecto', value: proyecto.id_proyecto })}
             ${isEditing
               ? `
-            <td class="${getColumnCellClass('proyectos', 'descripcion_proyecto')}" data-label="Descripción proyecto">
+            <td class="${getColumnCellClass('proyectos', 'descripcion_proyecto')}" data-label="${escapeHtml(t('literal.projects.project_description', 'Descripción proyecto'))}">
               <input class="clientes-table__edit-input" type="text" value="${escapeHtml(proyecto.descripcion_proyecto)}" data-edit-proyecto-input="${proyecto.id_proyecto}" maxlength="255" />
             </td>
               `
@@ -3747,6 +5297,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const setActiveView = (viewName) => {
+    if (currentViewName !== viewName) {
+      resetConfigViewEditingState(currentViewName);
+    }
+
     currentViewName = viewName;
     const navItems = getNavItems();
     const isListadoView = viewName === 'todos' || viewName.startsWith('estado-');
@@ -3754,7 +5308,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (viewName === 'todos') {
       currentListadoContext = { viewName, estadoId: null, label: t('listing.all', 'Todos') };
-      currentOfferColumnsConfig = [];
     }
 
     if (viewName.startsWith('estado-')) {
@@ -3845,12 +5398,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (viewName === 'todos') {
-      setupTableHeaderControls('ofertas');
-      loadOfertasListado({ estadoId: null, label: t('listing.all', 'Todos') });
+      const label = t('listing.all', 'Todos');
+      resetTableFilters('ofertas');
+      loadListadoColumnasEstado(null).then(() => loadOfertasListado({ estadoId: null, label }));
     }
 
     if (viewName.startsWith('estado-')) {
       const { estadoId, label } = currentListadoContext;
+      resetTableFilters('ofertas');
       loadListadoColumnasEstado(estadoId).then(() => loadOfertasListado({ estadoId, label }));
     }
   };
@@ -3886,6 +5441,31 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // Filtros rápidos de fecha desactivados temporalmente.
+    // const clearDateFiltersButton = event.target.closest('[data-clear-date-filters]');
+    // if (clearDateFiltersButton) {
+    //   ...
+    // }
+    //
+    // const toggleQuickFiltersButton = event.target.closest('[data-toggle-quick-filters]');
+    // if (toggleQuickFiltersButton) {
+    //   ...
+    // }
+    //
+    // const closeQuickFiltersButton = event.target.closest('[data-close-quick-filters]');
+    // if (closeQuickFiltersButton) {
+    //   ...
+    // }
+    //
+    // const applyQuickFiltersButton = event.target.closest('[data-apply-quick-filters]');
+    // if (applyQuickFiltersButton) {
+    //   ...
+    // }
+    //
+    // if (!event.target.closest('[data-table-quick-filters]')) {
+    //   closeAllQuickFilters();
+    // }
+
     const toggleCellButton = event.target.closest('[data-toggle-table-cell]');
     if (toggleCellButton) {
       const cellKey = toggleCellButton.dataset.toggleTableCell;
@@ -3911,9 +5491,46 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const viewButton = event.target.closest('[data-view]');
     if (!viewButton) {
+      const closeDeleteOfferPromptButton = event.target.closest('[data-close-delete-offer-prompt]');
+      if (closeDeleteOfferPromptButton) {
+        closeOfferDeletePrompt(false);
+        return;
+      }
+
+      const confirmDeleteOfferPromptButton = event.target.closest('[data-confirm-delete-offer-prompt]');
+      if (confirmDeleteOfferPromptButton) {
+        confirmOfferDeletePrompt();
+        return;
+      }
+
+      const closeReassignOfferPromptButton = event.target.closest('[data-close-reassign-offer-prompt]');
+      if (closeReassignOfferPromptButton) {
+        closeOfferReassignPrompt(null);
+        return;
+      }
+
+      const confirmReassignOfferPromptButton = event.target.closest('[data-confirm-reassign-offer-prompt]');
+      if (confirmReassignOfferPromptButton) {
+        confirmOfferReassignPrompt();
+        return;
+      }
+
+      const closeCreateDepartmentPromptButton = event.target.closest('[data-close-create-department-prompt]');
+      if (closeCreateDepartmentPromptButton) {
+        closeDepartmentCreatePrompt(null);
+        return;
+      }
+
+      const confirmCreateDepartmentPromptButton = event.target.closest('[data-confirm-create-department-prompt]');
+      if (confirmCreateDepartmentPromptButton) {
+        confirmDepartmentCreatePrompt();
+        return;
+      }
+
       const editOfertaButton = event.target.closest('[data-edit-oferta]');
       if (editOfertaButton) {
         const ofertaId = Number(editOfertaButton.dataset.editOferta);
+        const cameFromOfferCenter = Boolean(editOfertaButton.closest('#offerCenterModal'));
 
         Promise.all([
           clientesCache.length ? Promise.resolve(clientesCache) : loadClientes({ silent: true }),
@@ -3930,6 +5547,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               throw new Error(result.message || 'No se pudo cargar la oferta');
             }
 
+            if (cameFromOfferCenter) {
+              setOfferCenterReturnContext(currentOfferCenterOferta);
+              closeOfferCenterModal({ preserveReturnContext: true });
+            }
             openOfertaEditModal(result.oferta || {});
           } catch (error) {
             setGenericFeedback(ofertasListadoFeedback, error.message || 'No se pudo cargar la oferta.', 'error');
@@ -3938,10 +5559,166 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      const viewOfertaButton = event.target.closest('[data-view-oferta]');
+      if (viewOfertaButton) {
+        const ofertaId = Number(viewOfertaButton.dataset.viewOferta);
+        const ofertaBase = ofertasListadoCache.find((item) => Number(item.id_oferta) === ofertaId) || {};
+
+        fetch(`/api/ofertas/${ofertaId}`)
+          .then(async (response) => {
+            if (response.status === 401) {
+              handleUnauthorized();
+              return null;
+            }
+
+            const result = await response.json();
+            if (!response.ok || result.success === false) {
+              throw new Error(result.message || 'No se pudo cargar la oferta');
+            }
+
+            return result;
+          })
+          .then((result) => {
+            if (!result) {
+              return;
+            }
+
+            openOfferCenterModal({
+              ...ofertaBase,
+              ...(result.oferta || {}),
+            });
+          })
+          .catch((error) => {
+            setGenericFeedback(ofertasListadoFeedback, error.message || 'No se pudo cargar la oferta.', 'error');
+          });
+        return;
+      }
+
       const bomOfertaButton = event.target.closest('[data-bom-oferta]');
       if (bomOfertaButton) {
         const ofertaId = Number(bomOfertaButton.dataset.bomOferta);
+        if (bomOfertaButton.closest('#offerCenterModal')) {
+          setOfferCenterReturnContext(currentOfferCenterOferta);
+          closeOfferCenterModal({ preserveReturnContext: true });
+        }
         openBomModal(ofertaId);
+        return;
+      }
+
+      const reassignOfertaButton = event.target.closest('[data-reassign-oferta]');
+      if (reassignOfertaButton) {
+        if (!isManagerUser()) {
+          setGenericFeedback(ofertasListadoFeedback, t('offer.reassign_manager_only', 'Solo los managers pueden reasignar tareas.'), 'error');
+          return;
+        }
+
+        if (guardReadOnlyAction(event)) {
+          return;
+        }
+
+        const ofertaId = Number(reassignOfertaButton.dataset.reassignOferta);
+        const oferta = ofertasListadoCache.find((item) => Number(item.id_oferta) === ofertaId);
+        if (!oferta) {
+          setGenericFeedback(ofertasListadoFeedback, t('offer.reassign_load_error', 'No se pudo cargar la oferta para reasignarla.'), 'error');
+          return;
+        }
+
+        if (!canReassignOffer(oferta)) {
+          setGenericFeedback(ofertasListadoFeedback, t('offer.reassign_department_forbidden', 'Solo puedes reasignar ofertas del departamento que gestionas.'), 'error');
+          return;
+        }
+
+        openOfferReassignPrompt({ oferta })
+          .then(async (selection) => {
+            if (!selection) {
+              return;
+            }
+
+            clearGenericFeedback(ofertasListadoFeedback);
+
+            const response = await fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}/reasignar`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                num_operario_responsable: selection.numOperarioResponsable,
+              }),
+            });
+            const result = await response.json().catch(() => ({}));
+
+            if (response.status === 401) {
+              handleUnauthorized();
+              return;
+            }
+
+            if (!response.ok || result?.success === false) {
+              throw new Error(result?.message || t('offer.reassign_error', 'No se pudo reasignar la oferta.'));
+            }
+
+            setGenericFeedback(ofertasListadoFeedback, result.message || t('offer.reassign_success', 'Oferta reasignada correctamente.'), 'success');
+            await Promise.all([
+              refreshOfferCounters(),
+              loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label }),
+            ]);
+          })
+          .catch((error) => {
+            setGenericFeedback(ofertasListadoFeedback, error.message || t('offer.reassign_error', 'No se pudo reasignar la oferta.'), 'error');
+          });
+        return;
+      }
+
+      const deleteOfertaButton = event.target.closest('[data-delete-oferta]');
+      if (deleteOfertaButton) {
+        if (!isManagerUser()) {
+          setGenericFeedback(ofertasListadoFeedback, OFFER_DELETE_MANAGER_ONLY_MESSAGE, 'error');
+          return;
+        }
+
+        if (guardReadOnlyAction(event)) {
+          return;
+        }
+
+        const ofertaId = Number(deleteOfertaButton.dataset.deleteOferta);
+        const oferta = ofertasListadoCache.find((item) => Number(item.id_oferta) === ofertaId);
+        const offerNumber = oferta?.numero_oferta || ofertaId;
+        openOfferDeletePrompt({ offerNumber }).then((confirmed) => {
+          if (!confirmed) {
+            return;
+          }
+
+          clearGenericFeedback(ofertasListadoFeedback);
+
+          fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}`, { method: 'DELETE' })
+            .then(async (response) => {
+              const result = await response.json().catch(() => ({}));
+              if (response.status === 401) {
+                handleUnauthorized();
+                return null;
+              }
+              if (response.status === 403 && result?.manager_only) {
+                setGenericFeedback(ofertasListadoFeedback, result.message || OFFER_DELETE_MANAGER_ONLY_MESSAGE, 'error');
+                return null;
+              }
+              if (!response.ok || result?.success === false) {
+                throw new Error(result?.message || t('offer.delete_error', 'No se pudo eliminar la oferta.'));
+              }
+              return result;
+            })
+            .then(async (result) => {
+              if (!result) {
+                return;
+              }
+              setGenericFeedback(ofertasListadoFeedback, result.message || t('offer.delete_success', 'Oferta eliminada correctamente.'), 'success');
+              await Promise.all([
+                refreshOfferCounters(),
+                loadOfertasListado({ estadoId: null, label: t('listing.all', 'Todos') }),
+              ]);
+            })
+            .catch((error) => {
+              setGenericFeedback(ofertasListadoFeedback, error.message || t('offer.delete_error', 'No se pudo eliminar la oferta.'), 'error');
+            });
+        });
         return;
       }
 
@@ -3963,13 +5740,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const closeBomModalButton = event.target.closest('[data-close-bom-modal]');
       if (closeBomModalButton) {
-        closeBomModal();
+        closeBomModal({ reopenOfferCenter: true });
         return;
       }
 
       const changeEstadoButton = event.target.closest('[data-change-estado-oferta]');
       if (changeEstadoButton) {
         const ofertaId = Number(changeEstadoButton.dataset.changeEstadoOferta);
+        const cameFromOfferCenter = Boolean(changeEstadoButton.closest('#offerCenterModal'));
 
         Promise.all([
           estadosCache.length ? Promise.resolve(estadosCache) : loadEstados({ silent: true }),
@@ -3986,6 +5764,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               throw new Error(result.message || 'No se pudo cargar la oferta');
             }
 
+            if (cameFromOfferCenter) {
+              setOfferCenterReturnContext(currentOfferCenterOferta);
+              closeOfferCenterModal({ preserveReturnContext: true });
+            }
             openOfertaEstadoModal(result.oferta || {});
           } catch (error) {
             setGenericFeedback(ofertasListadoFeedback, error.message || 'No se pudo cargar la oferta.', 'error');
@@ -3996,13 +5778,91 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const closeOfertaModalButton = event.target.closest('[data-close-oferta-modal]');
       if (closeOfertaModalButton) {
-        closeOfertaEditModal();
+        closeOfertaEditModal({ reopenOfferCenter: true });
+        return;
+      }
+
+      const closeOfferCenterModalButton = event.target.closest('[data-close-offer-center-modal]');
+      if (closeOfferCenterModalButton) {
+        closeOfferCenterModal();
+        return;
+      }
+
+      const closeOfferAttachmentPreviewModalButton = event.target.closest('[data-close-offer-attachment-preview-modal]');
+      if (closeOfferAttachmentPreviewModalButton) {
+        closeOfferAttachmentPreviewModal();
+        return;
+      }
+
+      const closeOfferAttachmentsGalleryModalButton = event.target.closest('[data-close-offer-attachments-gallery-modal]');
+      if (closeOfferAttachmentsGalleryModalButton) {
+        closeOfferAttachmentsGalleryModal();
+        return;
+      }
+
+      const openOfferAttachmentsGalleryButton = event.target.closest('[data-open-offer-attachments-gallery]');
+      if (openOfferAttachmentsGalleryButton) {
+        openOfferAttachmentsGalleryModal();
+        return;
+      }
+
+      const attachmentPreviewButton = event.target.closest('[data-offer-attachment-preview]');
+      if (attachmentPreviewButton) {
+        const storedName = attachmentPreviewButton.dataset.offerAttachmentPreview;
+        const attachment = (currentOfferCenterOferta?.adjuntos || []).find((item) => item?.stored_name === storedName);
+        if (!attachment) {
+          setGenericFeedback(offerCenterFeedback, t('offer.attachment_selected_error', 'No se pudo recuperar el adjunto seleccionado.'), 'error');
+          return;
+        }
+
+        offerAttachmentPreviewReturnToGallery = offerAttachmentsGalleryModal?.classList.contains('is-visible') || false;
+        closeOfferAttachmentsGalleryModal();
+        openOfferAttachmentPreviewModal(attachment);
+        return;
+      }
+
+      const offerCenterActionButton = event.target.closest('[data-offer-center-action]');
+      if (offerCenterActionButton) {
+        if (!currentOfferCenterOferta) {
+          setGenericFeedback(offerCenterFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+          return;
+        }
+
+        const action = offerCenterActionButton.dataset.offerCenterAction;
+        if (action === 'upload-files') {
+          if (guardReadOnlyAction(event)) {
+            return;
+          }
+          offerCenterAttachmentInput?.click();
+          return;
+        }
+
+        if (action === 'history') {
+          openOfferCenterHistoryModal();
+          return;
+        }
+
+        if (action === 'chat') {
+          openOfferChatPanel();
+          return;
+        }
+      }
+
+      const closeOfferCenterHistoryModalButton = event.target.closest('[data-close-offer-center-history-modal]');
+      if (closeOfferCenterHistoryModalButton) {
+        closeOfferCenterHistoryModal();
+        return;
+      }
+
+      const closeOfferChatPanelButton = event.target.closest('[data-close-offer-chat-panel]');
+      if (closeOfferChatPanelButton) {
+        closeOfferChatPanel();
         return;
       }
 
       const closeOfertaEstadoModalButton = event.target.closest('[data-close-oferta-estado-modal]');
       if (closeOfertaEstadoModalButton) {
-        closeOfertaEstadoModal();
+        closeOfertaEstadoModal({ reopenOfferCenter: true });
         return;
       }
 
@@ -4159,6 +6019,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.addEventListener('input', (event) => {
+    // Filtros rápidos de fecha desactivados temporalmente.
+    // const quickDateFilterInput = event.target.closest('.table-quick-filter__input');
+    // if (quickDateFilterInput) {
+    //   ...
+    // }
+
     const filterInput = event.target.closest('.table-header__filter');
     if (!filterInput) {
       return;
@@ -4171,6 +6037,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const { tableKey } = header.dataset;
     const filterKey = filterInput.dataset.filterKey;
+    const filterBound = filterInput.dataset.filterBound;
     const state = tableStates[tableKey];
     if (!state) {
       return;
@@ -4194,13 +6061,38 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && offerAttachmentPreviewModal?.classList.contains('is-visible')) {
+      closeOfferAttachmentPreviewModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && offerAttachmentsGalleryModal?.classList.contains('is-visible')) {
+      closeOfferAttachmentsGalleryModal();
+      return;
+    }
+
     if (event.key === 'Escape' && ofertaEditModal?.classList.contains('is-visible')) {
-      closeOfertaEditModal();
+      closeOfertaEditModal({ reopenOfferCenter: true });
+      return;
+    }
+
+    if (event.key === 'Escape' && offerCenterRoot?.classList.contains('offer-center--chat-open')) {
+      closeOfferChatPanel();
+      return;
+    }
+
+    if (event.key === 'Escape' && offerCenterHistoryModal?.classList.contains('is-visible')) {
+      closeOfferCenterHistoryModal();
+      return;
+    }
+
+    if (event.key === 'Escape' && offerCenterModal?.classList.contains('is-visible')) {
+      closeOfferCenterModal();
       return;
     }
 
     if (event.key === 'Escape' && ofertaEstadoModal?.classList.contains('is-visible')) {
-      closeOfertaEstadoModal();
+      closeOfertaEstadoModal({ reopenOfferCenter: true });
       return;
     }
 
@@ -4215,7 +6107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (event.key === 'Escape' && bomModal?.classList.contains('is-visible')) {
-      closeBomModal();
+      closeBomModal({ reopenOfferCenter: true });
       return;
     }
 
@@ -4248,14 +6140,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      if (!selectedOutlookMessageImportData) {
+      if (!selectedOutlookMessageId) {
         setGenericFeedback(outlookImportFeedback, t('offer.outlook_select_message', 'Selecciona un correo para ver el detalle.'), 'error');
         return;
       }
 
-      await applyImportedEmailData(selectedOutlookMessageImportData);
-      closeOutlookImportModal();
-      setFeedback(t('offer.outlook_import_success', 'Correo de Outlook importado correctamente.'), 'success');
+      try {
+        const response = await fetch(`/api/outlook/messages/${encodeURIComponent(selectedOutlookMessageId)}/import`, {
+          method: 'POST',
+        });
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo importar el correo de Outlook');
+        }
+
+        const syncedExistingOffer = await handleImportedEmailResult(result, { feedbackTarget: outlookImportFeedback, closeOutlook: true });
+        if (!syncedExistingOffer) {
+          closeOutlookImportModal();
+          setFeedback(result.message || t('offer.outlook_import_success', 'Correo de Outlook importado correctamente.'), 'success');
+        }
+      } catch (error) {
+        setGenericFeedback(outlookImportFeedback, error.message || 'No se pudo importar el correo de Outlook.', 'error');
+      }
     });
   }
 
@@ -4273,7 +6184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const originalText = submitButton ? submitButton.textContent : '';
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Guardando...';
+        submitButton.textContent = t('literal.feedback.loading_state', 'Guardando...');
       }
 
       clearGenericFeedback(bomFeedback);
@@ -4284,10 +6195,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const precio = String(formData.get('precio') || '').trim();
 
         if (!material) {
-          throw new Error('El material es obligatorio.');
+          throw new Error(t('literal.feedback.material_required', 'El material es obligatorio.'));
         }
         if (!precio) {
-          throw new Error('El nuevo precio es obligatorio.');
+          throw new Error(t('literal.feedback.new_price_required', 'El nuevo precio es obligatorio.'));
         }
 
         const response = await fetch('/api/materiales-precio', {
@@ -4313,14 +6224,73 @@ document.addEventListener('DOMContentLoaded', async () => {
           bomSearchInput.value = material;
         }
         openBomListView();
-        setGenericFeedback(bomFeedback, result.message || 'Precio BOM guardado correctamente.', 'success');
+        setGenericFeedback(bomFeedback, result.message || t('literal.feedback.bom_saved', 'Precio BOM guardado correctamente.'), 'success');
       } catch (error) {
-        setGenericFeedback(bomFeedback, error.message || 'No se pudo guardar el nuevo precio BOM.', 'error');
+        setGenericFeedback(bomFeedback, error.message || t('literal.feedback.bom_save_error', 'No se pudo guardar el nuevo precio BOM.'), 'error');
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = originalText;
         }
+      }
+    });
+  }
+
+  if (offerCenterChatForm) {
+    offerCenterChatForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (guardReadOnlyAction(event)) {
+        return;
+      }
+
+      const ofertaId = Number(currentOfferCenterOferta?.id_oferta);
+      const message = offerCenterChatInput?.value?.trim() || '';
+      if (!ofertaId) {
+        setGenericFeedback(offerCenterFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+        return;
+      }
+      if (!message) {
+        if (offerCenterChatMessages && !currentOfferChatMessages.length) {
+          offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(t('offer.chat_start_prompt', 'Escribe un mensaje para iniciar la conversacion.'))}</p>`;
+        }
+        offerCenterChatInput?.focus();
+        return;
+      }
+
+      setOfferCenterChatBusy(true);
+
+      try {
+        const response = await fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+        const result = await response.json().catch(() => ({}));
+
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+
+        if (!response.ok || result?.success === false) {
+          throw new Error(result?.message || t('offer.chat_error_send', 'No se pudo enviar el mensaje.'));
+        }
+
+        renderOfferChatMessages(result.messages || []);
+        syncOfferChatUnreadState({ ofertaId, unreadCount: result.chat_unread_count || 0 });
+        if (offerCenterChatInput) {
+          offerCenterChatInput.value = '';
+          offerCenterChatInput.focus();
+        }
+      } catch (error) {
+        if (offerCenterChatMessages && !currentOfferChatMessages.length) {
+          offerCenterChatMessages.innerHTML = `<p class="offer-center__chat-empty">${escapeHtml(error.message || 'No se pudo enviar el mensaje.')}</p>`;
+        }
+      } finally {
+        setOfferCenterChatBusy(false);
       }
     });
   }
@@ -4509,6 +6479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const readOnlyActionSelector = [
     '[data-edit-oferta]',
     '[data-change-estado-oferta]',
+    '[data-delete-oferta]',
     '[data-edit-cliente]',
     '[data-save-cliente]',
     '[data-edit-estado]',
@@ -4529,6 +6500,51 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     guardReadOnlyAction(event);
   }, true);
+
+  document.addEventListener('keydown', (event) => {
+    if (offerDeletePrompt?.classList.contains('is-visible')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeOfferDeletePrompt(false);
+        return;
+      }
+
+      if (event.key === 'Enter' && event.target === offerDeletePromptPassword) {
+        event.preventDefault();
+        confirmOfferDeletePrompt();
+      }
+      return;
+    }
+
+    if (offerReassignPrompt?.classList.contains('is-visible')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeOfferReassignPrompt(null);
+        return;
+      }
+
+      if (event.key === 'Enter' && event.target === offerReassignPromptUser) {
+        event.preventDefault();
+        confirmOfferReassignPrompt();
+      }
+      return;
+    }
+
+    if (!departmentCreatePrompt?.classList.contains('is-visible')) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeDepartmentCreatePrompt(null);
+      return;
+    }
+
+    if (event.key === 'Enter' && event.target === departmentCreatePromptInput) {
+      event.preventDefault();
+      confirmDepartmentCreatePrompt();
+    }
+  });
 
   [form, ofertaEditForm, ofertaEstadoForm, clienteCreateForm, userCreateForm, estadoCreateForm, configColumnCreateForm]
     .filter(Boolean)
@@ -4615,6 +6631,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  if (offerCenterAttachmentInput) {
+    offerCenterAttachmentInput.addEventListener('change', (event) => {
+      if (guardReadOnlyAction(event)) {
+        offerCenterAttachmentInput.value = '';
+        return;
+      }
+
+      uploadOfferAttachments(event.target.files);
+    });
+  }
+
   if (form && feedback) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -4622,7 +6649,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearFeedback();
       clearFormValidationErrors(form);
       if (!validateOfertaPrincipalForm()) {
-        setFeedback('Revisa los campos obligatorios marcados en rojo.', 'error');
+        setFeedback(t('literal.feedback.review_required_fields', 'Revisa los campos obligatorios marcados en rojo.'), 'error');
         return;
       }
 
@@ -4631,7 +6658,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Continuando...';
+        submitButton.textContent = t('literal.feedback.continuing_state', 'Continuando...');
       }
 
       try {
@@ -4650,13 +6677,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         ]);
 
         setFeedback(
-          'Cabecera preparada. Completa ahora el ETC para guardar todo el proceso.',
+          t('literal.feedback.header_ready', 'Cabecera preparada. Completa ahora el ETC para guardar todo el proceso.'),
           'success',
         );
         openOfertaEtcModal();
       } catch (error) {
         savedOfertaContext = null;
-        setFeedback(error.message || 'Se produjo un error al preparar el formulario ETC.', 'error');
+        setFeedback(error.message || t('literal.feedback.prepare_etc_error', 'Se produjo un error al preparar el formulario ETC.'), 'error');
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
@@ -4669,6 +6696,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.requestAnimationFrame(() => {
         clearFeedback();
         clearFormValidationErrors(form);
+        importedEmailAttachmentToken = null;
+        importedEmailMetadata = null;
         savedOfertaContext = null;
         pendingOfertaEtcPayload = null;
         updateOfertaEtcStandbyUi();
@@ -4685,7 +6714,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       clearFormValidationErrors(ofertaEtcForm);
       const arePriorityFieldsValid = validateOfertaEtcPriorityFields();
       if (!arePriorityFieldsValid) {
-        setGenericFeedback(ofertaEtcFeedback, 'Revisa los campos obligatorios marcados en rojo.', 'error');
+        setGenericFeedback(ofertaEtcFeedback, t('literal.feedback.review_required_fields', 'Revisa los campos obligatorios marcados en rojo.'), 'error');
         return;
       }
 
@@ -4693,17 +6722,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       const originalText = submitButton ? submitButton.textContent : '';
       if (submitButton) {
         submitButton.disabled = true;
-        submitButton.textContent = 'Aceptando...';
+        submitButton.textContent = t('literal.feedback.accepting_state', 'Aceptando...');
       }
 
       try {
         const payload = buildPendingOfertaEtcPayload();
         if (!payload.codigo_externo_oferta && !payload.codigo_interno_oferta && !payload.referencia_cliente && !payload.numero_comision && !payload.proyecto) {
-          throw new Error('Indica al menos un identificador ETC: código externo, código interno, referencia cliente, número comisión o proyecto.');
+          throw new Error(t('literal.feedback.missing_etc_identifier', 'Indica al menos un identificador ETC: código externo, código interno, referencia cliente, número comisión o proyecto.'));
         }
 
         if (!savedOfertaContext) {
-          throw new Error('Primero debes guardar la cabecera de la oferta.');
+          throw new Error(t('literal.feedback.save_header_first', 'Primero debes guardar la cabecera de la oferta.'));
         }
 
         pendingOfertaEtcPayload = payload;
@@ -4716,6 +6745,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           body: JSON.stringify({
             oferta: buildPayload(),
             oferta_etc: buildOfertaEtcPayloadForInsert(),
+            imported_email_attachment_token: importedEmailAttachmentToken,
+            imported_email_metadata: importedEmailMetadata,
           }),
         });
 
@@ -4725,6 +6756,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const numeroOferta = result.numero_oferta || numeroOfertaField?.value || '';
+    importedEmailAttachmentToken = null;
+    importedEmailMetadata = null;
         savedOfertaContext = null;
         pendingOfertaEtcPayload = null;
         updateOfertaEtcStandbyUi();
@@ -5173,21 +7206,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      const nombreDepartamento = window.prompt('Nombre del nuevo departamento');
-      if (!nombreDepartamento || !nombreDepartamento.trim()) {
+      const nombreDepartamento = await openDepartmentCreatePrompt();
+      if (!nombreDepartamento) {
         return;
       }
 
       try {
+        if (departmentCreatePromptConfirm) {
+          departmentCreatePromptConfirm.disabled = true;
+        }
         const response = await fetch('/api/departamentos', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ nombre_departamento: nombreDepartamento.trim() }),
+          body: JSON.stringify({ nombre_departamento: nombreDepartamento }),
         });
 
         if (response.status === 401) {
+          closeDepartmentCreatePrompt(null);
           handleUnauthorized();
           return;
         }
@@ -5201,9 +7238,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (userDepartamentosSelect && result.departamento?.id_departamento) {
           userDepartamentosSelect.value = String(result.departamento.id_departamento);
         }
+        closeDepartmentCreatePrompt(null);
         setGenericFeedback(userCreateFeedback, result.message || 'Departamento creado correctamente.', 'success');
       } catch (error) {
-        setGenericFeedback(userCreateFeedback, error.message || 'No se pudo crear el departamento.', 'error');
+        if (departmentCreatePromptConfirm) {
+          departmentCreatePromptConfirm.disabled = false;
+        }
+        setGenericFeedback(departmentCreatePromptFeedback, error.message || t('literal.users.department_create_error', 'No se pudo crear el departamento.'), 'error');
       }
     });
   }
@@ -5531,8 +7572,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderAvailableColumnOptions();
         setGenericFeedback(configColumnCreateFeedback, result.message || 'Columnas añadidas correctamente.', 'success');
         await loadConfiguracionColumnas({ estadoId: selectedEstadoId, silent: true });
-        if (currentListadoContext.estadoId === Number(selectedEstadoId)) {
-          await loadListadoColumnasEstado(Number(selectedEstadoId));
+        if (isConfigScopeActiveForCurrentListado(selectedEstadoId)) {
+          await loadListadoColumnasEstado(selectedEstadoId);
           await loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
         }
       } catch (error) {
@@ -5618,8 +7659,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           skipConfigAutoSaveId = null;
           setGenericFeedback(configColumnasTableFeedback, result.message || 'Columna de configuración eliminada correctamente.', 'success');
           await loadConfiguracionColumnas({ estadoId: selectedEstadoId, silent: true });
-          if (currentListadoContext.estadoId === Number(selectedEstadoId)) {
-            await loadListadoColumnasEstado(Number(selectedEstadoId));
+          if (isConfigScopeActiveForCurrentListado(selectedEstadoId)) {
+            await loadListadoColumnasEstado(selectedEstadoId);
             await loadOfertasListado({ estadoId: currentListadoContext.estadoId, label: currentListadoContext.label });
           }
         } catch (error) {

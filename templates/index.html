@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 
-{% block title %}Presupuestos{% endblock %}
+{% block title %}OFERTAS{% endblock %}
 {% block app_header_title %}Presupuestos{% endblock %}
 {% block app_header_title_key %}app.title{% endblock %}
 
 {% block body %}
 <header class="header">
-  <div class="header-title">Presupuestos</div>
+  <div class="header-title" data-translate-key="app.title">Presupuestos</div>
 </header>
 
-<nav class="breadcrumb-wrapper" aria-label="Breadcrumb">
+<nav class="breadcrumb-wrapper" aria-label="Breadcrumb" data-translate-key-aria-label="literal.breadcrumb">
   <div id="breadcrumbContainer" class="breadcrumb-container"></div>
 </nav>
 
 <section class="view-panel active" data-view-panel="nueva-oferta">
   <div class="app-shell app-layout-monthly">
-    <aside class="sidebar" aria-label="Navegación principal">
+    <aside class="sidebar" aria-label="Navegación principal" data-translate-key-aria-label="literal.main_navigation">
       <div class="sidebar-header">
         <span class="sidebar-header-mark" aria-hidden="true">OF</span>
-        <span class="sidebar-header-text">Presupuestos</span>
+        <span class="sidebar-header-text" data-translate-key="app.title">Presupuestos</span>
       </div>
 
-      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones"></nav>
+      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones" data-translate-key-aria-label="literal.sections"></nav>
 
       <div class="config-container sidebar-footer">
         <button class="btn-config menu-btn sidebar-config-btn" type="button" data-view="configuracion" aria-current="false" aria-pressed="false" data-translate-key-title="nav.settings" data-translate-key-aria-label="nav.settings">
@@ -64,7 +64,7 @@
         <div class="form-grid form-grid--compact">
           <div class="form-field field-group field-group--short form-field--readonly">
             <label for="numero_oferta" data-translate-key="offer.fields.offer_number">Nº OFERTA</label>
-            <input id="numero_oferta" name="numero_oferta" class="input-compact" type="text" value="Consultando..." data-translate-key-value="offer.loading" readonly />
+            <input id="numero_oferta" name="numero_oferta" class="input-compact" type="text" value="Consultando..." readonly />
           </div>
 
           <div class="form-field field-group field-group--date">
@@ -86,7 +86,7 @@
 
           <div class="form-field field-group field-group--wide field-group--desktop-span-2">
             <label for="emisor" data-translate-key="offer.fields.sender">QUIÉN LO ENVÍA</label>
-            <input id="emisor" name="emisor" class="input-compact" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" pattern=".*@.*" title="Indica al menos un correo electrónico válido" required />
+            <input id="emisor" name="emisor" class="input-compact" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" pattern=".*@.*" title="Indica al menos un correo electrónico válido" data-translate-key-title="literal.valid_email_title" required />
           </div>
 
           <div class="form-field field-group field-group--wide field-group--desktop-span-2">
@@ -114,9 +114,9 @@
         <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ofertaEtcModalTitle">
           <div class="oferta-modal__header">
             <div>
-              <p class="page-eyebrow">ETC</p>
-              <h2 id="ofertaEtcModalTitle">Paso 2: completar ETC</h2>
-              <p class="form-help">La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.</p>
+              <p class="page-eyebrow" data-translate-key="literal.etc.acronym">ETC</p>
+              <h2 id="ofertaEtcModalTitle" data-translate-key="literal.etc.step_title">Paso 2: completar ETC</h2>
+              <p class="form-help" data-translate-key="literal.etc.saved_header_help">La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.</p>
             </div>
             <button class="oferta-modal__close" type="button" data-close-oferta-etc-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
           </div>
@@ -124,44 +124,44 @@
           <form id="ofertaEtcForm" class="oferta-form" autocomplete="off" novalidate>
             <div class="form-grid">
               <div class="form-field">
-                <label for="ofertaEtcResponsable">Responsable</label>
+                <label for="ofertaEtcResponsable" data-translate-key="literal.etc.responsible">Responsable</label>
                 <select id="ofertaEtcResponsable" name="num_operario_responsable" required>
-                  <option value="">Selecciona un responsable</option>
+                  <option value="" data-translate-key="literal.etc.select_responsible">Selecciona un responsable</option>
                 </select>
-                <p class="form-help">Si eliges un departamento, se propondrá automáticamente su manager.</p>
+                <p class="form-help" data-translate-key="literal.etc.department_manager_help">Si eliges un departamento, se propondrá automáticamente su manager.</p>
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcDepartamento">Departamento destino</label>
+                <label for="ofertaEtcDepartamento" data-translate-key="literal.etc.target_department">Departamento destino</label>
                 <select id="ofertaEtcDepartamento" name="id_departamento_destino" required>
-                  <option value="">Sin departamento</option>
+                  <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
                 </select>
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcCodigoExterno">Código externo</label>
+                <label for="ofertaEtcCodigoExterno" data-translate-key="literal.etc.external_code">Código externo</label>
                 <input id="ofertaEtcCodigoExterno" name="codigo_externo_oferta" type="text" maxlength="100" required />
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="ofertaEtcReferenciaCliente">Referencia cliente</label>
+                <label for="ofertaEtcReferenciaCliente" data-translate-key="literal.etc.client_reference">Referencia cliente</label>
                 <input id="ofertaEtcReferenciaCliente" name="referencia_cliente" type="text" maxlength="255" required />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcIncoterm">Incoterm</label>
+                <label for="ofertaEtcIncoterm" data-translate-key="literal.etc.incoterm">Incoterm</label>
                 <input id="ofertaEtcIncoterm" name="incoterm" type="text" maxlength="10" required />
               </div>
 
               <div class="form-field form-field--span-2">
-                <button id="ofertaEtcToggleExtended" class="btn-secondary" type="button" aria-controls="ofertaEtcExtendedFields" aria-expanded="false">Ext. formulario</button>
-                <p class="form-help">Muestra campos de menor uso detectados en el histórico del Excel.</p>
+                <button id="ofertaEtcToggleExtended" class="btn-secondary" type="button" aria-controls="ofertaEtcExtendedFields" aria-expanded="false" data-translate-key="literal.etc.extended_form">Ext. formulario</button>
+                <p class="form-help" data-translate-key="literal.etc.low_usage_help">Muestra campos de menor uso detectados en el histórico del Excel.</p>
               </div>
             </div>
 
             <div id="ofertaEtcExtendedFields" class="form-grid form-grid--extended" hidden>
               <div class="form-field">
-                <label for="ofertaEtcPrioridad">Prioridad</label>
+                <label for="ofertaEtcPrioridad" data-translate-key="literal.etc.priority">Prioridad</label>
                 <select id="ofertaEtcPrioridad" name="prioridad">
                   <option value="NORMAL">NORMAL</option>
                   <option value="BAJA">BAJA</option>
@@ -173,76 +173,76 @@
               <div class="form-field">
                 <label class="form-check-inline" for="ofertaEtcUrgente">
                   <input id="ofertaEtcUrgente" name="es_urgente" type="checkbox" />
-                  <span>Marcar como urgente</span>
+                  <span data-translate-key="literal.etc.mark_urgent">Marcar como urgente</span>
                 </label>
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcCodigoInterno">Código interno</label>
+                <label for="ofertaEtcCodigoInterno" data-translate-key="literal.etc.internal_code">Código interno</label>
                 <input id="ofertaEtcCodigoInterno" name="codigo_interno_oferta" type="text" maxlength="100" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcNumeroComision">Número comisión</label>
+                <label for="ofertaEtcNumeroComision" data-translate-key="literal.etc.commission_number">Número comisión</label>
                 <input id="ofertaEtcNumeroComision" name="numero_comision" type="text" maxlength="100" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcProyecto">Proyecto</label>
+                <label for="ofertaEtcProyecto" data-translate-key="literal.etc.project">Proyecto</label>
                 <select id="ofertaEtcProyecto" name="proyecto">
-                  <option value="">Sin proyecto</option>
+                  <option value="" data-translate-key="literal.etc.no_project">Sin proyecto</option>
                 </select>
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcPoOriginal">PO original</label>
+                <label for="ofertaEtcPoOriginal" data-translate-key="literal.etc.po_original">PO original</label>
                 <input id="ofertaEtcPoOriginal" name="po_original" type="text" maxlength="100" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcPedidoB2b">Pedido B2B</label>
+                <label for="ofertaEtcPedidoB2b" data-translate-key="literal.etc.b2b_order">Pedido B2B</label>
                 <input id="ofertaEtcPedidoB2b" name="pedido_b2b" type="text" maxlength="100" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcFechaEnvio">Fecha envío oferta</label>
+                <label for="ofertaEtcFechaEnvio" data-translate-key="literal.etc.offer_sent_date">Fecha envío oferta</label>
                 <input id="ofertaEtcFechaEnvio" name="fecha_envio_oferta" type="date" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcSolicitanteNombre">Nombre solicitante</label>
+                <label for="ofertaEtcSolicitanteNombre" data-translate-key="literal.etc.requester_name">Nombre solicitante</label>
                 <input id="ofertaEtcSolicitanteNombre" name="nombre_solicitante" type="text" maxlength="255" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcSolicitanteEmail">Email solicitante</label>
+                <label for="ofertaEtcSolicitanteEmail" data-translate-key="literal.etc.requester_email">Email solicitante</label>
                 <input id="ofertaEtcSolicitanteEmail" name="email_solicitante" type="email" maxlength="255" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcTotalMaterial">Total material EUR</label>
+                <label for="ofertaEtcTotalMaterial" data-translate-key="literal.etc.total_material_eur">Total material EUR</label>
                 <input id="ofertaEtcTotalMaterial" name="total_material_eur" type="number" step="0.01" min="0" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcTotalFee">Total fee EUR</label>
+                <label for="ofertaEtcTotalFee" data-translate-key="literal.etc.total_fee_eur">Total fee EUR</label>
                 <input id="ofertaEtcTotalFee" name="total_fee_eur" type="number" step="0.01" min="0" />
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="ofertaEtcResumenMaterial">Resumen material solicitado</label>
+                <label for="ofertaEtcResumenMaterial" data-translate-key="literal.etc.material_summary">Resumen material solicitado</label>
                 <textarea id="ofertaEtcResumenMaterial" name="resumen_material_solicitado" rows="3"></textarea>
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="ofertaEtcObservacionesCliente">Observaciones cliente</label>
+                <label for="ofertaEtcObservacionesCliente" data-translate-key="literal.etc.client_notes">Observaciones cliente</label>
                 <textarea id="ofertaEtcObservacionesCliente" name="observaciones_cliente" rows="3"></textarea>
               </div>
             </div>
 
             <div class="form-actions">
-              <button class="btn-primary" type="submit">Guardar ETC y finalizar</button>
-              <button class="btn-secondary" type="button" data-close-oferta-etc-modal="true">Cancelar</button>
+              <button class="btn-primary" type="submit" data-translate-key="literal.etc.save_and_finish">Guardar ETC y finalizar</button>
+              <button class="btn-secondary" type="button" data-close-oferta-etc-modal="true" data-translate-key="common.cancel">Cancelar</button>
             </div>
           </form>
 
@@ -255,7 +255,7 @@
         <div class="oferta-modal__dialog oferta-modal__dialog--outlook" role="dialog" aria-modal="true" aria-labelledby="outlookImportModalTitle">
           <div class="oferta-modal__header">
             <div>
-              <p class="page-eyebrow">Outlook</p>
+              <p class="page-eyebrow" data-translate-key="literal.outlook.title">Outlook</p>
               <h2 id="outlookImportModalTitle" data-translate-key="offer.outlook_title">Importar desde Outlook</h2>
               <p class="form-help" data-translate-key="offer.outlook_description">Selecciona un correo del buzón corporativo para traer emisor, asunto, fecha y cuerpo al formulario.</p>
               <p id="outlookMailboxLabel" class="form-help"></p>
@@ -289,13 +289,13 @@
 
 <section class="view-panel" data-view-panel="listado-ofertas">
   <div class="app-shell app-layout-monthly">
-    <aside class="sidebar" aria-label="Navegación principal">
+    <aside class="sidebar" aria-label="Navegación principal" data-translate-key-aria-label="literal.main_navigation">
       <div class="sidebar-header">
         <span class="sidebar-header-mark" aria-hidden="true">OF</span>
-        <span class="sidebar-header-text">Presupuestos</span>
+        <span class="sidebar-header-text" data-translate-key="app.title">Presupuestos</span>
       </div>
 
-      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones"></nav>
+      <nav class="sidebar-nav sidebar-menu js-sidebar-nav" aria-label="Secciones" data-translate-key-aria-label="literal.sections"></nav>
 
       <div class="config-container sidebar-footer">
         <button class="btn-config menu-btn sidebar-config-btn" type="button" data-view="configuracion" aria-current="false" aria-pressed="false" data-translate-key-title="nav.settings" data-translate-key-aria-label="nav.settings">
@@ -319,7 +319,7 @@
           <table class="clientes-table clientes-table--wide-scroll">
             <thead>
               <tr>
-                <th>Nº oferta</th>
+                <th data-translate-key="literal.table.offer_number_duplicate">Nº oferta</th>
                 <th data-translate-key="table.offer_number">Nº oferta</th>
                 <th data-translate-key="table.created_date">Fecha alta</th>
                 <th data-translate-key="table.client">Cliente</th>
@@ -337,6 +337,56 @@
         </div>
 
         <div id="ofertasListadoFeedback" class="form-feedback" aria-live="polite"></div>
+
+        <div id="offerDeletePrompt" class="top-confirm" aria-hidden="true">
+          <div class="top-confirm__backdrop" data-close-delete-offer-prompt="true"></div>
+          <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="offerDeletePromptTitle" aria-describedby="offerDeletePromptMessage">
+            <div class="top-confirm__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="common.delete">Eliminar</p>
+                <h2 id="offerDeletePromptTitle" data-translate-key="offer.delete_title">Confirmar eliminación</h2>
+              </div>
+              <button class="top-confirm__close" type="button" data-close-delete-offer-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+            <p id="offerDeletePromptMessage" class="top-confirm__message"></p>
+            <p class="top-confirm__hint" data-translate-key="offer.delete_hint">La oferta y su histórico asociado se eliminarán de forma permanente.</p>
+            <div class="top-confirm__field">
+              <label for="offerDeletePromptPassword" data-translate-key="offer.delete_password_label">Contraseña de confirmación</label>
+              <input id="offerDeletePromptPassword" class="top-confirm__input" type="password" autocomplete="off" inputmode="numeric" placeholder="Introduce la contraseña para eliminar" data-translate-key-placeholder="offer.delete_password_placeholder" />
+            </div>
+            <div id="offerDeletePromptFeedback" class="form-feedback" aria-live="polite"></div>
+            <div class="top-confirm__actions">
+              <button id="offerDeletePromptConfirm" class="btn-inline btn-inline--delete" type="button" data-confirm-delete-offer-prompt="true" data-translate-key="common.delete">Eliminar</button>
+              <button id="offerDeletePromptCancel" class="btn-inline btn-inline--cancel" type="button" data-close-delete-offer-prompt="true" data-translate-key="common.cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="offerReassignPrompt" class="top-confirm" aria-hidden="true">
+          <div class="top-confirm__backdrop" data-close-reassign-offer-prompt="true"></div>
+          <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="offerReassignPromptTitle" aria-describedby="offerReassignPromptMessage">
+            <div class="top-confirm__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="offer.reassign">Reasignar</p>
+                <h2 id="offerReassignPromptTitle" data-translate-key="offer.reassign_title">Reasignar oferta</h2>
+              </div>
+              <button class="top-confirm__close" type="button" data-close-reassign-offer-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+            <p id="offerReassignPromptMessage" class="top-confirm__message"></p>
+            <p id="offerReassignPromptDepartment" class="top-confirm__hint"></p>
+            <div class="top-confirm__field">
+              <label for="offerReassignPromptUser" data-translate-key="offer.reassign_user_label">Usuario del departamento</label>
+              <select id="offerReassignPromptUser" class="top-confirm__input">
+                <option value="" data-translate-key="offer.reassign_select_user">Selecciona un usuario</option>
+              </select>
+            </div>
+            <div id="offerReassignPromptFeedback" class="form-feedback" aria-live="polite"></div>
+            <div class="top-confirm__actions">
+              <button id="offerReassignPromptConfirm" class="btn-inline btn-inline--save" type="button" data-confirm-reassign-offer-prompt="true" data-translate-key="common.confirm">Aceptar</button>
+              <button class="btn-inline btn-inline--cancel" type="button" data-close-reassign-offer-prompt="true" data-translate-key="common.cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
 
         <div id="ofertaEditModal" class="oferta-modal" aria-hidden="true">
           <div class="oferta-modal__backdrop" data-close-oferta-modal="true"></div>
@@ -397,6 +447,123 @@
             </form>
 
             <div id="ofertaEditFeedback" class="form-feedback" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div id="offerCenterModal" class="oferta-modal" aria-hidden="true">
+          <div class="oferta-modal__backdrop" data-close-offer-center-modal="true"></div>
+          <div class="oferta-modal__dialog oferta-modal__dialog--center" role="dialog" aria-modal="true" aria-labelledby="offerCenterModalTitle">
+            <div class="oferta-modal__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="offer.budget">Presupuesto</p>
+                <h2 id="offerCenterModalTitle" data-translate-key="offer.center_title">Centro de oferta</h2>
+              </div>
+              <button class="oferta-modal__close" type="button" data-close-offer-center-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+
+            <div id="offerCenterRoot" class="offer-center">
+              <div class="offer-center__content">
+                <section class="offer-center__hero" aria-labelledby="offerCenterHeroTitle">
+                  <div class="offer-center__hero-main">
+                    <p class="page-eyebrow" data-translate-key="offer.offer_label">Oferta</p>
+                    <div id="offerCenterHeroMeta" class="offer-center__meta"></div>
+                    <h3 id="offerCenterHeroTitle" class="offer-center__number">-</h3>
+                  </div>
+                  <div id="offerCenterHeroBadges" class="offer-center__badges"></div>
+                </section>
+
+                <section class="offer-center__section" aria-labelledby="offerCenterEmailTitle">
+                  <div class="offer-center__section-header">
+                    <h3 id="offerCenterEmailTitle" data-translate-key="offer.main_email">Correo principal</h3>
+                  </div>
+                  <div id="offerCenterEmailGrid" class="offer-center__email-grid"></div>
+                </section>
+              </div>
+
+              <aside id="offerCenterChatPanel" class="offer-center__chat" aria-hidden="true">
+                <div class="offer-center__chat-header">
+                  <div>
+                    <h3 id="offerCenterChatTitle" data-translate-key="offer.chat_title">Chat · Oferta</h3>
+                  </div>
+                  <button class="oferta-modal__close offer-center__chat-close" type="button" data-close-offer-chat-panel="true" aria-label="Cerrar chat" data-translate-key-aria-label="offer.close_chat">×</button>
+                </div>
+
+                <div id="offerCenterChatMessages" class="offer-center__chat-messages">
+                  <p class="offer-center__chat-empty" data-translate-key="offer.chat_empty">Todavia no hay mensajes en este chat.</p>
+                </div>
+
+                <form id="offerCenterChatForm" class="offer-center__chat-form" autocomplete="off">
+                  <label class="offer-center__chat-field" for="offerCenterChatInput">
+                    <textarea id="offerCenterChatInput" rows="1" maxlength="2000" placeholder="Escribe un mensaje..." data-translate-key-placeholder="offer.chat_placeholder"></textarea>
+                  </label>
+                  <div class="offer-center__chat-actions">
+                    <button id="offerCenterChatSubmit" class="offer-center__chat-submit" type="submit" aria-label="Enviar mensaje" data-translate-key-aria-label="offer.chat_send">
+                      <svg viewBox="0 0 24 24" width="18" height="18" focusable="false" aria-hidden="true">
+                        <path d="M3 20 21 12 3 4l3.8 6.4L14 12l-7.2 1.6L3 20Z" fill="currentColor"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </form>
+              </aside>
+            </div>
+
+            <div id="offerCenterFeedback" class="form-feedback" aria-live="polite"></div>
+            <input id="offerCenterAttachmentInput" type="file" multiple hidden accept=".pdf,.csv,.xls,.xlsx,.xlsm,.ods,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip,.7z,.rar,.eml,.msg" />
+          </div>
+        </div>
+
+        <div id="offerCenterHistoryModal" class="oferta-modal" aria-hidden="true">
+          <div class="oferta-modal__backdrop" data-close-offer-center-history-modal="true"></div>
+          <div class="oferta-modal__dialog oferta-modal__dialog--history" role="dialog" aria-modal="true" aria-labelledby="offerCenterHistoryModalTitle">
+            <div class="oferta-modal__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="common.history">Histórico</p>
+                <h2 id="offerCenterHistoryModalTitle" data-translate-key="offer.status_changes_title">Cambios de estado</h2>
+              </div>
+              <button class="oferta-modal__close" type="button" data-close-offer-center-history-modal="true" aria-label="Cerrar histórico" data-translate-key-aria-label="offer.close_history">×</button>
+            </div>
+
+            <div class="offer-history-modal__body">
+              <div id="offerCenterHistory" class="crm-history">
+                <p class="crm-history__empty" data-translate-key="crm.history_empty">Sin interacciones registradas.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="offerAttachmentPreviewModal" class="oferta-modal" aria-hidden="true">
+          <div class="oferta-modal__backdrop" data-close-offer-attachment-preview-modal="true"></div>
+          <div class="oferta-modal__dialog oferta-modal__dialog--preview" role="dialog" aria-modal="true" aria-labelledby="offerAttachmentPreviewTitle">
+            <div class="oferta-modal__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="common.attachment">Adjunto</p>
+                <h2 id="offerAttachmentPreviewTitle" data-translate-key="common.preview">Vista previa</h2>
+              </div>
+              <button class="oferta-modal__close" type="button" data-close-offer-attachment-preview-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+
+            <div class="attachment-preview">
+              <div class="attachment-preview__toolbar">
+                <div id="offerAttachmentPreviewMeta" class="attachment-preview__meta"></div>
+                <div id="offerAttachmentPreviewActions" class="attachment-preview__actions"></div>
+              </div>
+              <div id="offerAttachmentPreviewBody" class="attachment-preview__body"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="offerAttachmentsGalleryModal" class="oferta-modal" aria-hidden="true">
+          <div class="oferta-modal__backdrop" data-close-offer-attachments-gallery-modal="true"></div>
+          <div class="oferta-modal__dialog oferta-modal__dialog--attachments-gallery" role="dialog" aria-modal="true" aria-labelledby="offerAttachmentsGalleryTitle">
+            <div class="oferta-modal__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="common.attachments">Adjuntos</p>
+                <h2 id="offerAttachmentsGalleryTitle" data-translate-key="offer.all_files">Todos los archivos</h2>
+              </div>
+              <button class="oferta-modal__close" type="button" data-close-offer-attachments-gallery-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+
+            <div id="offerAttachmentsGalleryBody" class="attachments-gallery"></div>
           </div>
         </div>
 
@@ -472,17 +639,17 @@
           <div class="oferta-modal__dialog oferta-modal__dialog--bom" role="dialog" aria-modal="true" aria-labelledby="bomModalTitle">
             <div class="oferta-modal__header">
               <div>
-                <p class="page-eyebrow">BOM</p>
-                <h2 id="bomModalTitle">Materiales y precios</h2>
-                <p id="bomModalOffer" class="form-help">Consulta y actualiza el histórico de precios de materiales.</p>
+                <p class="page-eyebrow" data-translate-key="literal.bom.acronym">BOM</p>
+                <h2 id="bomModalTitle" data-translate-key="literal.bom.title">Materiales y precios</h2>
+                <p id="bomModalOffer" class="form-help" data-translate-key="literal.bom.history_help">Consulta y actualiza el histórico de precios de materiales.</p>
               </div>
               <button class="oferta-modal__close" type="button" data-close-bom-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
             </div>
 
             <div class="bom-modal__toolbar">
               <label class="bom-modal__search" for="bomSearchInput">
-                <span>Buscar material</span>
-                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" />
+                <span data-translate-key="literal.bom.search_material">Buscar material</span>
+                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
               </label>
             </div>
 
@@ -491,16 +658,16 @@
                 <table class="clientes-table bom-table">
                   <thead>
                     <tr>
-                      <th>Material</th>
-                      <th>Precio actual</th>
-                      <th>Actualizado</th>
-                      <th>Diferencia</th>
-                      <th>Acciones</th>
+                      <th data-translate-key="literal.bom.material">Material</th>
+                      <th data-translate-key="literal.bom.current_price">Precio actual</th>
+                      <th data-translate-key="literal.bom.updated">Actualizado</th>
+                      <th data-translate-key="literal.bom.difference">Diferencia</th>
+                      <th data-translate-key="table.actions">Acciones</th>
                     </tr>
                   </thead>
                   <tbody id="bomListBody">
                     <tr>
-                      <td colspan="5" class="clientes-table__empty">Cargando materiales...</td>
+                      <td colspan="5" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -513,30 +680,30 @@
 
                 <div class="form-grid">
                   <div class="form-field form-field--span-2 form-field--readonly">
-                    <label for="bomEditMaterial">Material</label>
+                    <label for="bomEditMaterial" data-translate-key="literal.bom.material">Material</label>
                     <input id="bomEditMaterial" name="material" type="text" maxlength="255" readonly />
                   </div>
 
                   <div class="form-field form-field--readonly">
-                    <label for="bomEditCurrentPrice">Precio actual</label>
+                    <label for="bomEditCurrentPrice" data-translate-key="literal.bom.current_price">Precio actual</label>
                     <input id="bomEditCurrentPrice" type="text" readonly />
                   </div>
 
                   <div class="form-field form-field--readonly">
-                    <label for="bomEditPreviousPrice">Precio anterior</label>
+                    <label for="bomEditPreviousPrice" data-translate-key="literal.bom.previous_price">Precio anterior</label>
                     <input id="bomEditPreviousPrice" type="text" readonly />
                   </div>
 
                   <div class="form-field form-field--span-2">
-                    <label for="bomEditNewPrice">Nuevo precio</label>
+                    <label for="bomEditNewPrice" data-translate-key="literal.bom.new_price">Nuevo precio</label>
                     <input id="bomEditNewPrice" name="precio" type="number" step="0.01" min="0" required />
-                    <p class="form-help">Se insertará un nuevo registro para mantener el histórico del material.</p>
+                    <p class="form-help" data-translate-key="literal.bom.insert_history_help">Se insertará un nuevo registro para mantener el histórico del material.</p>
                   </div>
                 </div>
 
                 <div class="form-actions">
-                  <button class="btn-primary" type="submit">Guardar nuevo precio</button>
-                  <button class="btn-secondary" type="button" data-back-to-bom-list="true">Volver al listado</button>
+                  <button class="btn-primary" type="submit" data-translate-key="literal.bom.save_new_price">Guardar nuevo precio</button>
+                  <button class="btn-secondary" type="button" data-back-to-bom-list="true" data-translate-key="literal.bom.back_to_list">Volver al listado</button>
                 </div>
               </form>
             </section>
@@ -570,12 +737,12 @@
         -->
         <button class="emesa-config-card" type="button" data-config-target="usuarios">
           <span class="emesa-config-card__icon" aria-hidden="true">👤</span>
-          <span class="emesa-config-card__title">Usuarios</span>
+          <span class="emesa-config-card__title" data-translate-key="literal.users.title">Usuarios</span>
         </button>
 
         <button class="emesa-config-card" type="button" data-config-target="proyectos">
           <span class="emesa-config-card__icon" aria-hidden="true">🏗️</span>
-          <span class="emesa-config-card__title">Proyectos</span>
+          <span class="emesa-config-card__title" data-translate-key="literal.projects.title">Proyectos</span>
         </button>
       </div>
     </div>
@@ -623,7 +790,7 @@
           <table class="clientes-table">
             <thead>
               <tr>
-                <th>ID</th>
+                <th data-translate-key="literal.table.id">ID</th>
                 <th data-translate-key="table.client_description">Descripción cliente</th>
                 <th data-translate-key="config.domain">Dominio</th>
                 <th data-translate-key="table.actions">Acciones</th>
@@ -671,18 +838,18 @@
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="estadoEmojiSidebar">Emoji del sidebar</label>
+                <label for="estadoEmojiSidebar" data-translate-key="literal.states.sidebar_emoji">Emoji del sidebar</label>
                 <div class="estado-emoji-picker">
                   <input id="estadoEmojiSidebar" name="emoji_sidebar" type="hidden" />
-                  <div id="estadoEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar"></div>
+                  <div id="estadoEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar" data-translate-key-aria-label="literal.states.select_sidebar_emoji"></div>
                 </div>
-                <small class="form-help">Se sugiere automáticamente según el nombre del estado, pero puedes cambiarlo.</small>
+                <small class="form-help" data-translate-key="literal.states.emoji_help">Se sugiere automáticamente según el nombre del estado, pero puedes cambiarlo.</small>
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="estado_departamento">Departamento</label>
+                <label for="estado_departamento" data-translate-key="literal.states.department">Departamento</label>
                 <select id="estado_departamento" name="id_departamento">
-                  <option value="">Sin departamento</option>
+                  <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
                 </select>
               </div>
 
@@ -774,7 +941,7 @@
           <div class="oferta-modal__header">
             <div>
               <p class="page-eyebrow" data-translate-key="config.states">Estados</p>
-              <h2 id="estadoEditModalTitle">Editar estado</h2>
+              <h2 id="estadoEditModalTitle" data-translate-key="literal.states.edit_state">Editar estado</h2>
             </div>
             <button class="oferta-modal__close" type="button" data-close-estado-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
           </div>
@@ -794,17 +961,17 @@
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="estadoEditDepartamento">Departamento</label>
+                <label for="estadoEditDepartamento" data-translate-key="literal.states.department">Departamento</label>
                 <select id="estadoEditDepartamento" name="id_departamento">
-                  <option value="">Sin departamento</option>
+                  <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
                 </select>
               </div>
 
               <div class="form-field form-field--span-2">
-                <label for="estadoEditEmojiSidebar">Emoji del sidebar</label>
+                <label for="estadoEditEmojiSidebar" data-translate-key="literal.states.sidebar_emoji">Emoji del sidebar</label>
                 <div class="estado-emoji-picker estado-emoji-picker--modal">
                   <input id="estadoEditEmojiSidebar" name="emoji_sidebar" type="hidden" />
-                  <div id="estadoEditEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar"></div>
+                  <div id="estadoEditEmojiSidebarPicker" class="estado-emoji-picker__grid" role="listbox" aria-label="Seleccionar emoji para el sidebar" data-translate-key-aria-label="literal.states.select_sidebar_emoji"></div>
                 </div>
               </div>
 
@@ -813,14 +980,14 @@
                   <input id="estadoEditActivo" name="activo" type="checkbox" value="true" checked />
                   <span class="estado-active-toggle__switch" aria-hidden="true"></span>
                   <span class="estado-active-toggle__text">
-                    <strong>Activo</strong>
+                    <strong data-translate-key="literal.states.active">Activo</strong>
                   </span>
                 </label>
               </div>
             </div>
 
             <div class="form-actions">
-              <button class="btn-primary" type="submit">Guardar cambios</button>
+              <button class="btn-primary" type="submit" data-translate-key="common.save_changes">Guardar cambios</button>
               <button class="btn-secondary" type="button" data-close-estado-modal="true" data-translate-key="common.cancel">Cancelar</button>
             </div>
           </form>
@@ -838,60 +1005,83 @@
       <div class="page-card__header">
         <div>
           <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
-          <h1>Usuarios</h1>
-          <p>Alta de usuarios de OFERTAS a partir de General.Usuarios, con su rol y departamento.</p>
+          <h1 data-translate-key="literal.users.title">Usuarios</h1>
+          <p data-translate-key="literal.users.description">Alta de usuarios de OFERTAS a partir de General.Usuarios, con su rol y departamento.</p>
         </div>
       </div>
 
-      <div class="clientes-toggle" role="tablist" aria-label="Gestión de usuarios">
-        <button class="clientes-toggle__button active" type="button" data-usuarios-mode="crear" aria-selected="true">Añadir usuario</button>
-        <button class="clientes-toggle__button" type="button" data-usuarios-mode="ver" aria-selected="false">Ver usuarios</button>
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de usuarios" data-translate-key-aria-label="literal.users.management">
+        <button class="clientes-toggle__button active" type="button" data-usuarios-mode="crear" aria-selected="true" data-translate-key="literal.users.add_user">Añadir usuario</button>
+        <button class="clientes-toggle__button" type="button" data-usuarios-mode="ver" aria-selected="false" data-translate-key="literal.users.view_users">Ver usuarios</button>
       </div>
 
       <section class="clientes-mode-panel active" data-usuarios-mode-panel="crear">
         <form id="userCreateForm" class="cliente-form" autocomplete="off">
           <div class="form-grid form-grid--triple">
             <div class="form-field">
-              <label for="user_num_operario">Nº operario</label>
+              <label for="user_num_operario" data-translate-key="literal.users.operator_number">Nº operario</label>
               <input id="user_num_operario" name="num_operario" type="text" list="generalUsersByNumber" inputmode="numeric" required />
               <datalist id="generalUsersByNumber"></datalist>
             </div>
 
             <div class="form-field form-field--span-2">
-              <label for="user_nombre">Nombre</label>
+              <label for="user_nombre" data-translate-key="literal.users.name">Nombre</label>
               <input id="user_nombre" name="nombre" type="text" maxlength="255" list="generalUsersByName" required />
               <datalist id="generalUsersByName"></datalist>
             </div>
 
             <div class="form-field">
-              <label for="user_email">Email</label>
+              <label for="user_email" data-translate-key="literal.users.email">Email</label>
               <input id="user_email" name="email" type="email" maxlength="255" />
             </div>
 
             <div class="form-field">
-              <label for="user_rol">Rol</label>
+              <label for="user_rol" data-translate-key="literal.users.role">Rol</label>
               <select id="user_rol" name="id_rol" required>
-                <option value="">Selecciona un rol</option>
+                <option value="" data-translate-key="literal.users.select_role">Selecciona un rol</option>
               </select>
             </div>
 
             <div class="form-field form-field--span-2">
-              <label for="user_departamentos">Departamento</label>
+              <label for="user_departamentos" data-translate-key="literal.users.departments">Departamento</label>
               <div class="form-actions form-actions--start">
                 <select id="user_departamentos" name="id_departamento">
-                  <option value="">Sin departamento</option>
+                  <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
                 </select>
-                <button id="addDepartmentButton" class="btn-secondary" type="button">+ Departamento</button>
+                <button id="addDepartmentButton" class="btn-secondary" type="button" data-translate-key="literal.users.add_department">+ Departamento</button>
               </div>
             </div>
           </div>
 
           <div class="form-actions form-actions--start">
-            <button class="btn-primary" type="submit">Guardar usuario</button>
+            <button class="btn-primary" type="submit" data-translate-key="literal.users.save_user">Guardar usuario</button>
           </div>
         </form>
 
         <div id="userCreateFeedback" class="form-feedback" aria-live="polite"></div>
+
+        <div id="departmentCreatePrompt" class="top-confirm" aria-hidden="true">
+          <div class="top-confirm__backdrop" data-close-create-department-prompt="true"></div>
+          <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="departmentCreatePromptTitle" aria-describedby="departmentCreatePromptMessage">
+            <div class="top-confirm__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="literal.users.add_department">+ Departamento</p>
+                <h2 id="departmentCreatePromptTitle" data-translate-key="literal.users.department_prompt_title">Crear departamento</h2>
+              </div>
+              <button class="top-confirm__close" type="button" data-close-create-department-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+            <p id="departmentCreatePromptMessage" class="top-confirm__message" data-translate-key="literal.users.department_prompt_description">Indica el nombre del nuevo departamento.</p>
+            <div class="top-confirm__field">
+              <label for="departmentCreatePromptInput" data-translate-key="literal.users.department_prompt_label">Nombre del departamento</label>
+              <input id="departmentCreatePromptInput" class="top-confirm__input" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el nombre del departamento" data-translate-key-placeholder="literal.users.department_prompt_placeholder" />
+            </div>
+            <div id="departmentCreatePromptFeedback" class="form-feedback" aria-live="polite"></div>
+            <div class="top-confirm__actions">
+              <button id="departmentCreatePromptConfirm" class="btn-inline btn-inline--save" type="button" data-confirm-create-department-prompt="true" data-translate-key="common.save">Guardar</button>
+              <button class="btn-inline btn-inline--cancel" type="button" data-close-create-department-prompt="true" data-translate-key="common.cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="clientes-mode-panel" data-usuarios-mode-panel="ver">
@@ -899,17 +1089,17 @@
           <table class="clientes-table">
             <thead>
               <tr>
-                <th>Nº operario</th>
-                <th>Nombre</th>
-                <th>Email</th>
-                <th>Rol</th>
-                <th>Departamentos</th>
-                <th>Acciones</th>
+                <th data-translate-key="literal.users.operator_number">Nº operario</th>
+                <th data-translate-key="literal.users.name">Nombre</th>
+                <th data-translate-key="literal.users.email">Email</th>
+                <th data-translate-key="literal.users.role">Rol</th>
+                <th data-translate-key="literal.users.departments">Departamentos</th>
+                <th data-translate-key="table.actions">Acciones</th>
               </tr>
             </thead>
             <tbody id="usuariosTableBody">
               <tr>
-                <td colspan="6" class="clientes-table__empty">No hay usuarios creados todavía.</td>
+                <td colspan="6" class="clientes-table__empty" data-translate-key="literal.users.empty">No hay usuarios creados todavía.</td>
               </tr>
             </tbody>
           </table>
@@ -927,25 +1117,25 @@
       <div class="page-card__header">
         <div>
           <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
-          <h1>Proyectos</h1>
-          <p>Alta y mantenimiento de proyectos disponibles para el formulario ETC.</p>
+          <h1 data-translate-key="literal.projects.title">Proyectos</h1>
+          <p data-translate-key="literal.projects.description">Alta y mantenimiento de proyectos disponibles para el formulario ETC.</p>
         </div>
       </div>
 
-      <div class="clientes-toggle" role="tablist" aria-label="Gestión de proyectos">
-        <button class="clientes-toggle__button active" type="button" data-proyectos-mode="crear" aria-selected="true">Crear proyecto</button>
-        <button class="clientes-toggle__button" type="button" data-proyectos-mode="ver" aria-selected="false">Ver proyectos</button>
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de proyectos" data-translate-key-aria-label="literal.projects.management">
+        <button class="clientes-toggle__button active" type="button" data-proyectos-mode="crear" aria-selected="true" data-translate-key="literal.projects.create_project">Crear proyecto</button>
+        <button class="clientes-toggle__button" type="button" data-proyectos-mode="ver" aria-selected="false" data-translate-key="literal.projects.view_projects">Ver proyectos</button>
       </div>
 
       <section class="clientes-mode-panel active" data-proyectos-mode-panel="crear">
         <form id="projectCreateForm" class="cliente-form" autocomplete="off">
           <div class="form-field form-field--span-2">
-            <label for="descripcion_proyecto">Nombre del proyecto</label>
-            <input id="descripcion_proyecto" name="descripcion_proyecto" type="text" maxlength="255" placeholder="Introduce el nombre del proyecto" required />
+            <label for="descripcion_proyecto" data-translate-key="literal.projects.project_name">Nombre del proyecto</label>
+            <input id="descripcion_proyecto" name="descripcion_proyecto" type="text" maxlength="255" placeholder="Introduce el nombre del proyecto" data-translate-key-placeholder="literal.projects.project_name_placeholder" required />
           </div>
 
           <div class="form-actions form-actions--start">
-            <button class="btn-primary" type="submit">Guardar proyecto</button>
+            <button class="btn-primary" type="submit" data-translate-key="literal.projects.save_project">Guardar proyecto</button>
           </div>
         </form>
 
@@ -957,14 +1147,14 @@
           <table class="clientes-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Descripción proyecto</th>
+                <th data-translate-key="literal.table.id">ID</th>
+                <th data-translate-key="literal.projects.project_description">Descripción proyecto</th>
                 <th data-translate-key="table.actions">Acciones</th>
               </tr>
             </thead>
             <tbody id="proyectosTableBody">
               <tr>
-                <td colspan="3" class="clientes-table__empty">No hay proyectos creados todavía.</td>
+                <td colspan="3" class="clientes-table__empty" data-translate-key="literal.projects.empty">No hay proyectos creados todavía.</td>
               </tr>
             </tbody>
           </table>

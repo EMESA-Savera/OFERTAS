@@ -1,16 +1,21 @@
+import base64
 import hashlib
 import importlib
+import json
 import ipaddress
+import mimetypes
 import os
 import re
+import secrets
+import shutil
 import sys
 import tempfile
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from email.header import decode_header, make_header
 from email import policy
-from email.parser import BytesParser
+from email.parser import BytesParser, Parser
 from email.utils import parseaddr, parsedate_to_datetime
 from html import escape as html_escape, unescape
 from html.parser import HTMLParser
@@ -18,11 +23,12 @@ from urllib.parse import urlparse
 
 import pyodbc
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, render_template_string, request, session, url_for
+from flask import Flask, jsonify, redirect, render_template, render_template_string, request, send_from_directory, session, url_for
 from flask_cors import CORS
 from flask_session import Session
 from outlook_service import OutlookGraphError, OutlookGraphService
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
 
 
 def get_runtime_root():
@@ -37,11 +43,27 @@ def load_runtime_env(project_dir):
 
     if is_frozen:
         executable_dir = os.path.dirname(sys.executable)
-        candidate_paths.append(os.path.join(executable_dir, ".env.production"))
-        candidate_paths.append(os.path.join(project_dir, ".env.production"))
-        candidate_paths.append(os.path.join(executable_dir, ".env"))
+        production_paths = [
+            os.path.join(executable_dir, ".env.production"),
+            os.path.join(project_dir, ".env.production"),
+        ]
+        found_production_env = any(os.path.exists(path) for path in production_paths)
+        candidate_paths.extend(production_paths)
+        if not found_production_env:
+            candidate_paths.append(os.path.join(executable_dir, ".env"))
     else:
-        candidate_paths.append(os.path.join(project_dir, ".env"))
+        default_env_path = os.path.join(project_dir, ".env")
+        if os.path.exists(default_env_path):
+            load_dotenv(default_env_path, override=True)
+
+        effective_env = (
+            os.getenv("APP_ENV")
+            or os.getenv("FLASK_ENV")
+            or os.getenv("ENV")
+            or ""
+        ).strip().lower()
+        if effective_env == "production":
+            candidate_paths.append(os.path.join(project_dir, ".env.production"))
 
     seen = set()
     for env_path in candidate_paths:
@@ -55,8 +77,6 @@ def load_runtime_env(project_dir):
 
 PROJECT_DIR = get_runtime_root()
 load_runtime_env(PROJECT_DIR)
-if not getattr(sys, "frozen", False):
-    load_dotenv(override=True)
 
 
 def get_env_value(*names, default=None):
@@ -67,11 +87,21 @@ def get_env_value(*names, default=None):
     return default
 
 
+def get_env_flag(*names, default=False):
+    value = get_env_value(*names)
+    if value is None:
+        return default
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
 class Config:
     SECRET_KEY = get_env_value("SESSION_SECRET", "SECRET_KEY", default="ofertas-dev-secret-key")
     APP_ENV = get_env_value("APP_ENV", "FLASK_ENV", default="development").lower()
     DEBUG = APP_ENV == "development"
     APP_PORT = int(get_env_value("PORT", "APP_PORT", default="3010"))
+    AUTO_GENERATE_SSL_CERT = get_env_flag("AUTO_GENERATE_SSL_CERT", default=True)
+    SSL_CERT_FILE = get_env_value("SSL_CERT_FILE", default="cert.pem")
+    SSL_KEY_FILE = get_env_value("SSL_KEY_FILE", default="key.pem")
 
     DB_SERVER = get_env_value("DB_SERVER", "SQL_SERVER", "DATABASE_HOST", "ODBC_SERVER", default="EMEBIDWH")
     DB_DATABASE = get_env_value("DB_DATABASE", "SQL_DATABASE", "DATABASE_NAME", default="Digitalizacion")
@@ -102,9 +132,508 @@ CORS(app, supports_credentials=True)
 os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 Session(app)
 
+RUNTIME_DATA_DIR = os.path.join(os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else PROJECT_DIR, "data")
+OFFER_ATTACHMENTS_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_attachments")
+IMPORTED_EMAIL_ATTACHMENTS_DIR = os.path.join(RUNTIME_DATA_DIR, "imported_email_attachments")
+OFFER_CHAT_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_chat")
+OFFER_CHAT_READ_STATE_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_chat_read_state")
+MAX_OFFER_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024
+ALLOWED_OFFER_ATTACHMENT_EXTENSIONS = {
+    ".pdf", ".csv", ".xls", ".xlsx", ".xlsm", ".ods",
+    ".doc", ".docx", ".txt", ".rtf",
+    ".png", ".jpg", ".jpeg", ".webp", ".gif",
+    ".zip", ".7z", ".rar",
+    ".eml", ".msg",
+}
+os.makedirs(OFFER_ATTACHMENTS_DIR, exist_ok=True)
+os.makedirs(IMPORTED_EMAIL_ATTACHMENTS_DIR, exist_ok=True)
+os.makedirs(OFFER_CHAT_DIR, exist_ok=True)
+os.makedirs(OFFER_CHAT_READ_STATE_DIR, exist_ok=True)
+
+IMAGE_ATTACHMENT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+TEXT_ATTACHMENT_EXTENSIONS = {".txt", ".csv", ".eml"}
+INLINE_ATTACHMENT_EXTENSIONS = {".pdf"}
+
 
 class DuplicateOfertaError(ValueError):
     pass
+
+
+def get_offer_attachments_dir(oferta_id, create=False):
+    directory = os.path.join(OFFER_ATTACHMENTS_DIR, str(int(oferta_id)))
+    if create:
+        os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def get_offer_chat_file_path(oferta_id):
+    return os.path.join(OFFER_CHAT_DIR, f"{int(oferta_id)}.json")
+
+
+def get_offer_chat_read_state_path(oferta_id):
+    return os.path.join(OFFER_CHAT_READ_STATE_DIR, f"{int(oferta_id)}.json")
+
+
+def load_offer_chat_messages(oferta_id):
+    chat_path = get_offer_chat_file_path(oferta_id)
+    if not os.path.exists(chat_path):
+        return []
+
+    try:
+        with open(chat_path, "r", encoding="utf-8") as chat_file:
+            payload = json.load(chat_file) or []
+            return payload if isinstance(payload, list) else []
+    except Exception:
+        app.logger.warning("No se pudo leer el chat de la oferta %s", oferta_id, exc_info=True)
+        return []
+
+
+def save_offer_chat_messages(oferta_id, messages):
+    chat_path = get_offer_chat_file_path(oferta_id)
+    with open(chat_path, "w", encoding="utf-8") as chat_file:
+        json.dump(messages or [], chat_file, ensure_ascii=False)
+
+
+def load_offer_chat_read_state(oferta_id):
+    state_path = get_offer_chat_read_state_path(oferta_id)
+    if not os.path.exists(state_path):
+        return {}
+
+    try:
+        with open(state_path, "r", encoding="utf-8") as state_file:
+            payload = json.load(state_file) or {}
+            return payload if isinstance(payload, dict) else {}
+    except Exception:
+        app.logger.warning("No se pudo leer el estado de lectura del chat de la oferta %s", oferta_id, exc_info=True)
+        return {}
+
+
+def save_offer_chat_read_state(oferta_id, state):
+    state_path = get_offer_chat_read_state_path(oferta_id)
+    with open(state_path, "w", encoding="utf-8") as state_file:
+        json.dump(state or {}, state_file, ensure_ascii=False)
+
+
+def get_offer_chat_user_key(user_data):
+    num_operario = normalize_optional_text((user_data or {}).get("num_operario"), 50)
+    if num_operario:
+        return f"operario:{num_operario}"
+
+    email = normalize_optional_text((user_data or {}).get("email"), 255)
+    if email:
+        return f"email:{email.lower()}"
+
+    return None
+
+
+def parse_offer_chat_timestamp(value):
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return None
+
+
+def is_offer_chat_message_from_user(message, user_data):
+    if not isinstance(message, dict):
+        return False
+
+    user_operario = normalize_optional_text((user_data or {}).get("num_operario"), 50)
+    message_operario = normalize_optional_text(message.get("author_operario"), 50)
+    if user_operario and message_operario and user_operario == message_operario:
+        return True
+
+    user_email = normalize_optional_text((user_data or {}).get("email"), 255)
+    message_email = normalize_optional_text(message.get("author_email"), 255)
+    if user_email and message_email and user_email.lower() == message_email.lower():
+        return True
+
+    return False
+
+
+def get_offer_chat_unread_count(oferta_id, user_data, messages=None):
+    user_key = get_offer_chat_user_key(user_data)
+    if not user_key:
+        return 0
+
+    chat_messages = messages if messages is not None else load_offer_chat_messages(oferta_id)
+    read_state = load_offer_chat_read_state(oferta_id)
+    persisted_last_read_at = read_state.get(user_key)
+    last_read_at = parse_offer_chat_timestamp(persisted_last_read_at)
+
+    if persisted_last_read_at is None:
+        latest_message_timestamp = None
+        for message in reversed(chat_messages):
+            latest_message_timestamp = parse_offer_chat_timestamp(message.get("created_at"))
+            if latest_message_timestamp is not None:
+                break
+
+        bootstrap_timestamp = latest_message_timestamp or datetime.now(timezone.utc)
+        read_state[user_key] = bootstrap_timestamp.isoformat().replace("+00:00", "Z")
+        save_offer_chat_read_state(oferta_id, read_state)
+        return 0
+
+    unread_count = 0
+
+    for message in chat_messages:
+        if is_offer_chat_message_from_user(message, user_data):
+            continue
+
+        message_created_at = parse_offer_chat_timestamp(message.get("created_at"))
+        if last_read_at is None:
+            unread_count += 1
+            continue
+
+        if message_created_at and message_created_at > last_read_at:
+            unread_count += 1
+
+    return unread_count
+
+
+def build_offer_chat_summary(oferta_id, user_data, messages=None):
+    unread_count = get_offer_chat_unread_count(oferta_id, user_data, messages=messages)
+    return {
+        "chat_unread_count": unread_count,
+        "chat_has_unread": unread_count > 0,
+    }
+
+
+def mark_offer_chat_as_read(oferta_id, user_data, messages=None):
+    user_key = get_offer_chat_user_key(user_data)
+    chat_messages = messages if messages is not None else load_offer_chat_messages(oferta_id)
+    if not user_key:
+        return build_offer_chat_summary(oferta_id, user_data, messages=chat_messages)
+
+    read_state = load_offer_chat_read_state(oferta_id)
+    read_timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    read_state[user_key] = read_timestamp
+    save_offer_chat_read_state(oferta_id, read_state)
+
+    return {
+        "last_read_at": read_timestamp,
+        **build_offer_chat_summary(oferta_id, user_data, messages=chat_messages),
+    }
+
+
+def build_offer_chat_author(user_data):
+    author_name = normalize_optional_text(user_data.get("nombre"), 255) or "Usuario"
+    author_email = normalize_optional_text(user_data.get("email"), 255)
+    author_operario = normalize_optional_text(user_data.get("num_operario"), 50)
+    return {
+        "author_name": author_name,
+        "author_email": author_email,
+        "author_operario": author_operario,
+    }
+
+
+def append_offer_chat_message(oferta_id, user_data, message_text):
+    normalized_message = normalize_required_text(message_text, "Mensaje", 2000)
+    existing_messages = load_offer_chat_messages(oferta_id)
+    author = build_offer_chat_author(user_data or {})
+    message_entry = {
+        "id": secrets.token_urlsafe(9),
+        "message": normalized_message,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        **author,
+    }
+    existing_messages.append(message_entry)
+    save_offer_chat_messages(oferta_id, existing_messages)
+    return message_entry
+
+
+def get_imported_email_attachments_dir(token, create=False):
+    normalized_token = re.sub(r"[^a-zA-Z0-9_-]", "", str(token or "").strip())
+    if not normalized_token:
+        raise ValueError("Token de adjuntos importados no válido")
+
+    directory = os.path.join(IMPORTED_EMAIL_ATTACHMENTS_DIR, normalized_token)
+    if create:
+        os.makedirs(directory, exist_ok=True)
+    return directory
+
+
+def get_offer_attachment_metadata_path(file_path):
+    return f"{file_path}.meta.json"
+
+
+def load_offer_attachment_metadata(file_path):
+    metadata_path = get_offer_attachment_metadata_path(file_path)
+    if not os.path.exists(metadata_path):
+        return {}
+
+    try:
+        with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+            return json.load(metadata_file) or {}
+    except Exception:
+        app.logger.warning("No se pudieron leer los metadatos del adjunto: %s", metadata_path, exc_info=True)
+        return {}
+
+
+def save_offer_attachment_metadata(file_path, metadata):
+    metadata_path = get_offer_attachment_metadata_path(file_path)
+    with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+        json.dump(metadata or {}, metadata_file, ensure_ascii=False)
+
+
+def save_binary_attachment_to_dir(target_dir, original_name, content_bytes):
+    normalized_name = os.path.basename(str(original_name or "").strip())
+    if not normalized_name:
+        raise ValueError("Debes seleccionar al menos un archivo.")
+
+    if not is_allowed_offer_attachment(normalized_name):
+        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP o correo.")
+
+    binary_content = bytes(content_bytes or b"")
+    if not binary_content:
+        raise ValueError(f"El archivo adjunto '{normalized_name}' está vacío.")
+
+    if len(binary_content) > MAX_OFFER_ATTACHMENT_SIZE_BYTES:
+        raise ValueError(f"El archivo '{normalized_name}' supera el máximo de 25 MB.")
+
+    safe_name = secure_filename(normalized_name)
+    if not safe_name:
+        raise ValueError("El nombre del archivo no es válido.")
+
+    os.makedirs(target_dir, exist_ok=True)
+    stored_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{safe_name}"
+    file_path = os.path.join(target_dir, stored_name)
+    with open(file_path, "wb") as output_file:
+        output_file.write(binary_content)
+    save_offer_attachment_metadata(file_path, {"original_name": normalized_name})
+    return stored_name, file_path
+
+
+def get_uploaded_file_size(file_storage):
+    content_length = getattr(file_storage, "content_length", None)
+    if isinstance(content_length, int) and content_length >= 0:
+        return content_length
+
+    stream = getattr(file_storage, "stream", None)
+    if stream is None:
+        return None
+
+    current_position = None
+    try:
+        current_position = stream.tell()
+        stream.seek(0, os.SEEK_END)
+        size = stream.tell()
+        stream.seek(current_position)
+        return size
+    except Exception:
+        try:
+            if current_position is not None:
+                stream.seek(current_position)
+        except Exception:
+            pass
+        return None
+
+
+def is_allowed_offer_attachment(filename):
+    extension = os.path.splitext(str(filename or ""))[1].lower()
+    return bool(extension) and extension in ALLOWED_OFFER_ATTACHMENT_EXTENSIONS
+
+
+def get_offer_attachment_extension(filename):
+    return os.path.splitext(str(filename or ""))[1].lower()
+
+
+def get_offer_attachment_preview_kind(filename):
+    extension = get_offer_attachment_extension(filename)
+    if extension in IMAGE_ATTACHMENT_EXTENSIONS:
+        return "image"
+    if extension in TEXT_ATTACHMENT_EXTENSIONS:
+        return "text"
+    if extension in INLINE_ATTACHMENT_EXTENSIONS:
+        return "inline"
+    return "unsupported"
+
+
+def get_offer_attachment_mimetype(filename):
+    extension = get_offer_attachment_extension(filename)
+    explicit_map = {
+        ".csv": "text/csv; charset=utf-8",
+        ".eml": "text/plain; charset=utf-8",
+        ".txt": "text/plain; charset=utf-8",
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".gif": "image/gif",
+        ".doc": "application/msword",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".xls": "application/vnd.ms-excel",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".xlsm": "application/vnd.ms-excel.sheet.macroEnabled.12",
+        ".ods": "application/vnd.oasis.opendocument.spreadsheet",
+        ".rtf": "application/rtf",
+        ".zip": "application/zip",
+        ".7z": "application/x-7z-compressed",
+        ".rar": "application/vnd.rar",
+        ".msg": "application/vnd.ms-outlook",
+    }
+    if extension in explicit_map:
+        return explicit_map[extension]
+
+    guessed_type, _ = mimetypes.guess_type(str(filename or ""))
+    return guessed_type or "application/octet-stream"
+
+
+def build_offer_attachment_payload(oferta_id, stored_name):
+    attachments_dir = get_offer_attachments_dir(oferta_id)
+    file_path = os.path.join(attachments_dir, stored_name)
+    if not os.path.isfile(file_path):
+        return None
+
+    metadata = load_offer_attachment_metadata(file_path)
+    stats = os.stat(file_path)
+    mime_type = get_offer_attachment_mimetype(metadata.get("original_name") or stored_name)
+    preview_kind = get_offer_attachment_preview_kind(metadata.get("original_name") or stored_name)
+    return {
+        "stored_name": stored_name,
+        "original_name": metadata.get("original_name") or stored_name,
+        "size_bytes": stats.st_size,
+        "updated_at": datetime.utcfromtimestamp(stats.st_mtime).isoformat() + "Z",
+        "mime_type": mime_type,
+        "preview_kind": preview_kind,
+        "can_preview": preview_kind != "unsupported",
+        "download_url": url_for("download_offer_attachment", oferta_id=int(oferta_id), filename=stored_name),
+        "preview_url": url_for("preview_offer_attachment", oferta_id=int(oferta_id), filename=stored_name),
+    }
+
+
+def list_offer_attachments(oferta_id):
+    attachments_dir = get_offer_attachments_dir(oferta_id)
+    if not os.path.isdir(attachments_dir):
+        return []
+
+    attachments = []
+    for entry in os.listdir(attachments_dir):
+        if entry.endswith(".meta.json"):
+            continue
+        attachment = build_offer_attachment_payload(oferta_id, entry)
+        if attachment:
+            attachments.append(attachment)
+
+    attachments.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
+    return attachments
+
+
+def ensure_offer_exists(cursor, oferta_id):
+    cursor.execute("SELECT 1 FROM ofertas.listado_ofertas WHERE id_oferta = ?", (oferta_id,))
+    return cursor.fetchone() is not None
+
+
+def save_offer_attachment(oferta_id, file_storage):
+    original_name = os.path.basename(str(getattr(file_storage, "filename", "") or "").strip())
+    if not original_name:
+        raise ValueError("Debes seleccionar al menos un archivo.")
+
+    if not is_allowed_offer_attachment(original_name):
+        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP o correo.")
+
+    file_size = get_uploaded_file_size(file_storage)
+    if file_size is not None and file_size > MAX_OFFER_ATTACHMENT_SIZE_BYTES:
+        raise ValueError("Cada archivo puede ocupar como máximo 25 MB.")
+
+    attachments_dir = get_offer_attachments_dir(oferta_id, create=True)
+    stored_name, file_path = save_binary_attachment_to_dir(attachments_dir, original_name, file_storage.read())
+
+    stream = getattr(file_storage, "stream", None)
+    if stream is not None:
+        try:
+            stream.seek(0)
+        except Exception:
+            pass
+
+    return build_offer_attachment_payload(oferta_id, stored_name)
+
+
+def stage_imported_email_attachments(parsed_email):
+    attachments = list((parsed_email or {}).get("attachments") or [])
+    if not attachments:
+        return None
+
+    token = secrets.token_urlsafe(18)
+    target_dir = get_imported_email_attachments_dir(token, create=True)
+    staged_attachments = []
+    try:
+        for attachment in attachments:
+            stored_name, file_path = save_binary_attachment_to_dir(
+                target_dir,
+                attachment.get("filename"),
+                attachment.get("content_bytes"),
+            )
+            file_stat = os.stat(file_path)
+            staged_attachments.append(
+                {
+                    "stored_name": stored_name,
+                    "original_name": attachment.get("filename") or stored_name,
+                    "size_bytes": file_stat.st_size,
+                }
+            )
+    except Exception:
+        shutil.rmtree(target_dir, ignore_errors=True)
+        raise
+
+    return {"token": token, "attachments": staged_attachments}
+
+
+def move_staged_imported_email_attachments_to_offer(oferta_id, token):
+    source_dir = get_imported_email_attachments_dir(token)
+    if not os.path.isdir(source_dir):
+        return []
+
+    target_dir = get_offer_attachments_dir(oferta_id, create=True)
+    moved_names = []
+    for entry in os.listdir(source_dir):
+        if entry.endswith(".meta.json"):
+            continue
+
+        source_file = os.path.join(source_dir, entry)
+        target_file = os.path.join(target_dir, entry)
+        if not os.path.isfile(source_file):
+            continue
+
+        shutil.move(source_file, target_file)
+        source_meta = get_offer_attachment_metadata_path(source_file)
+        if os.path.exists(source_meta):
+            shutil.move(source_meta, get_offer_attachment_metadata_path(target_file))
+        moved_names.append(entry)
+
+    shutil.rmtree(source_dir, ignore_errors=True)
+    payloads = []
+    for stored_name in moved_names:
+        attachment_payload = build_offer_attachment_payload(oferta_id, stored_name)
+        if attachment_payload:
+            payloads.append(attachment_payload)
+    return payloads
+
+
+def cleanup_offer_attachment_entries(oferta_id, stored_names):
+    if not stored_names:
+        return
+
+    attachments_dir = get_offer_attachments_dir(oferta_id)
+    for stored_name in stored_names:
+        file_path = os.path.join(attachments_dir, stored_name)
+        meta_path = get_offer_attachment_metadata_path(file_path)
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception:
+            app.logger.warning("No se pudo eliminar el adjunto temporal de la oferta: %s", file_path, exc_info=True)
+        try:
+            if os.path.exists(meta_path):
+                os.remove(meta_path)
+        except Exception:
+            app.logger.warning("No se pudo eliminar el metadata temporal del adjunto: %s", meta_path, exc_info=True)
 
 
 def get_configured_oauth_redirect_uri():
@@ -371,6 +900,231 @@ def get_outlook_automation_session_store():
     return session
 
 
+def get_user_department_ids(user_data=None):
+    current_user = user_data or get_logged_user_data()
+    departments = current_user.get("departamentos") or []
+    resolved_ids = set()
+
+    for department in departments:
+        if isinstance(department, dict):
+            department_id = department.get("id_departamento")
+        else:
+            department_id = department
+
+        try:
+            if department_id is not None:
+                resolved_ids.add(int(department_id))
+        except (TypeError, ValueError):
+            continue
+
+    return resolved_ids
+
+
+NOTIFICATION_STATE_TRANSLATIONS = {
+    "pendiente": "Ceka",
+    "pendiente tecnico": "Ceka - technicke oddeleni",
+    "pendiente compras": "Ceka - nakup",
+    "enviada": "Odeslana",
+    "pedido": "Objednavka",
+    "cancelada": "Zrusena",
+}
+
+
+NOTIFICATION_DEPARTMENT_TRANSLATIONS = {
+    "administracion": "Administrativa",
+    "tecnico": "Technicke oddeleni",
+    "compras": "Nakup",
+    "prueba": "Test",
+}
+
+
+NOTIFICATION_LOGO_PATH_CANDIDATES = (
+    os.path.join(PROJECT_DIR, "static", "images", "Logo_EMESA.png"),
+    os.path.join(PROJECT_DIR, "static", "images", ".Logo_EMESA.png"),
+)
+
+
+_notification_logo_data_uri = None
+
+
+def normalize_notification_lookup_key(value):
+    normalized = normalize_optional_text(value, 255) or ""
+    normalized = normalized.strip().lower()
+    for source, target in {
+        "á": "a",
+        "é": "e",
+        "í": "i",
+        "ó": "o",
+        "ú": "u",
+        "ü": "u",
+        "ñ": "n",
+    }.items():
+        normalized = normalized.replace(source, target)
+    return re.sub(r"\s+", " ", normalized)
+
+
+def translate_notification_state_name(value):
+    normalized = normalize_optional_text(value, 255)
+    if not normalized:
+        return normalized
+    return NOTIFICATION_STATE_TRANSLATIONS.get(normalize_notification_lookup_key(normalized), normalized)
+
+
+def translate_notification_department_name(value):
+    normalized = normalize_optional_text(value, 255)
+    if not normalized:
+        return normalized
+    return NOTIFICATION_DEPARTMENT_TRANSLATIONS.get(normalize_notification_lookup_key(normalized), normalized)
+
+
+def get_notification_logo_url():
+    public_candidates = [
+        get_env_value("OAUTH_POST_LOGOUT_REDIRECT_URI", "PUBLIC_BASE_URL", default=""),
+        get_env_value("OAUTH_REDIRECT_URI", default=""),
+    ]
+
+    for candidate in public_candidates:
+        parsed = urlparse(str(candidate or "").strip())
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}/static/images/Logo_EMESA.png"
+
+    return None
+
+
+def get_notification_logo_data_uri():
+    global _notification_logo_data_uri
+
+    if _notification_logo_data_uri is not None:
+        return _notification_logo_data_uri
+
+    for candidate in NOTIFICATION_LOGO_PATH_CANDIDATES:
+        if not os.path.exists(candidate):
+            continue
+
+        with open(candidate, "rb") as logo_file:
+            encoded = base64.b64encode(logo_file.read()).decode("ascii")
+        _notification_logo_data_uri = f"data:image/png;base64,{encoded}"
+        return _notification_logo_data_uri
+
+    _notification_logo_data_uri = ""
+    return _notification_logo_data_uri
+
+
+def get_notification_logo_src():
+    return get_notification_logo_url() or get_notification_logo_data_uri() or ""
+
+
+def build_offer_notification_message(
+    oferta_label,
+    estado_nombre,
+    departamento_nombre,
+    cliente,
+    referencia,
+    emisor,
+    assigned_by_name=None,
+):
+    estado_nombre = translate_notification_state_name(estado_nombre) or "Bez stavu"
+    departamento_nombre = translate_notification_department_name(departamento_nombre)
+    logo_src = get_notification_logo_src()
+
+    # Referencia original en espanol:
+    # subject = f"Oferta {oferta_label} en estado {estado_nombre}"
+    # body = """<p>La oferta <strong>{oferta}</strong> ha llegado al estado <strong>{estado}</strong>.</p>
+    # <p>Este estado esta asociado al departamento <strong>{departamento}</strong>.</p>
+    # <ul>
+    #   <li><strong>Oferta:</strong> {oferta}</li>
+    #   <li><strong>Estado:</strong> {estado}</li>
+    #   <li><strong>Departamento:</strong> {departamento}</li>
+    #   <li><strong>Cliente:</strong> {cliente}</li>
+    #   <li><strong>Referencia / asunto:</strong> {referencia}</li>
+    #   <li><strong>Emisor:</strong> {emisor}</li>
+    # </ul>"""
+    subject = f"OFERTAS | Nabidka {oferta_label} - {estado_nombre}"
+    assigned_by_html = ""
+    if assigned_by_name:
+        assigned_by_html = (
+            '<tr>'
+            '<td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Priradil</td>'
+            '<td style="padding: 6px 0;">{assigned_by}</td>'
+            '</tr>'
+        ).format(assigned_by=html_escape(assigned_by_name))
+
+    logo_html = ""
+    if logo_src:
+        logo_html = (
+            '<img src="{src}" alt="EMESA" '
+            'style="display:block; max-width: 168px; width: 168px; height: auto; border: 0;" />'
+        ).format(src=html_escape(logo_src))
+
+    body = """
+<div style="margin: 0; padding: 24px 0; background: #eef2f6; font-family: Segoe UI, Arial, sans-serif; color: #1f2933; line-height: 1.6;">
+    <div style="max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #d9e2ec; border-radius: 18px; overflow: hidden; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);">
+        <div style="padding: 22px 28px; background: linear-gradient(135deg, #8b1e2d 0%, #c73c4b 100%); color: #ffffff;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
+                <div>
+                    <div style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.88; margin-bottom: 6px;">Automaticke oznameni</div>
+                    <div style="font-size: 24px; font-weight: 700;">OFERTAS</div>
+                </div>
+                <div style="text-align: right;">{logo_html}</div>
+            </div>
+        </div>
+        <div style="padding: 28px;">
+            <p style="margin: 0 0 16px; font-size: 16px; color: #102a43;"><strong>Dobry den,</strong></p>
+            <p style="margin: 0 0 14px; font-size: 15px;">
+                potvrzujeme, ze nabidka <strong>{oferta}</strong> byla uspesne presunuta do stavu
+                <strong>{estado}</strong>.
+            </p>
+            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
+                Zpracovani tohoto kroku spada pod oddeleni <strong>{departamento}</strong>.
+            </p>
+            <div style="background: #f8fafc; border: 1px solid #d9e2ec; border-radius: 12px; padding: 18px 20px;">
+                <h3 style="margin: 0 0 14px; font-size: 17px; color: #102a43;">Prehled nabidky</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; width: 190px; vertical-align: top; color: #102a43;">Nabidka</td>
+                <td style="padding: 8px 0;">{oferta}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Stav</td>
+                <td style="padding: 8px 0;">{estado}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddeleni</td>
+                <td style="padding: 8px 0;">{departamento}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Zakaznik</td>
+                <td style="padding: 8px 0;">{cliente}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Reference / predmet e-mailu</td>
+                <td style="padding: 8px 0;">{referencia}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Odesilatel</td>
+                <td style="padding: 8px 0;">{emisor}</td>
+            </tr>
+            {assigned_by_html}
+        </table>
+            </div>
+            <p style="margin: 22px 0 0; font-size: 13px; color: #52606d;">
+                Toto je automaticke upozorneni ze systemu OFERTAS. V pripade dotazu kontaktujte prosim prislusne oddeleni.
+            </p>
+        </div>
+    </div>
+</div>""".format(
+        oferta=html_escape(oferta_label),
+        estado=html_escape(estado_nombre),
+        departamento=html_escape(departamento_nombre or "Bez oddeleni"),
+        cliente=html_escape(cliente or "Bez zakaznika"),
+        referencia=html_escape(referencia or "Bez reference"),
+        emisor=html_escape(emisor or "Bez odesilatele"),
+        assigned_by_html=assigned_by_html,
+        logo_html=logo_html,
+    )
+    return {"subject": subject, "body": body}
+
+
 def build_estado_manager_notification(cursor, oferta_id, estado_id):
     cursor.execute(
         """
@@ -451,34 +1205,135 @@ def build_estado_manager_notification(cursor, oferta_id, estado_id):
     emisor = format_sender_display(oferta_row[3], oferta_row[4]) if oferta_row else None
 
     oferta_label = numero_oferta or f"ID {oferta_id}"
-    subject = f"Oferta {oferta_label} en estado {estado_nombre}"
-    body = """<p>La oferta <strong>{oferta}</strong> ha llegado al estado <strong>{estado}</strong>.</p>
-<p>Este estado está asociado al departamento <strong>{departamento}</strong>.</p>
-<ul>
-  <li><strong>Oferta:</strong> {oferta}</li>
-  <li><strong>Estado:</strong> {estado}</li>
-  <li><strong>Departamento:</strong> {departamento}</li>
-  <li><strong>Cliente:</strong> {cliente}</li>
-  <li><strong>Referencia / asunto:</strong> {referencia}</li>
-  <li><strong>Emisor:</strong> {emisor}</li>
-</ul>""".format(
-        oferta=html_escape(oferta_label),
-        estado=html_escape(estado_nombre),
-        departamento=html_escape(departamento_nombre or "Sin departamento"),
-        cliente=html_escape(cliente or "Sin cliente"),
-        referencia=html_escape(referencia or "Sin referencia"),
-        emisor=html_escape(emisor or "Sin emisor"),
+    message_payload = build_offer_notification_message(
+        oferta_label=oferta_label,
+        estado_nombre=estado_nombre,
+        departamento_nombre=departamento_nombre,
+        cliente=cliente,
+        referencia=referencia,
+        emisor=emisor,
     )
 
     return {
         "skipped": False,
         "oferta_id": oferta_id,
         "to_recipients": recipients,
-        "subject": subject,
-        "body": body,
+        "subject": message_payload["subject"],
+        "body": message_payload["body"],
         "estado": estado_nombre,
         "departamento": departamento_nombre,
     }
+
+
+def build_reassignment_notification(cursor, oferta_id, assigned_by_name=None):
+    cursor.execute(
+        """
+        SELECT
+            lo.numero_oferta,
+            e.descripcion_estado,
+            d.nombre_departamento,
+            c.descripcion_cliente,
+            lo.ref_cliente_asunto_email,
+            lo.nombre_emisor,
+            lo.email_emisor,
+            uc.email,
+            gu.nombre
+        FROM ofertas.listado_ofertas lo
+        LEFT JOIN ofertas.estados e
+            ON e.id_estado = lo.id_estado
+        LEFT JOIN ofertas.departamentos d
+            ON d.id_departamento = e.id_departamento
+        LEFT JOIN ofertas.clientes c
+            ON c.id_cliente = lo.id_cliente
+        LEFT JOIN ofertas.oferta_etc oetc
+            ON oetc.id_oferta_etc = lo.id_oferta
+        LEFT JOIN ofertas.usuarios_config uc
+            ON uc.num_operario = oetc.num_operario_responsable
+        LEFT JOIN general.usuarios gu
+            ON gu.num_operario = oetc.num_operario_responsable
+        WHERE lo.id_oferta = ?
+        """,
+        (oferta_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return {"skipped": True, "message": "Oferta no encontrada"}
+
+    recipient_email = normalize_optional_text(row[7], 255)
+    if recipient_email:
+        recipient_email = recipient_email.lower()
+    if not recipient_email:
+        return {"skipped": True, "message": "El usuario reasignado no tiene email configurado"}
+
+    oferta_label = normalize_optional_text(row[0], 100) or f"ID {oferta_id}"
+    estado_nombre = normalize_optional_text(row[1], 255) or "Bez stavu"
+    departamento_nombre = normalize_optional_text(row[2], 255)
+    cliente = normalize_optional_text(row[3], 255)
+    referencia = normalize_optional_text(row[4], 500)
+    emisor = format_sender_display(row[5], row[6])
+    responsable_nombre = normalize_optional_text(row[8], 255)
+    message_payload = build_offer_notification_message(
+        oferta_label=oferta_label,
+        estado_nombre=estado_nombre,
+        departamento_nombre=departamento_nombre,
+        cliente=cliente,
+        referencia=referencia,
+        emisor=emisor,
+        assigned_by_name=assigned_by_name,
+    )
+
+    return {
+        "skipped": False,
+        "oferta_id": oferta_id,
+        "to_recipients": [recipient_email],
+        "subject": message_payload["subject"],
+        "body": message_payload["body"],
+        "estado": estado_nombre,
+        "departamento": departamento_nombre,
+        "responsable": responsable_nombre,
+    }
+
+
+def send_reassignment_notification(notification_payload):
+    if not notification_payload:
+        return {"success": False, "sent": False, "message": "No se ha generado la notificacion"}
+
+    if notification_payload.get("skipped"):
+        return {
+            "success": True,
+            "sent": False,
+            "skipped": True,
+            "message": notification_payload.get("message"),
+            "recipients": [],
+        }
+
+    try:
+        result = OutlookGraphService.send_mail(
+            get_outlook_automation_session_store(),
+            subject=notification_payload["subject"],
+            body=notification_payload["body"],
+            to_recipients=notification_payload["to_recipients"],
+            is_html=True,
+            save_to_sent_items=True,
+        )
+        return {
+            "success": True,
+            "sent": True,
+            "message": "Aviso enviado al usuario reasignado",
+            "recipients": notification_payload.get("to_recipients") or [],
+            "account": result.get("account"),
+        }
+    except Exception as exc:
+        app.logger.exception(
+            "No se pudo enviar la notificacion de reasignacion para la oferta %s",
+            notification_payload.get("oferta_id"),
+        )
+        return {
+            "success": False,
+            "sent": False,
+            "message": str(exc),
+            "recipients": notification_payload.get("to_recipients") or [],
+        }
 
 
 def send_estado_manager_notification(notification_payload):
@@ -735,12 +1590,12 @@ def is_manager_user(user_data=None):
     return str(current_user.get("rol") or current_user.get("nombre_rol") or "").strip().lower() == "manager"
 
 
-def manager_only_response():
+def manager_only_response(message="Solo los usuarios con rol Manager pueden añadir o editar usuarios."):
     return jsonify(
         {
             "success": False,
             "manager_only": True,
-            "message": "Solo los usuarios con rol Manager pueden añadir o editar usuarios.",
+            "message": message,
         }
     ), 403
 
@@ -855,7 +1710,27 @@ class HtmlToTextParser(HTMLParser):
         super().__init__()
         self.parts = []
 
+    @staticmethod
+    def _is_quote_container(tag, attrs):
+        if tag == "blockquote":
+            return True
+
+        attributes = {str(key or "").lower(): str(value or "") for key, value in attrs}
+        style = attributes.get("style", "").lower()
+        class_name = attributes.get("class", "").lower()
+
+        if "border-left" in style and any(token in style for token in ("padding-left", "margin-left")):
+            return True
+        if any(token in class_name for token in ("quote", "quoted", "gmail_quote")):
+            return True
+
+        return False
+
     def handle_starttag(self, tag, attrs):
+        if self._is_quote_container(tag, attrs):
+            self.parts.append("\n----- quoted message -----\n")
+            return
+
         if tag in {"br", "p", "div", "li", "tr", "table"}:
             self.parts.append("\n")
 
@@ -1064,7 +1939,7 @@ def clean_email_body(body_text):
     lines = normalized.split("\n")
 
     header_regex = re.compile(r"^(from|de|sent|enviado|to|para|cc|subject|asunto)\s*:", re.IGNORECASE)
-    original_message_regex = re.compile(r"^(-----\s*original message\s*-----|_{5,})$", re.IGNORECASE)
+    original_message_regex = re.compile(r"^(-----\s*(?:original|quoted)\s*message\s*-----|_{5,})$", re.IGNORECASE)
     mobile_signatures = {
         "sent from my iphone",
         "sent from my ipad",
@@ -1100,7 +1975,12 @@ def clean_email_body(body_text):
             continue
 
         if original_message_regex.match(stripped):
-            break
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            cleaned_lines.append("----- quoted message -----")
+            if cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
 
         if lowered in mobile_signatures:
             break
@@ -1129,6 +2009,32 @@ def clean_email_body(body_text):
     return cleaned_text
 
 
+def extract_eml_attachments(message):
+    attachments = []
+    for part in message.walk():
+        if part.is_multipart():
+            continue
+
+        filename = part.get_filename()
+        disposition = (part.get_content_disposition() or "").lower()
+        if not filename and disposition not in {"attachment", "inline"}:
+            continue
+
+        content_bytes = part.get_payload(decode=True)
+        if not filename or not content_bytes:
+            continue
+
+        attachments.append(
+            {
+                "filename": decode_email_header(filename),
+                "content_type": part.get_content_type(),
+                "content_bytes": bytes(content_bytes),
+            }
+        )
+
+    return attachments
+
+
 def parse_eml_bytes(file_bytes):
     message = BytesParser(policy=policy.default).parsebytes(file_bytes)
     sender_identity = extract_sender_identity(message.get("from"))
@@ -1148,6 +2054,10 @@ def parse_eml_bytes(file_bytes):
         if message.get_content_type() == "text/html":
             body_text = html_to_text(body_text)
 
+    reference_headers = []
+    for header_name in ("references", "References"):
+        reference_headers.extend(message.get_all(header_name, []))
+
     return {
         "sender_name": sender_identity["sender_name"],
         "sender_email": sender_identity["sender_email"],
@@ -1155,6 +2065,12 @@ def parse_eml_bytes(file_bytes):
         "received_at": received_at,
         "subject": subject,
         "body": clean_email_body(body_text),
+        "attachments": extract_eml_attachments(message),
+        "source_type": "email_file",
+        "conversation_id": None,
+        "internet_message_id": normalize_message_identifier(message.get("message-id") or message.get("Message-ID")),
+        "in_reply_to_message_id": normalize_message_identifier(message.get("in-reply-to") or message.get("In-Reply-To")),
+        "reference_message_ids": normalize_message_identifier_list(reference_headers),
     }
 
 
@@ -1173,11 +2089,40 @@ def parse_msg_bytes(file_bytes):
 
         message = extract_msg.Message(temp_path)
         body_text = getattr(message, "body", None) or html_to_text(getattr(message, "htmlBody", None) or "")
+        raw_headers = str(getattr(message, "header", "") or "")
+        parsed_headers = Parser(policy=policy.default).parsestr(raw_headers) if raw_headers else None
         sender_identity = extract_sender_identity(
             getattr(message, "sender", None)
-            or getattr(message, "header", ""),
+            or raw_headers,
             fallback_email=getattr(message, "sender_email", None),
         )
+
+        attachments = []
+        for attachment in list(getattr(message, "attachments", None) or []):
+            filename = (
+                getattr(attachment, "longFilename", None)
+                or getattr(attachment, "filename", None)
+                or getattr(attachment, "shortFilename", None)
+                or getattr(attachment, "displayName", None)
+            )
+            content_bytes = getattr(attachment, "data", None)
+            if callable(content_bytes):
+                content_bytes = content_bytes()
+            if isinstance(content_bytes, memoryview):
+                content_bytes = content_bytes.tobytes()
+            if isinstance(content_bytes, bytearray):
+                content_bytes = bytes(content_bytes)
+
+            if not filename or not isinstance(content_bytes, bytes) or not content_bytes:
+                continue
+
+            attachments.append(
+                {
+                    "filename": str(filename).strip(),
+                    "content_type": getattr(attachment, "mimeType", None),
+                    "content_bytes": content_bytes,
+                }
+            )
 
         return {
             "sender_name": sender_identity["sender_name"],
@@ -1186,6 +2131,12 @@ def parse_msg_bytes(file_bytes):
             "received_at": normalize_email_datetime(getattr(message, "date", None)),
             "subject": str(getattr(message, "subject", "") or "").strip(),
             "body": clean_email_body(body_text),
+            "attachments": attachments,
+            "source_type": "email_file",
+            "conversation_id": None,
+            "internet_message_id": normalize_message_identifier(parsed_headers.get("Message-ID") if parsed_headers else None),
+            "in_reply_to_message_id": normalize_message_identifier(parsed_headers.get("In-Reply-To") if parsed_headers else None),
+            "reference_message_ids": normalize_message_identifier_list(parsed_headers.get_all("References", []) if parsed_headers else []),
         }
     finally:
         close_message = getattr(message, "close", None)
@@ -1235,6 +2186,15 @@ def build_imported_email_response_data(parsed_email, cliente_resolution=None):
         "fecha_alta_oferta": fecha_alta.isoformat(),
         "ref_cliente_asunto_email": parsed_email.get("subject"),
         "observaciones": parsed_email.get("body"),
+        "adjuntos_importados": [
+            {
+                "original_name": attachment.get("filename"),
+                "size_bytes": len(attachment.get("content_bytes") or b""),
+            }
+            for attachment in (parsed_email.get("attachments") or [])
+            if attachment.get("filename")
+        ],
+        "imported_email_metadata": serialize_imported_email_metadata(parsed_email),
     }
 
 
@@ -1271,6 +2231,355 @@ def normalize_outlook_message_for_offer(message):
         "subject": normalize_optional_text(message.get("subject"), 500),
         "received_at": normalize_email_datetime(message.get("received_at")),
         "body": body_text,
+        "source_type": "outlook",
+        "conversation_id": normalize_optional_text(message.get("conversation_id"), 255),
+        "internet_message_id": normalize_message_identifier(message.get("internet_message_id")),
+        "in_reply_to_message_id": None,
+        "reference_message_ids": [],
+    }
+
+
+def normalize_message_identifier(value):
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+
+    normalized = normalized.strip("<>").strip().lower()
+    return normalized or None
+
+
+def normalize_message_identifier_list(values):
+    if values is None:
+        return []
+
+    raw_values = values if isinstance(values, (list, tuple, set)) else [values]
+    identifiers = []
+    seen = set()
+
+    for raw_value in raw_values:
+        if raw_value is None:
+            continue
+
+        for candidate in re.findall(r"<([^>]+)>", str(raw_value)) or [raw_value]:
+            normalized = normalize_message_identifier(candidate)
+            if not normalized or normalized in seen:
+                continue
+            seen.add(normalized)
+            identifiers.append(normalized)
+
+    return identifiers
+
+
+def serialize_imported_email_metadata(parsed_email):
+    if not isinstance(parsed_email, dict):
+        return None
+
+    metadata = {
+        "source_type": normalize_optional_text(parsed_email.get("source_type"), 32),
+        "conversation_id": normalize_optional_text(parsed_email.get("conversation_id"), 255),
+        "internet_message_id": normalize_message_identifier(parsed_email.get("internet_message_id")),
+        "in_reply_to_message_id": normalize_message_identifier(parsed_email.get("in_reply_to_message_id")),
+        "reference_message_ids": normalize_message_identifier_list(parsed_email.get("reference_message_ids") or []),
+        "subject": normalize_optional_text(parsed_email.get("subject"), 500),
+        "sender_name": normalize_optional_text(parsed_email.get("sender_name"), 255),
+        "sender_email": normalize_optional_text(parsed_email.get("sender_email"), 255),
+        "received_at": serialize_date(parsed_email.get("received_at")),
+        "body_sha256": build_email_body_sha256(parsed_email.get("body")),
+    }
+    if metadata["sender_email"]:
+        metadata["sender_email"] = metadata["sender_email"].lower()
+
+    if not any(
+        metadata.get(key)
+        for key in ("conversation_id", "internet_message_id", "in_reply_to_message_id", "reference_message_ids", "body_sha256")
+    ):
+        return None
+
+    return metadata
+
+
+def build_email_body_sha256(body_text):
+    normalized_body = str(body_text or "").strip()
+    if not normalized_body:
+        return None
+    return hashlib.sha256(normalized_body.encode("utf-8")).hexdigest()
+
+
+def oferta_email_tracking_table_exists(cursor):
+    cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.oferta_correos_importados', 'U') IS NOT NULL")
+    return cursor.fetchone() is not None
+
+
+def get_imported_email_metadata_for_match(parsed_email):
+    if not isinstance(parsed_email, dict):
+        return None
+
+    metadata = serialize_imported_email_metadata(parsed_email)
+    if metadata is None:
+        return None
+    return metadata
+
+
+def get_offer_thread_match(cursor, parsed_email):
+    if not oferta_email_tracking_table_exists(cursor):
+        return None
+
+    metadata = get_imported_email_metadata_for_match(parsed_email)
+    if metadata is None:
+        return None
+
+    conversation_id = metadata.get("conversation_id")
+    if conversation_id:
+        cursor.execute(
+            """
+            SELECT TOP 1 lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+            FROM ofertas.oferta_correos_importados oci
+            INNER JOIN ofertas.listado_ofertas lo
+                ON lo.id_oferta = oci.id_oferta
+            WHERE oci.conversation_id = ?
+            ORDER BY oci.id_correo_importado DESC
+            """,
+            (conversation_id,),
+        )
+        row = cursor.fetchone()
+        if row is not None:
+            return {
+                "id_oferta": row[0],
+                "numero_oferta": row[1],
+                "ref_cliente_asunto_email": row[2],
+                "match_type": "conversation_id",
+            }
+
+    related_message_ids = []
+    for key in ("in_reply_to_message_id", "reference_message_ids", "internet_message_id"):
+        value = metadata.get(key)
+        if isinstance(value, list):
+            related_message_ids.extend(value)
+        elif value:
+            related_message_ids.append(value)
+
+    related_message_ids = [item for index, item in enumerate(related_message_ids) if item and item not in related_message_ids[:index]]
+    if not related_message_ids:
+        return None
+
+    placeholders = ", ".join("?" for _ in related_message_ids)
+    cursor.execute(
+        f"""
+        SELECT TOP 1 lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+        FROM ofertas.oferta_correos_importados oci
+        INNER JOIN ofertas.listado_ofertas lo
+            ON lo.id_oferta = oci.id_oferta
+        WHERE oci.internet_message_id IN ({placeholders})
+        ORDER BY oci.id_correo_importado DESC
+        """,
+        tuple(related_message_ids),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+
+    return {
+        "id_oferta": row[0],
+        "numero_oferta": row[1],
+        "ref_cliente_asunto_email": row[2],
+        "match_type": "message_reference",
+    }
+
+
+def imported_email_already_registered(cursor, oferta_id, metadata):
+    if not oferta_email_tracking_table_exists(cursor) or not metadata:
+        return False
+
+    internet_message_id = metadata.get("internet_message_id")
+    if internet_message_id:
+        cursor.execute(
+            """
+            SELECT TOP 1 1
+            FROM ofertas.oferta_correos_importados
+            WHERE id_oferta = ?
+              AND internet_message_id = ?
+            """,
+            (oferta_id, internet_message_id),
+        )
+        if cursor.fetchone() is not None:
+            return True
+
+    body_sha256 = metadata.get("body_sha256")
+    received_at = normalize_email_datetime(metadata.get("received_at"))
+    sender_email = normalize_optional_text(metadata.get("sender_email"), 255)
+    if sender_email:
+        sender_email = sender_email.lower()
+
+    if body_sha256 and received_at is not None:
+        cursor.execute(
+            """
+            SELECT TOP 1 1
+            FROM ofertas.oferta_correos_importados
+            WHERE id_oferta = ?
+              AND body_sha256 = ?
+              AND received_at = ?
+              AND LOWER(LTRIM(RTRIM(ISNULL(sender_email, '')))) = LOWER(LTRIM(RTRIM(ISNULL(?, ''))))
+            """,
+            (oferta_id, body_sha256, received_at, sender_email),
+        )
+        if cursor.fetchone() is not None:
+            return True
+
+    return False
+
+
+def register_imported_email_metadata(cursor, oferta_id, parsed_email):
+    if not oferta_email_tracking_table_exists(cursor):
+        return False
+
+    metadata = get_imported_email_metadata_for_match(parsed_email)
+    if metadata is None or imported_email_already_registered(cursor, oferta_id, metadata):
+        return False
+
+    cursor.execute(
+        """
+        INSERT INTO ofertas.oferta_correos_importados (
+            id_oferta,
+            source_type,
+            conversation_id,
+            internet_message_id,
+            in_reply_to_message_id,
+            reference_message_ids_json,
+            subject,
+            sender_name,
+            sender_email,
+            received_at,
+            body_sha256,
+            fecha_registro
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME())
+        """,
+        (
+            oferta_id,
+            metadata.get("source_type"),
+            metadata.get("conversation_id"),
+            metadata.get("internet_message_id"),
+            metadata.get("in_reply_to_message_id"),
+            json.dumps(metadata.get("reference_message_ids") or []),
+            metadata.get("subject"),
+            metadata.get("sender_name"),
+            metadata.get("sender_email"),
+            normalize_email_datetime(metadata.get("received_at")),
+            metadata.get("body_sha256"),
+        ),
+    )
+    return True
+
+
+def discard_staged_imported_email_attachments(token):
+    if not token:
+        return
+    shutil.rmtree(get_imported_email_attachments_dir(token), ignore_errors=True)
+
+
+def prepend_imported_message_to_observaciones(existing_observaciones, new_body):
+    cleaned_body = str(new_body or "").strip()
+    if not cleaned_body:
+        return existing_observaciones
+
+    existing_text = str(existing_observaciones or "").strip()
+    if not existing_text:
+        return cleaned_body
+
+    return f"{cleaned_body}\n\n----- quoted message -----\n\n{existing_text}"
+
+
+def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_email_attachment_token=None):
+    if not ensure_offer_exists(cursor, oferta_id):
+        raise ValueError("Oferta no encontrada")
+
+    cursor.execute(
+        """
+        SELECT numero_oferta, observaciones, fecha_email, ref_cliente_asunto_email, nombre_emisor, email_emisor
+        FROM ofertas.listado_ofertas
+        WHERE id_oferta = ?
+        """,
+        (oferta_id,),
+    )
+    offer_row = cursor.fetchone()
+    if offer_row is None:
+        raise ValueError("Oferta no encontrada")
+
+    numero_oferta, observaciones_actuales, _, _, _, _ = offer_row
+    ordered_messages = sorted(
+        [item for item in (parsed_emails or []) if isinstance(item, dict)],
+        key=lambda item: normalize_email_datetime(item.get("received_at")) or datetime.min,
+    )
+
+    imported_count = 0
+    skipped_count = 0
+    latest_message = None
+    current_observaciones = observaciones_actuales
+
+    for parsed_email in ordered_messages:
+        metadata = get_imported_email_metadata_for_match(parsed_email)
+        if metadata is not None and imported_email_already_registered(cursor, oferta_id, metadata):
+            skipped_count += 1
+            continue
+
+        current_observaciones = prepend_imported_message_to_observaciones(current_observaciones, parsed_email.get("body"))
+        register_imported_email_metadata(cursor, oferta_id, parsed_email)
+        latest_message = parsed_email
+        imported_count += 1
+
+    attachments = []
+    if imported_count > 0:
+        latest_received_at = normalize_email_datetime((latest_message or {}).get("received_at"))
+        cursor.execute(
+            """
+            UPDATE ofertas.listado_ofertas
+            SET fecha_email = ?,
+                ref_cliente_asunto_email = ?,
+                observaciones = ?,
+                nombre_emisor = ?,
+                email_emisor = ?
+            WHERE id_oferta = ?
+            """,
+            (
+                latest_received_at.date() if latest_received_at else None,
+                normalize_optional_text((latest_message or {}).get("subject"), 500),
+                current_observaciones,
+                normalize_optional_text((latest_message or {}).get("sender_name"), 255),
+                normalize_optional_text((latest_message or {}).get("sender_email"), 255),
+                oferta_id,
+            ),
+        )
+        if imported_email_attachment_token:
+            attachments = move_staged_imported_email_attachments_to_offer(oferta_id, imported_email_attachment_token)
+    elif imported_email_attachment_token:
+        discard_staged_imported_email_attachments(imported_email_attachment_token)
+
+    return {
+        "id_oferta": oferta_id,
+        "numero_oferta": numero_oferta,
+        "imported_count": imported_count,
+        "skipped_count": skipped_count,
+        "adjuntos": attachments,
+    }
+
+
+def build_import_result_payload(response_data=None, sync_result=None, message=None):
+    if sync_result is not None:
+        return {
+            "success": True,
+            "mode": "synced_existing_offer",
+            "message": message,
+            **sync_result,
+        }
+
+    return {
+        "success": True,
+        "mode": "form_prefill",
+        "message": message,
+        "data": response_data or {},
     }
 
 
@@ -1472,6 +2781,91 @@ def build_configuracion_columna_payload(data):
         "descripcion_columna": normalize_optional_text(data.get("descripcion_columna"), 255),
         "orden_columna": normalize_optional_int(data.get("orden_columna"), "orden columna"),
     }
+
+
+GLOBAL_CONFIG_SCOPE_ID = -1
+GLOBAL_CONFIG_SCOPE_LABEL = "__GLOBAL_COLUMN_SCOPE__"
+DEFAULT_GLOBAL_CONFIG_COLUMNS = [
+    "numero_oferta",
+    "fecha_alta_oferta",
+    "cliente",
+    "emisor",
+    "observaciones_oferta",
+    "estado",
+]
+
+def is_global_config_scope(estado_id):
+    return estado_id == GLOBAL_CONFIG_SCOPE_ID
+
+def parse_config_scope_id(raw_value):
+    try:
+        estado_id = int(str(raw_value).strip())
+    except (TypeError, ValueError):
+        raise ValueError("Estado no válido")
+
+    if estado_id == GLOBAL_CONFIG_SCOPE_ID:
+        return estado_id
+    if estado_id <= 0:
+        raise ValueError("Estado no válido")
+    return estado_id
+
+def ensure_config_scope_exists(cursor, estado_id):
+    if is_global_config_scope(estado_id):
+        ensure_global_config_scope_row(cursor)
+        return True
+
+    cursor.execute(
+        "SELECT 1 FROM ofertas.estados WHERE id_estado = ?",
+        (estado_id,),
+    )
+    return cursor.fetchone() is not None
+
+
+def ensure_global_config_scope_row(cursor):
+    cursor.execute(
+        "SELECT 1 FROM ofertas.estados WHERE id_estado = ?",
+        (GLOBAL_CONFIG_SCOPE_ID,),
+    )
+    if cursor.fetchone() is not None:
+        return
+
+    cursor.execute("SET IDENTITY_INSERT ofertas.estados ON")
+    try:
+        cursor.execute(
+            """
+            INSERT INTO ofertas.estados (id_estado, descripcion_estado, orden, id_departamento, emoji_sidebar, activo)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (GLOBAL_CONFIG_SCOPE_ID, GLOBAL_CONFIG_SCOPE_LABEL, None, None, '', 0),
+        )
+    finally:
+        cursor.execute("SET IDENTITY_INSERT ofertas.estados OFF")
+
+
+def ensure_global_config_default_columns(cursor):
+    ensure_global_config_scope_row(cursor)
+    cursor.execute(
+        "SELECT COUNT(*) FROM ofertas.configuracioncolumnas WHERE id_estado = ?",
+        (GLOBAL_CONFIG_SCOPE_ID,),
+    )
+    existing_count = cursor.fetchone()[0] or 0
+    if existing_count:
+        return
+
+    available_column_map = get_available_offer_column_map()
+    for index, column_name in enumerate(DEFAULT_GLOBAL_CONFIG_COLUMNS, start=1):
+        column_info = available_column_map.get(column_name)
+        if not column_info:
+            continue
+
+        cursor.execute(
+            """
+            INSERT INTO ofertas.configuracioncolumnas (id_estado, columna, descripcion_columna, orden_columna)
+            VALUES (?, ?, ?, ?)
+            """,
+            (GLOBAL_CONFIG_SCOPE_ID, column_name, column_info["label"], index),
+        )
+
 
 
 def get_next_numero_oferta(cursor):
@@ -1821,6 +3215,9 @@ def start_microsoft_login():
         )
     except OutlookGraphError as exc:
         return redirect(url_for("index", auth_error=str(exc)))
+    except Exception as exc:
+        app.logger.exception("No se pudo iniciar el login de Microsoft")
+        return redirect(url_for("index", auth_error=f"No se pudo iniciar la autenticación con Microsoft: {exc}"))
 
 
 @app.route("/auth/microsoft/login", methods=["GET"])
@@ -1863,12 +3260,18 @@ def api_outlook_status():
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para usar Outlook"}), 401
 
-    status = OutlookGraphService.get_status(session)
-    account = status.get("account") or {}
-    status["mailbox"] = account.get("username")
-    status["login_url"] = url_for("auth_outlook_login")
-    status["disconnect_url"] = url_for("api_outlook_disconnect")
-    return jsonify({"success": True, **status})
+    try:
+        status = OutlookGraphService.get_status(session)
+        account = status.get("account") or {}
+        status["mailbox"] = account.get("username")
+        status["login_url"] = url_for("auth_outlook_login")
+        status["disconnect_url"] = url_for("api_outlook_disconnect")
+        return jsonify({"success": True, **status})
+    except OutlookGraphError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 409
+    except Exception as exc:
+        app.logger.exception("No se pudo resolver el estado de Outlook")
+        return jsonify({"success": False, "message": f"No se pudo consultar Outlook: {str(exc)}"}), 500
 
 
 @app.route("/auth/outlook/login", methods=["GET"])
@@ -1883,6 +3286,9 @@ def auth_outlook_login():
         return redirect(OutlookGraphService.start_auth_flow(session, redirect_uri=get_request_oauth_redirect_uri()))
     except OutlookGraphError as exc:
         return redirect(url_for("index", outlook_error=str(exc)))
+    except Exception as exc:
+        app.logger.exception("No se pudo iniciar el login de Outlook")
+        return redirect(url_for("index", outlook_error=f"No se pudo iniciar la autenticación de Outlook: {exc}"))
 
 
 @app.route("/auth/outlook/callback", methods=["GET"])
@@ -1965,6 +3371,10 @@ def api_outlook_message_detail(message_id):
         parsed_email = normalize_outlook_message_for_offer(message)
         cliente_resolution = resolve_cliente_for_sender_email(parsed_email.get("sender_email"))
         import_data = build_imported_email_response_data(parsed_email, cliente_resolution)
+        with db_connection(autocommit=True) as conn:
+            thread_match = get_offer_thread_match(conn.cursor(), parsed_email)
+        if thread_match is not None:
+            import_data["thread_match"] = thread_match
         return jsonify(
             {
                 "success": True,
@@ -1978,6 +3388,55 @@ def api_outlook_message_detail(message_id):
         return jsonify({"success": False, "message": str(exc)}), 409
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo cargar el correo de Outlook: {str(exc)}"}), 500
+
+
+@app.route("/api/outlook/messages/<path:message_id>/import", methods=["POST"])
+def api_outlook_import_message(message_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para importar correos de Outlook"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    try:
+        message = OutlookGraphService.get_message(session, message_id)
+        parsed_email = normalize_outlook_message_for_offer(message)
+        cliente_resolution = resolve_cliente_for_sender_email(parsed_email.get("sender_email"))
+        response_data = build_imported_email_response_data(parsed_email, cliente_resolution)
+
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            thread_match = get_offer_thread_match(cursor, parsed_email)
+            if thread_match is None:
+                conn.commit()
+                return jsonify(
+                    build_import_result_payload(
+                        response_data=response_data,
+                        message="Correo de Outlook preparado para crear una oferta nueva.",
+                    )
+                )
+
+            conversation_id = normalize_optional_text(parsed_email.get("conversation_id"), 255)
+            parsed_messages = [parsed_email]
+            if conversation_id:
+                conversation_messages = OutlookGraphService.list_messages_by_conversation(session, conversation_id)
+                parsed_messages = [normalize_outlook_message_for_offer(item) for item in conversation_messages]
+
+            sync_result = sync_imported_emails_into_offer(cursor, thread_match["id_oferta"], parsed_messages)
+            conn.commit()
+
+        if sync_result["imported_count"] > 0:
+            message_text = f"Se han importado {sync_result['imported_count']} correos nuevos en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+        else:
+            message_text = f"No había correos nuevos que añadir en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+
+        return jsonify(build_import_result_payload(sync_result=sync_result, message=message_text))
+    except OutlookGraphError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 409
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo importar el correo de Outlook: {str(exc)}"}), 500
 
 
 @app.route("/api/outlook/send", methods=["POST"])
@@ -2040,6 +3499,7 @@ def list_ofertas():
                 SELECT
                     vw.id_oferta,
                     lo.id_estado,
+                    e.id_departamento,
                     vw.numero_oferta,
                     vw.fecha_email,
                     vw.fecha_alta_oferta,
@@ -2056,6 +3516,8 @@ def list_ofertas():
                 FROM ofertas.vw_listado_ofertas_interacciones vw
                 INNER JOIN ofertas.listado_ofertas lo
                     ON lo.id_oferta = vw.id_oferta
+                LEFT JOIN ofertas.estados e
+                    ON e.id_estado = lo.id_estado
                 OUTER APPLY (
                     SELECT TOP 1 oi.fecha_limite
                     FROM ofertas.oferta_interacciones oi
@@ -2076,6 +3538,7 @@ def list_ofertas():
                 GROUP BY
                     vw.id_oferta,
                     lo.id_estado,
+                    e.id_departamento,
                     vw.numero_oferta,
                     vw.fecha_email,
                     vw.fecha_alta_oferta,
@@ -2094,36 +3557,41 @@ def list_ofertas():
                 {
                     "id_oferta": row[0],
                     "id_estado": row[1],
-                    "numero_oferta": row[2],
-                    "fecha_email": serialize_date(row[3]),
-                    "fecha_alta_oferta": serialize_date(row[4]),
-                    "fecha_limite": serialize_date(row[5]),
-                    "ref_cliente_asunto_email": row[6],
-                    "id_cliente": row[7],
-                    "cliente": row[8],
-                    "emisor": row[9],
-                    "observaciones": row[10],
-                    "observaciones_oferta": row[10],
-                    "interaction_types": row[11],
-                    "interaction_dates": serialize_interaction_date_list(row[12]),
-                    "interaction_observaciones": row[13],
-                    "estado": row[14],
+                    "id_departamento_estado": row[2],
+                    "numero_oferta": row[3],
+                    "fecha_email": serialize_date(row[4]),
+                    "fecha_alta_oferta": serialize_date(row[5]),
+                    "fecha_limite": serialize_date(row[6]),
+                    "ref_cliente_asunto_email": row[7],
+                    "id_cliente": row[8],
+                    "cliente": row[9],
+                    "emisor": row[10],
+                    "observaciones": row[11],
+                    "observaciones_oferta": row[11],
+                    "interaction_types": row[12],
+                    "interaction_dates": serialize_interaction_date_list(row[13]),
+                    "interaction_observaciones": row[14],
+                    "estado": row[15],
                     "id_oferta": row[0],
-                    "numero_oferta": row[2],
-                    "fecha_email": serialize_date(row[3]),
-                    "fecha_alta_oferta": serialize_date(row[4]),
-                    "fecha_limite": serialize_date(row[5]),
-                    "ref_cliente_asunto_email": row[6],
-                    "cliente": row[8],
-                    "emisor": row[9],
-                    "observaciones_oferta": row[10],
-                    "tipo_interaccion": row[11],
-                    "fecha_interaccion": serialize_interaction_date_list(row[12]),
-                    "observaciones_interaccion": row[13],
-                    "estado": row[14],
+                    "numero_oferta": row[3],
+                    "fecha_email": serialize_date(row[4]),
+                    "fecha_alta_oferta": serialize_date(row[5]),
+                    "fecha_limite": serialize_date(row[6]),
+                    "ref_cliente_asunto_email": row[7],
+                    "cliente": row[9],
+                    "emisor": row[10],
+                    "observaciones_oferta": row[11],
+                    "tipo_interaccion": row[12],
+                    "fecha_interaccion": serialize_interaction_date_list(row[13]),
+                    "observaciones_interaccion": row[14],
+                    "estado": row[15],
                 }
                 for row in cursor.fetchall()
             ]
+
+        for oferta in ofertas:
+            chat_messages = load_offer_chat_messages(oferta["id_oferta"])
+            oferta.update(build_offer_chat_summary(oferta["id_oferta"], user_data, messages=chat_messages))
 
         return jsonify({"success": True, "ofertas": ofertas})
     except RuntimeError as exc:
@@ -2403,18 +3871,48 @@ def import_oferta_from_email():
     try:
         cliente_resolution = resolve_cliente_for_sender_email(parsed_email.get("sender_email"))
         matched_cliente = (cliente_resolution or {}).get("cliente")
+        staged_imported_attachments = stage_imported_email_attachments(parsed_email)
+
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            thread_match = get_offer_thread_match(cursor, parsed_email)
+            if thread_match is not None:
+                sync_result = sync_imported_emails_into_offer(
+                    cursor,
+                    thread_match["id_oferta"],
+                    [parsed_email],
+                    imported_email_attachment_token=staged_imported_attachments["token"] if staged_imported_attachments else None,
+                )
+                conn.commit()
+
+                if sync_result["imported_count"] > 0:
+                    message_text = f"Correo importado dentro de la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+                else:
+                    message_text = f"Ese correo ya estaba importado en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+
+                return jsonify(build_import_result_payload(sync_result=sync_result, message=message_text))
+
+            conn.commit()
 
         message_parts = ["Correo importado correctamente."]
         if matched_cliente:
             message_parts.append(f"Cliente detectado: {matched_cliente['descripcion_cliente']}.")
         elif cliente_resolution and cliente_resolution.get("domain"):
             message_parts.append(f"No se encontró cliente para el dominio {cliente_resolution['domain']}.")
+        if staged_imported_attachments:
+            message_parts.append(
+                f"Se han detectado {len(staged_imported_attachments['attachments'])} adjunto(s) y se añadirán al guardar la oferta."
+            )
+
+        response_data = build_imported_email_response_data(parsed_email, cliente_resolution)
+        response_data["imported_email_attachment_token"] = staged_imported_attachments["token"] if staged_imported_attachments else None
+        response_data["adjuntos_importados"] = staged_imported_attachments["attachments"] if staged_imported_attachments else []
 
         return jsonify(
             {
                 "success": True,
                 "message": " ".join(message_parts),
-                "data": build_imported_email_response_data(parsed_email, cliente_resolution),
+                "data": response_data,
             }
         )
     except RuntimeError as exc:
@@ -2472,7 +3970,9 @@ def get_oferta(oferta_id):
                 "email_emisor": row[10],
                 "emisor": format_sender_display(row[9], row[10]),
                 "interacciones": [],
+                "adjuntos": list_offer_attachments(row[0]),
             }
+            oferta.update(build_offer_chat_summary(row[0], user_data))
 
             cursor.execute(
                 """
@@ -2503,6 +4003,163 @@ def get_oferta(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo consultar la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/chat", methods=["GET"])
+def get_offer_chat(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para consultar el chat"}), 401
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            if not ensure_offer_exists(cursor, oferta_id):
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+        messages = load_offer_chat_messages(oferta_id)
+        return jsonify({"success": True, "messages": messages, **build_offer_chat_summary(oferta_id, user_data, messages=messages)})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo consultar el chat: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/chat", methods=["POST"])
+def post_offer_chat_message(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para usar el chat"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            if not ensure_offer_exists(cursor, oferta_id):
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+        message_entry = append_offer_chat_message(oferta_id, user_data, data.get("message"))
+        messages = load_offer_chat_messages(oferta_id)
+        return jsonify(
+            {
+                "success": True,
+                "message": "Mensaje enviado correctamente",
+                "chat_message": message_entry,
+                "messages": messages,
+                **build_offer_chat_summary(oferta_id, user_data, messages=messages),
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo enviar el mensaje: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/chat/read", methods=["POST"])
+def mark_offer_chat_read(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para actualizar el chat"}), 401
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            if not ensure_offer_exists(cursor, oferta_id):
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+        messages = load_offer_chat_messages(oferta_id)
+        return jsonify({"success": True, **mark_offer_chat_as_read(oferta_id, user_data, messages=messages)})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo actualizar el estado del chat: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/adjuntos", methods=["POST"])
+def upload_offer_attachments(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para adjuntar archivos"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    uploaded_files = [file for file in request.files.getlist("archivos") if file and getattr(file, "filename", "")]
+    if not uploaded_files:
+        return jsonify({"success": False, "message": "Debes seleccionar al menos un archivo"}), 400
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            if not ensure_offer_exists(cursor, oferta_id):
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+        saved_attachments = [save_offer_attachment(oferta_id, uploaded_file) for uploaded_file in uploaded_files]
+        return jsonify(
+            {
+                "success": True,
+                "message": "Archivo subido correctamente." if len(saved_attachments) == 1 else "Archivos subidos correctamente.",
+                "adjuntos": saved_attachments,
+                "all_adjuntos": list_offer_attachments(oferta_id),
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        app.logger.exception("No se pudieron subir adjuntos para la oferta %s", oferta_id)
+        return jsonify({"success": False, "message": f"No se pudieron subir los archivos: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/adjuntos/<path:filename>", methods=["GET"])
+def download_offer_attachment(oferta_id, filename):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para descargar adjuntos"}), 401
+
+    safe_filename = os.path.basename(str(filename or ""))
+    if not safe_filename or safe_filename != filename:
+        return jsonify({"success": False, "message": "Archivo no válido"}), 400
+
+    attachments_dir = get_offer_attachments_dir(oferta_id)
+    file_path = os.path.join(attachments_dir, safe_filename)
+    if not os.path.isfile(file_path):
+        return jsonify({"success": False, "message": "Adjunto no encontrado"}), 404
+
+    metadata = load_offer_attachment_metadata(file_path)
+    download_name = metadata.get("original_name") or safe_filename
+    return send_from_directory(attachments_dir, safe_filename, as_attachment=True, download_name=download_name)
+
+
+@app.route("/api/ofertas/<int:oferta_id>/adjuntos/<path:filename>/preview", methods=["GET"])
+def preview_offer_attachment(oferta_id, filename):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para visualizar adjuntos"}), 401
+
+    safe_filename = os.path.basename(str(filename or ""))
+    if not safe_filename or safe_filename != filename:
+        return jsonify({"success": False, "message": "Archivo no válido"}), 400
+
+    attachments_dir = get_offer_attachments_dir(oferta_id)
+    file_path = os.path.join(attachments_dir, safe_filename)
+    if not os.path.isfile(file_path):
+        return jsonify({"success": False, "message": "Adjunto no encontrado"}), 404
+
+    metadata = load_offer_attachment_metadata(file_path)
+    resolved_name = metadata.get("original_name") or safe_filename
+    return send_from_directory(
+        attachments_dir,
+        safe_filename,
+        as_attachment=False,
+        download_name=resolved_name,
+        mimetype=get_offer_attachment_mimetype(resolved_name),
+    )
 
 
 @app.route("/api/ofertas/<int:oferta_id>", methods=["PUT"])
@@ -2581,6 +4238,60 @@ def update_oferta(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo actualizar la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>", methods=["DELETE"])
+def delete_oferta(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para eliminar la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response("Solo los usuarios con rol Manager pueden eliminar ofertas.")
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(
+                "SELECT numero_oferta FROM ofertas.listado_ofertas WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            oferta_row = cursor.fetchone()
+            if not oferta_row:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            numero_oferta = oferta_row[0] or oferta_id
+
+            cursor.execute(
+                "DELETE FROM ofertas.oferta_interacciones WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            cursor.execute(
+                "DELETE FROM ofertas.listado_ofertas WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Oferta {numero_oferta} eliminada correctamente",
+                "id_oferta": oferta_id,
+                "numero_oferta": numero_oferta,
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo eliminar la oferta: {str(exc)}"}), 500
 
 
 @app.route("/api/ofertas/verificar-duplicado-correo", methods=["POST"])
@@ -2723,6 +4434,190 @@ def update_oferta_estado(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo actualizar el estado de la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/reasignar", methods=["POST"])
+def reassign_oferta_responsable(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para reasignar ofertas"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response("Solo los managers pueden reasignar tareas.")
+
+    data = request.get_json(silent=True) or {}
+    try:
+        responsable_num_operario = int(data.get("num_operario_responsable"))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Debes seleccionar un usuario valido"}), 400
+
+    manager_department_ids = get_user_department_ids(user_data)
+    if not manager_department_ids:
+        return jsonify({"success": False, "message": "Tu usuario no tiene ningun departamento asignado"}), 409
+
+    assigning_user_name = normalize_optional_text(
+        user_data.get("nombre") or user_data.get("display_name") or user_data.get("email"),
+        255,
+    )
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+
+            if not oferta_etc_table_exists(cursor):
+                conn.rollback()
+                return jsonify({"success": False, "message": "La tabla de ofertas ETC no está disponible"}), 409
+
+            cursor.execute(
+                """
+                SELECT
+                    lo.id_oferta,
+                    lo.numero_oferta,
+                    lo.id_estado,
+                    lo.id_cliente,
+                    e.id_departamento,
+                    d.nombre_departamento,
+                    oetc.id_oferta_etc,
+                    oetc.num_operario_responsable
+                FROM ofertas.listado_ofertas lo
+                LEFT JOIN ofertas.estados e
+                    ON e.id_estado = lo.id_estado
+                LEFT JOIN ofertas.departamentos d
+                    ON d.id_departamento = e.id_departamento
+                LEFT JOIN ofertas.oferta_etc oetc
+                    ON oetc.id_oferta_etc = lo.id_oferta
+                WHERE lo.id_oferta = ?
+                """,
+                (oferta_id,),
+            )
+            offer_row = cursor.fetchone()
+
+            if not offer_row:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            offer_context = {
+                "id_oferta": offer_row[0],
+                "numero_oferta": offer_row[1],
+                "id_estado": offer_row[2],
+                "id_cliente": offer_row[3],
+            }
+            estado_department_id = offer_row[4]
+            department_name = normalize_optional_text(offer_row[5], 255)
+            etc_id = offer_row[6]
+            previous_responsable = offer_row[7]
+
+            if estado_department_id is None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "La oferta no tiene un departamento asociado por estado"}), 409
+
+            if int(estado_department_id) not in manager_department_ids:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Solo puedes reasignar ofertas de tu departamento"}), 403
+
+            if etc_id is None:
+                etc_id = ensure_oferta_etc_record(
+                    cursor,
+                    offer_context,
+                    estado_department_id,
+                    responsable_num_operario=previous_responsable,
+                )
+
+            cursor.execute(
+                """
+                SELECT
+                    uc.num_operario,
+                    uc.id_departamento,
+                    uc.email,
+                    gu.nombre
+                FROM ofertas.usuarios_config uc
+                LEFT JOIN general.usuarios gu
+                    ON gu.num_operario = uc.num_operario
+                WHERE uc.num_operario = ?
+                """,
+                (responsable_num_operario,),
+            )
+            assignee_row = cursor.fetchone()
+
+            if not assignee_row:
+                conn.rollback()
+                return jsonify({"success": False, "message": "El usuario seleccionado no existe"}), 404
+
+            assignee_department_id = assignee_row[1]
+            if assignee_department_id is None or int(assignee_department_id) != int(estado_department_id):
+                conn.rollback()
+                return jsonify({"success": False, "message": "Solo puedes reasignar a usuarios del mismo departamento"}), 409
+
+            if previous_responsable is not None and int(previous_responsable) == responsable_num_operario:
+                conn.rollback()
+                return jsonify({"success": False, "message": "La oferta ya está asignada a ese usuario"}), 409
+
+            cursor.execute(
+                """
+                UPDATE ofertas.oferta_etc
+                SET num_operario_responsable = ?,
+                    id_departamento_destino = ?
+                WHERE id_oferta_etc = ?
+                """,
+                (responsable_num_operario, estado_department_id, etc_id),
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({"success": False, "message": "No se pudo actualizar la reasignacion"}), 409
+
+            interaction_date = datetime.now()
+            assignee_name = normalize_optional_text(assignee_row[3], 255) or str(responsable_num_operario)
+            interaction_comment = f"Responsable reasignado a {assignee_name}"
+            if assigning_user_name:
+                interaction_comment += f" por {assigning_user_name}"
+
+            cursor.execute(
+                """
+                INSERT INTO ofertas.oferta_interacciones (
+                    id_oferta,
+                    tipo_interaccion,
+                    fecha_interaccion,
+                    observaciones
+                )
+                VALUES (?, ?, ?, ?)
+                """,
+                (oferta_id, "Reasignacion", interaction_date, interaction_comment),
+            )
+
+            notification_payload = build_reassignment_notification(
+                cursor,
+                oferta_id,
+                assigned_by_name=assigning_user_name,
+            )
+
+            conn.commit()
+
+        notification_result = send_reassignment_notification(notification_payload)
+        offer_label = normalize_optional_text(offer_row[1], 100) or f"ID {oferta_id}"
+        response_message = f"Oferta {offer_label} reasignada correctamente"
+        if department_name:
+            response_message += f" en {department_name}"
+        if notification_result and notification_result.get("skipped") and notification_result.get("message"):
+            response_message += f". {notification_result['message']}"
+
+        return jsonify(
+            {
+                "success": True,
+                "message": response_message,
+                "oferta_id": oferta_id,
+                "num_operario_responsable": responsable_num_operario,
+                "responsable_nombre": assignee_name,
+                "id_departamento_estado": estado_department_id,
+                "fecha_interaccion": interaction_date.isoformat(),
+                "notification": notification_result,
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo reasignar la oferta: {str(exc)}"}), 500
 
 
 @app.route("/api/clientes", methods=["GET"])
@@ -3121,6 +5016,7 @@ def list_estados():
                     ON o.id_estado = e.id_estado
                 LEFT JOIN ofertas.departamentos d
                     ON d.id_departamento = e.id_departamento
+                WHERE e.id_estado > 0
                 ORDER BY
                     CASE WHEN e.orden IS NULL THEN 1 ELSE 0 END,
                     e.orden ASC,
@@ -3311,21 +5207,24 @@ def reorder_estados():
         return jsonify({"success": False, "message": f"No se pudo reordenar los estados: {str(exc)}"}), 500
 
 
-@app.route("/api/estados/<int:estado_id>/columnas", methods=["GET"])
-def list_configuracion_columnas(estado_id):
+@app.route("/api/estados/<estado_key>/columnas", methods=["GET"])
+def list_configuracion_columnas(estado_key):
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para consultar la configuración de columnas"}), 401
 
     try:
+        estado_id = parse_config_scope_id(estado_key)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT 1 FROM ofertas.estados WHERE id_estado = ?",
-                (estado_id,),
-            )
-            if cursor.fetchone() is None:
+            if not ensure_config_scope_exists(cursor, estado_id):
                 return jsonify({"success": False, "message": "Estado no encontrado"}), 404
+            if is_global_config_scope(estado_id):
+                ensure_global_config_default_columns(cursor)
 
             cursor.execute(
                 """
@@ -3355,8 +5254,8 @@ def list_configuracion_columnas(estado_id):
         return jsonify({"success": False, "message": f"No se pudo consultar la configuración de columnas: {str(exc)}"}), 500
 
 
-@app.route("/api/estados/<int:estado_id>/columnas", methods=["POST"])
-def create_configuracion_columna(estado_id):
+@app.route("/api/estados/<estado_key>/columnas", methods=["POST"])
+def create_configuracion_columna(estado_key):
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para crear columnas de configuración"}), 401
@@ -3364,6 +5263,11 @@ def create_configuracion_columna(estado_id):
         return read_only_response()
     if not is_manager_user(user_data):
         return manager_only_response()
+
+    try:
+        estado_id = parse_config_scope_id(estado_key)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
 
     data = request.get_json(silent=True) or {}
     available_column_map = get_available_offer_column_map()
@@ -3394,11 +5298,7 @@ def create_configuracion_columna(estado_id):
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT 1 FROM ofertas.estados WHERE id_estado = ?",
-                (estado_id,),
-            )
-            if cursor.fetchone() is None:
+            if not ensure_config_scope_exists(cursor, estado_id):
                 conn.rollback()
                 return jsonify({"success": False, "message": "Estado no encontrado"}), 404
 
@@ -3472,8 +5372,9 @@ def update_configuracion_columna(config_id):
 
     try:
         payload = build_configuracion_columna_payload(data)
+        payload = build_configuracion_columna_payload(data)
         payload["columna"] = normalize_offer_column_name(payload["columna"])
-        id_estado = normalize_required_int(data.get("id_estado"), "id_estado")
+        id_estado = parse_config_scope_id(data.get("id_estado"))
     except ValueError as exc:
         return jsonify({"success": False, "message": str(exc)}), 400
 
@@ -3486,11 +5387,7 @@ def update_configuracion_columna(config_id):
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT 1 FROM ofertas.estados WHERE id_estado = ?",
-                (id_estado,),
-            )
-            if cursor.fetchone() is None:
+            if not ensure_config_scope_exists(cursor, id_estado):
                 conn.rollback()
                 return jsonify({"success": False, "message": "Estado no encontrado"}), 404
 
@@ -4225,7 +6122,7 @@ def insert_oferta_record(cursor, payload):
     return inserted_id, numero_oferta
 
 
-def insert_oferta_etc_record(cursor, payload):
+def insert_oferta_etc_record(cursor, payload, explicit_id=None):
     if not oferta_etc_table_exists(cursor):
         raise ValueError("La tabla ofertas.oferta_etc no existe todavía")
 
@@ -4265,79 +6162,180 @@ def insert_oferta_etc_record(cursor, payload):
             raise ValueError("proyecto no encontrado en la configuración")
 
     cursor.execute("CREATE TABLE #inserted_oferta_etc (id_oferta_etc INT)")
-    cursor.execute(
-        """
-        INSERT INTO ofertas.oferta_etc (
-            fecha_recepcion,
-            fecha_envio_oferta,
-            fecha_limite_respuesta,
-            id_estado,
-            id_cliente,
-            num_operario_responsable,
-            id_departamento_destino,
-            codigo_externo_oferta,
-            codigo_interno_oferta,
-            referencia_cliente,
-            numero_comision,
-            po_original,
-            pedido_b2b,
-            proyecto,
-            nombre_solicitante,
-            email_solicitante,
-            empresa_solicitante,
-            incoterm,
-            moneda,
-            prioridad,
-            es_urgente,
-            resumen_material_solicitado,
-            resumen_material_ofertado,
-            total_material_eur,
-            total_fee_eur,
-            observaciones_cliente,
-            observaciones_tecnicas,
-            observaciones_internas,
-            origen_registro,
-            activo
-        )
-        OUTPUT INSERTED.id_oferta_etc INTO #inserted_oferta_etc
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        (
-            payload["fecha_recepcion"],
-            payload["fecha_envio_oferta"],
-            payload["fecha_limite_respuesta"],
-            payload["id_estado"],
-            payload["id_cliente"],
-            payload["num_operario_responsable"],
-            payload["id_departamento_destino"],
-            payload["codigo_externo_oferta"],
-            payload["codigo_interno_oferta"],
-            payload["referencia_cliente"],
-            payload["numero_comision"],
-            payload["po_original"],
-            payload["pedido_b2b"],
-            payload["proyecto"],
-            payload["nombre_solicitante"],
-            payload["email_solicitante"],
-            payload["empresa_solicitante"],
-            payload["incoterm"],
-            payload["moneda"],
-            payload["prioridad"],
-            1 if payload["es_urgente"] else 0,
-            payload["resumen_material_solicitado"],
-            payload["resumen_material_ofertado"],
-            payload["total_material_eur"],
-            payload["total_fee_eur"],
-            payload["observaciones_cliente"],
-            payload["observaciones_tecnicas"],
-            payload["observaciones_internas"],
-            payload["origen_registro"],
-            1 if payload["activo"] else 0,
-        ),
+    insert_params = (
+        payload["fecha_recepcion"],
+        payload["fecha_envio_oferta"],
+        payload["fecha_limite_respuesta"],
+        payload["id_estado"],
+        payload["id_cliente"],
+        payload["num_operario_responsable"],
+        payload["id_departamento_destino"],
+        payload["codigo_externo_oferta"],
+        payload["codigo_interno_oferta"],
+        payload["referencia_cliente"],
+        payload["numero_comision"],
+        payload["po_original"],
+        payload["pedido_b2b"],
+        payload["proyecto"],
+        payload["nombre_solicitante"],
+        payload["email_solicitante"],
+        payload["empresa_solicitante"],
+        payload["incoterm"],
+        payload["moneda"],
+        payload["prioridad"],
+        1 if payload["es_urgente"] else 0,
+        payload["resumen_material_solicitado"],
+        payload["resumen_material_ofertado"],
+        payload["total_material_eur"],
+        payload["total_fee_eur"],
+        payload["observaciones_cliente"],
+        payload["observaciones_tecnicas"],
+        payload["observaciones_internas"],
+        payload["origen_registro"],
+        1 if payload["activo"] else 0,
     )
+
+    if explicit_id is not None:
+        cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc ON")
+        try:
+            cursor.execute(
+                """
+                INSERT INTO ofertas.oferta_etc (
+                    id_oferta_etc,
+                    fecha_recepcion,
+                    fecha_envio_oferta,
+                    fecha_limite_respuesta,
+                    id_estado,
+                    id_cliente,
+                    num_operario_responsable,
+                    id_departamento_destino,
+                    codigo_externo_oferta,
+                    codigo_interno_oferta,
+                    referencia_cliente,
+                    numero_comision,
+                    po_original,
+                    pedido_b2b,
+                    proyecto,
+                    nombre_solicitante,
+                    email_solicitante,
+                    empresa_solicitante,
+                    incoterm,
+                    moneda,
+                    prioridad,
+                    es_urgente,
+                    resumen_material_solicitado,
+                    resumen_material_ofertado,
+                    total_material_eur,
+                    total_fee_eur,
+                    observaciones_cliente,
+                    observaciones_tecnicas,
+                    observaciones_internas,
+                    origen_registro,
+                    activo
+                )
+                OUTPUT INSERTED.id_oferta_etc INTO #inserted_oferta_etc
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (explicit_id, *insert_params),
+            )
+        finally:
+            cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc OFF")
+    else:
+        cursor.execute(
+            """
+            INSERT INTO ofertas.oferta_etc (
+                fecha_recepcion,
+                fecha_envio_oferta,
+                fecha_limite_respuesta,
+                id_estado,
+                id_cliente,
+                num_operario_responsable,
+                id_departamento_destino,
+                codigo_externo_oferta,
+                codigo_interno_oferta,
+                referencia_cliente,
+                numero_comision,
+                po_original,
+                pedido_b2b,
+                proyecto,
+                nombre_solicitante,
+                email_solicitante,
+                empresa_solicitante,
+                incoterm,
+                moneda,
+                prioridad,
+                es_urgente,
+                resumen_material_solicitado,
+                resumen_material_ofertado,
+                total_material_eur,
+                total_fee_eur,
+                observaciones_cliente,
+                observaciones_tecnicas,
+                observaciones_internas,
+                origen_registro,
+                activo
+            )
+            OUTPUT INSERTED.id_oferta_etc INTO #inserted_oferta_etc
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            insert_params,
+        )
     cursor.execute("SELECT id_oferta_etc FROM #inserted_oferta_etc")
     inserted = cursor.fetchone()
     return inserted[0] if inserted else None
+
+
+def build_minimal_oferta_etc_payload(oferta_row, estado_department_id, responsable_num_operario=None):
+    return {
+        "fecha_recepcion": None,
+        "fecha_envio_oferta": None,
+        "fecha_limite_respuesta": None,
+        "id_estado": oferta_row.get("id_estado") or 1,
+        "id_cliente": oferta_row.get("id_cliente"),
+        "num_operario_responsable": responsable_num_operario,
+        "id_departamento_destino": estado_department_id,
+        "codigo_externo_oferta": None,
+        "codigo_interno_oferta": None,
+        "referencia_cliente": oferta_row.get("numero_oferta"),
+        "numero_comision": None,
+        "po_original": None,
+        "pedido_b2b": None,
+        "proyecto": None,
+        "nombre_solicitante": None,
+        "email_solicitante": None,
+        "empresa_solicitante": None,
+        "incoterm": None,
+        "moneda": "EUR",
+        "prioridad": "NORMAL",
+        "es_urgente": False,
+        "resumen_material_solicitado": None,
+        "resumen_material_ofertado": None,
+        "total_material_eur": None,
+        "total_fee_eur": None,
+        "observaciones_cliente": None,
+        "observaciones_tecnicas": None,
+        "observaciones_internas": None,
+        "origen_registro": "MANUAL",
+        "activo": True,
+    }
+
+
+def ensure_oferta_etc_record(cursor, oferta_row, estado_department_id, responsable_num_operario=None):
+    oferta_id = oferta_row.get("id_oferta")
+    if oferta_id is None:
+        raise ValueError("Oferta no encontrada para crear el registro ETC")
+
+    cursor.execute("SELECT id_oferta_etc FROM ofertas.oferta_etc WHERE id_oferta_etc = ?", (oferta_id,))
+    existing_row = cursor.fetchone()
+    if existing_row is not None:
+        return existing_row[0]
+
+    payload = build_minimal_oferta_etc_payload(
+        oferta_row,
+        estado_department_id,
+        responsable_num_operario=responsable_num_operario,
+    )
+    return insert_oferta_etc_record(cursor, payload, explicit_id=oferta_id)
 
 
 @app.route("/api/ofertas-completa", methods=["POST"])
@@ -4351,6 +6349,8 @@ def create_oferta_completa():
     data = request.get_json(silent=True) or {}
     oferta_data = data.get("oferta") or {}
     oferta_etc_data = data.get("oferta_etc") or {}
+    imported_email_attachment_token = data.get("imported_email_attachment_token") or oferta_data.get("imported_email_attachment_token")
+    imported_email_metadata = data.get("imported_email_metadata") or oferta_data.get("imported_email_metadata")
 
     try:
         oferta_payload = build_oferta_payload(oferta_data)
@@ -4358,11 +6358,17 @@ def create_oferta_completa():
     except ValueError as exc:
         return jsonify({"success": False, "message": str(exc)}), 400
 
+    inserted_id = None
+    staged_attachment_payloads = []
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
             inserted_id, numero_oferta = insert_oferta_record(cursor, oferta_payload)
-            inserted_etc_id = insert_oferta_etc_record(cursor, oferta_etc_payload)
+            inserted_etc_id = insert_oferta_etc_record(cursor, oferta_etc_payload, explicit_id=inserted_id)
+            if imported_email_attachment_token:
+                staged_attachment_payloads = move_staged_imported_email_attachments_to_offer(inserted_id, imported_email_attachment_token)
+            if imported_email_metadata:
+                register_imported_email_metadata(cursor, inserted_id, imported_email_metadata)
             conn.commit()
 
         return jsonify(
@@ -4372,6 +6378,7 @@ def create_oferta_completa():
                 "id_oferta": inserted_id,
                 "numero_oferta": numero_oferta,
                 "id_oferta_etc": inserted_etc_id,
+                "adjuntos": staged_attachment_payloads,
             }
         )
     except DuplicateOfertaError as exc:
@@ -4383,6 +6390,8 @@ def create_oferta_completa():
     except pyodbc.IntegrityError as exc:
         return jsonify({"success": False, "message": f"No se pudo guardar la oferta completa por una restricción de datos: {str(exc)}"}), 409
     except Exception as exc:
+        if inserted_id and staged_attachment_payloads:
+            cleanup_offer_attachment_entries(inserted_id, [item.get("stored_name") for item in staged_attachment_payloads if item.get("stored_name")])
         return jsonify({"success": False, "message": f"No se pudo guardar la oferta completa: {str(exc)}"}), 500
 
 
@@ -4429,13 +6438,71 @@ def create_app():
     return app
 
 
+def resolve_ssl_file(file_name):
+    if not file_name:
+        return None
+
+    normalized_name = str(file_name).strip()
+    if not normalized_name:
+        return None
+
+    if os.path.isabs(normalized_name):
+        return normalized_name if os.path.exists(normalized_name) else None
+
+    candidate_dirs = []
+    candidate_dirs.append(PROJECT_DIR)
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        candidate_dirs.append(exe_dir)
+        parent_dir = os.path.dirname(exe_dir)
+        if parent_dir and parent_dir != exe_dir:
+            candidate_dirs.append(parent_dir)
+
+    seen = set()
+    for base_dir in candidate_dirs:
+        if not base_dir:
+            continue
+        candidate_path = os.path.normpath(os.path.join(base_dir, normalized_name))
+        if candidate_path in seen:
+            continue
+        seen.add(candidate_path)
+        if os.path.exists(candidate_path):
+            return candidate_path
+    return None
+
+
+def get_runtime_ssl_context(use_https):
+    if not use_https:
+        return None
+
+    cert_path = resolve_ssl_file(app.config.get("SSL_CERT_FILE"))
+    key_path = resolve_ssl_file(app.config.get("SSL_KEY_FILE"))
+    if cert_path and key_path:
+        return (cert_path, key_path)
+
+    if app.config.get("AUTO_GENERATE_SSL_CERT", True):
+        return "adhoc"
+
+    missing_files = []
+    if not cert_path:
+        missing_files.append(str(app.config.get("SSL_CERT_FILE") or "cert.pem"))
+    if not key_path:
+        missing_files.append(str(app.config.get("SSL_KEY_FILE") or "key.pem"))
+    raise RuntimeError(
+        "Falta configurar el certificado HTTPS del servidor. "
+        f"No se encontraron: {', '.join(missing_files)}. "
+        "Copia cert.pem y key.pem junto al EXE o define SSL_CERT_FILE/SSL_KEY_FILE."
+    )
+
+
 if __name__ == "__main__":
     redirect_uri = get_env_value("OAUTH_REDIRECT_URI", "AZURE_REDIRECT_URI", "MICROSOFT_REDIRECT_URI", "OUTLOOK_REDIRECT_URI", default="")
     parsed_redirect = urlparse(redirect_uri) if redirect_uri else None
     use_https = parsed_redirect is not None and parsed_redirect.scheme.lower() == "https"
+    ssl_context = get_runtime_ssl_context(use_https)
     app.run(
         host="0.0.0.0",
         port=app.config["APP_PORT"],
         debug=app.config["DEBUG"],
-        ssl_context="adhoc" if use_https else None,
+        ssl_context=ssl_context,
     )
