@@ -3,6 +3,7 @@
 
   const LANGUAGE_STORAGE_KEY = 'language';
   const LEGACY_LANGUAGE_STORAGE_KEY = 'appLanguage';
+  const MISSING_I18N_DEBUG_STORAGE_KEY = 'i18nDebugMissing';
   const DEFAULT_LANGUAGE = 'es';
   const SUPPORTED_LANGUAGES = ['es', 'en', 'cs'];
   const LANGUAGE_ALIASES = {
@@ -16,11 +17,44 @@
     en: 'uk',
     cs: 'cz',
   };
+  const DIRECT_TEXT_TAGS = new Set([
+    'a',
+    'button',
+    'em',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'label',
+    'legend',
+    'li',
+    'option',
+    'p',
+    'small',
+    'span',
+    'strong',
+    'td',
+    'th',
+  ]);
+  const WORD_RE = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñČčĚěŠšŘřŽžÝý]+/;
+  const WHITESPACE_RE = /\s+/g;
+  const TRANSLATION_BINDING_ATTRIBUTES = [
+    'data-translate-key',
+    'data-translate-key-placeholder',
+    'data-translate-key-value',
+    'data-translate-key-title',
+    'data-translate-key-aria-label',
+  ];
 
   const dictionaries = new Map();
   let currentLanguage = bootstrapLanguage();
   let languageSelector = null;
   let readyResolved = false;
+  let untranslatedObserver = null;
+  let untranslatedScanFrame = 0;
+  let lastUntranslatedSignature = '';
   let resolveReady;
   let rejectReady;
 
@@ -111,6 +145,210 @@
     });
   }
 
+  function normalizeVisibleText(value) {
+    return String(value || '').replace(WHITESPACE_RE, ' ').trim();
+  }
+
+  function looksLikeVisibleText(value) {
+    const normalized = normalizeVisibleText(value);
+    if (!normalized) {
+      return false;
+    }
+    if (normalized.startsWith(('/', '#', '.', 'http://', 'https://', 'mailto:', 'data:'))) {
+      return false;
+    }
+    if (normalized.includes('{{') || normalized.includes('{%') || normalized.includes('}}') || normalized.includes('%}')) {
+      return false;
+    }
+    return WORD_RE.test(normalized);
+  }
+
+  function isMissingI18nDebugEnabled() {
+    try {
+      if (window.localStorage.getItem(MISSING_I18N_DEBUG_STORAGE_KEY) === '1') {
+        return true;
+      }
+    } catch {
+      // Storage unavailable.
+    }
+
+    try {
+      return new URL(window.location.href).searchParams.get('i18n_debug') === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function hasTranslationBinding(element) {
+    if (!(element instanceof HTMLElement)) {
+      return false;
+    }
+    if (element.dataset.noTranslate === 'true') {
+      return true;
+    }
+    return TRANSLATION_BINDING_ATTRIBUTES.some((attribute) => element.hasAttribute(attribute));
+  }
+
+  function hasTranslatedAncestor(element) {
+    let current = element.parentElement;
+    while (current) {
+      if (hasTranslationBinding(current)) {
+        return true;
+      }
+      current = current.parentElement;
+    }
+    return false;
+  }
+
+  function getDirectVisibleText(element) {
+    const chunks = [];
+    element.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = normalizeVisibleText(node.textContent);
+        if (text) {
+          chunks.push(text);
+        }
+      }
+    });
+    return normalizeVisibleText(chunks.join(' '));
+  }
+
+  function buildMissingEntry(element, type, text) {
+    const tagName = element.tagName.toLowerCase();
+    const idPart = element.id ? `#${element.id}` : '';
+    const classPart = element.classList.length ? `.${Array.from(element.classList).slice(0, 3).join('.')}` : '';
+    return {
+      type,
+      text,
+      tag: tagName,
+      selector: `${tagName}${idPart}${classPart}`,
+    };
+  }
+
+  function scanForMissingVisualTranslations(root = document.body) {
+    if (!(root instanceof HTMLElement)) {
+      return [];
+    }
+
+    const entries = [];
+    const seen = new Set();
+    const elements = root === document.body ? [root, ...root.querySelectorAll('*')] : [root, ...root.querySelectorAll('*')];
+
+    elements.forEach((element) => {
+      if (!(element instanceof HTMLElement)) {
+        return;
+      }
+      if (element.hidden || element.dataset.noTranslate === 'true' || hasTranslationBinding(element) || hasTranslatedAncestor(element)) {
+        return;
+      }
+
+      const tagName = element.tagName.toLowerCase();
+      if (DIRECT_TEXT_TAGS.has(tagName)) {
+        const text = getDirectVisibleText(element);
+        if (looksLikeVisibleText(text)) {
+          const signature = `text|${tagName}|${text}`;
+          if (!seen.has(signature)) {
+            seen.add(signature);
+            entries.push(buildMissingEntry(element, 'text', text));
+          }
+        }
+      }
+
+      const placeholder = element.getAttribute('placeholder');
+      if (looksLikeVisibleText(placeholder) && !element.hasAttribute('data-translate-key-placeholder')) {
+        const text = normalizeVisibleText(placeholder);
+        const signature = `placeholder|${tagName}|${text}`;
+        if (!seen.has(signature)) {
+          seen.add(signature);
+          entries.push(buildMissingEntry(element, 'placeholder', text));
+        }
+      }
+
+      const title = element.getAttribute('title');
+      if (looksLikeVisibleText(title) && !element.hasAttribute('data-translate-key-title')) {
+        const text = normalizeVisibleText(title);
+        const signature = `title|${tagName}|${text}`;
+        if (!seen.has(signature)) {
+          seen.add(signature);
+          entries.push(buildMissingEntry(element, 'title', text));
+        }
+      }
+
+      const ariaLabel = element.getAttribute('aria-label');
+      if (looksLikeVisibleText(ariaLabel) && !element.hasAttribute('data-translate-key-aria-label')) {
+        const text = normalizeVisibleText(ariaLabel);
+        const signature = `aria-label|${tagName}|${text}`;
+        if (!seen.has(signature)) {
+          seen.add(signature);
+          entries.push(buildMissingEntry(element, 'aria-label', text));
+        }
+      }
+    });
+
+    return entries;
+  }
+
+  function reportMissingVisualTranslations() {
+    if (!isMissingI18nDebugEnabled()) {
+      return [];
+    }
+
+    const entries = scanForMissingVisualTranslations(document.body);
+    const signature = JSON.stringify(entries.map((entry) => `${entry.type}|${entry.selector}|${entry.text}`));
+    if (signature === lastUntranslatedSignature) {
+      return entries;
+    }
+
+    lastUntranslatedSignature = signature;
+    window.dispatchEvent(new CustomEvent('MonthlyI18nMissingVisuals', { detail: { language: currentLanguage, entries } }));
+
+    if (entries.length) {
+      console.warn('[MonthlyI18n] Textos visibles sin traducir detectados:', entries);
+    }
+
+    return entries;
+  }
+
+  function scheduleMissingVisualTranslationReport() {
+    if (!isMissingI18nDebugEnabled()) {
+      return;
+    }
+    if (untranslatedScanFrame) {
+      window.cancelAnimationFrame(untranslatedScanFrame);
+    }
+    untranslatedScanFrame = window.requestAnimationFrame(() => {
+      untranslatedScanFrame = 0;
+      reportMissingVisualTranslations();
+    });
+  }
+
+  function ensureMissingVisualTranslationObserver() {
+    if (!isMissingI18nDebugEnabled() || untranslatedObserver || typeof MutationObserver !== 'function') {
+      return;
+    }
+
+    untranslatedObserver = new MutationObserver(() => {
+      scheduleMissingVisualTranslationReport();
+    });
+
+    untranslatedObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: [
+        'placeholder',
+        'title',
+        'aria-label',
+        'data-translate-key',
+        'data-translate-key-placeholder',
+        'data-translate-key-title',
+        'data-translate-key-aria-label',
+        'data-no-translate',
+      ],
+    });
+  }
+
   function translate(key, params = null, fallback = null, lang = null) {
     const normalized = normalizeLanguage(lang || currentLanguage);
     const activeDictionary = dictionaries.get(normalized) || {};
@@ -195,6 +433,7 @@
     });
 
     syncLanguageSelector();
+    scheduleMissingVisualTranslationReport();
   }
 
   function getFlagClass(lang) {
@@ -348,6 +587,8 @@
       await loadTranslations(currentLanguage);
       translatePage(currentLanguage);
       mountLanguageSelector();
+      ensureMissingVisualTranslationObserver();
+      scheduleMissingVisualTranslationReport();
 
       if (!readyResolved) {
         readyResolved = true;
@@ -372,6 +613,9 @@
     getCurrentLanguage: () => currentLanguage,
     getSupportedLanguages: () => [...SUPPORTED_LANGUAGES],
     mountLanguageSelector,
+    scanForMissingVisualTranslations: () => scanForMissingVisualTranslations(document.body),
+    reportMissingVisualTranslations,
+    isMissingI18nDebugEnabled,
   };
 
   if (document.readyState === 'loading') {

@@ -10,6 +10,7 @@ import secrets
 import shutil
 import sys
 import tempfile
+import unicodedata
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
@@ -22,8 +23,8 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 import pyodbc
-from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, render_template, render_template_string, request, send_from_directory, session, url_for
+from dotenv import dotenv_values, load_dotenv
+from flask import Flask, has_request_context, jsonify, redirect, render_template, render_template_string, request, send_from_directory, session, url_for
 from flask_cors import CORS
 from flask_session import Session
 from outlook_service import OutlookGraphError, OutlookGraphService
@@ -94,6 +95,21 @@ def get_env_flag(*names, default=False):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def resolve_storage_dir(env_name, default_path):
+    configured_path = get_env_value(env_name, default=None)
+    if configured_path is None:
+        return default_path
+
+    normalized_path = os.path.expandvars(os.path.expanduser(str(configured_path).strip()))
+    if not normalized_path:
+        return default_path
+
+    if os.path.isabs(normalized_path):
+        return normalized_path
+
+    return os.path.normpath(os.path.join(PROJECT_DIR, normalized_path))
+
+
 class Config:
     SECRET_KEY = get_env_value("SESSION_SECRET", "SECRET_KEY", default="ofertas-dev-secret-key")
     APP_ENV = get_env_value("APP_ENV", "FLASK_ENV", default="development").lower()
@@ -132,9 +148,11 @@ CORS(app, supports_credentials=True)
 os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 Session(app)
 
-RUNTIME_DATA_DIR = os.path.join(os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else PROJECT_DIR, "data")
-OFFER_ATTACHMENTS_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_attachments")
-IMPORTED_EMAIL_ATTACHMENTS_DIR = os.path.join(RUNTIME_DATA_DIR, "imported_email_attachments")
+DEFAULT_RUNTIME_DATA_DIR = os.path.join(os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else PROJECT_DIR, "data")
+RUNTIME_DATA_DIR = resolve_storage_dir("RUNTIME_DATA_DIR", DEFAULT_RUNTIME_DATA_DIR)
+OFFER_ATTACHMENTS_DIR = resolve_storage_dir("OFFER_ATTACHMENTS_DIR", os.path.join(RUNTIME_DATA_DIR, "offer_attachments"))
+IMPORTED_EMAIL_ATTACHMENTS_DIR = resolve_storage_dir("IMPORTED_EMAIL_ATTACHMENTS_DIR", os.path.join(RUNTIME_DATA_DIR, "imported_email_attachments"))
+INTERNAL_CHAT_ENABLED = get_env_flag("ENABLE_INTERNAL_CHAT", default=False)
 OFFER_CHAT_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_chat")
 OFFER_CHAT_READ_STATE_DIR = os.path.join(RUNTIME_DATA_DIR, "offer_chat_read_state")
 MAX_OFFER_ATTACHMENT_SIZE_BYTES = 25 * 1024 * 1024
@@ -159,11 +177,55 @@ class DuplicateOfertaError(ValueError):
     pass
 
 
-def get_offer_attachments_dir(oferta_id, create=False):
-    directory = os.path.join(OFFER_ATTACHMENTS_DIR, str(int(oferta_id)))
+def normalize_offer_attachment_directory_name(numero_oferta, oferta_id):
+    raw_value = str(numero_oferta or "").strip() or str(int(oferta_id))
+    normalized_value = re.sub(r"[^a-zA-Z0-9_-]", "_", raw_value).strip("_")
+    return normalized_value or str(int(oferta_id))
+
+
+def get_offer_numero_by_id(oferta_id):
+    with db_connection(autocommit=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT numero_oferta FROM ofertas.listado_ofertas WHERE id_oferta = ?",
+            (int(oferta_id),),
+        )
+        row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def get_offer_attachments_dir(oferta_id, create=False, numero_oferta=None):
+    normalized_dir_name = normalize_offer_attachment_directory_name(numero_oferta or get_offer_numero_by_id(oferta_id), oferta_id)
+    directory = os.path.join(OFFER_ATTACHMENTS_DIR, normalized_dir_name)
+    legacy_directory = os.path.join(OFFER_ATTACHMENTS_DIR, str(int(oferta_id)))
+
+    if os.path.normcase(legacy_directory) != os.path.normcase(directory) and os.path.isdir(legacy_directory):
+        os.makedirs(os.path.dirname(directory), exist_ok=True)
+        if not os.path.exists(directory):
+            shutil.move(legacy_directory, directory)
+
     if create:
         os.makedirs(directory, exist_ok=True)
     return directory
+
+
+def delete_offer_attachment_storage(oferta_id, numero_oferta=None):
+    current_directory = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
+    legacy_directory = os.path.join(OFFER_ATTACHMENTS_DIR, str(int(oferta_id)))
+    imported_bucket_directory = os.path.join(
+        IMPORTED_EMAIL_ATTACHMENTS_DIR,
+        normalize_imported_email_attachment_bucket(numero_oferta),
+    )
+
+    directories_to_remove = [current_directory, imported_bucket_directory]
+    if os.path.normcase(legacy_directory) != os.path.normcase(current_directory):
+        directories_to_remove.append(legacy_directory)
+
+    for directory in directories_to_remove:
+        try:
+            shutil.rmtree(directory, ignore_errors=True)
+        except Exception:
+            app.logger.warning("No se pudo eliminar el almacenamiento de la oferta: %s", directory, exc_info=True)
 
 
 def get_offer_chat_file_path(oferta_id):
@@ -297,6 +359,12 @@ def get_offer_chat_unread_count(oferta_id, user_data, messages=None):
 
 
 def build_offer_chat_summary(oferta_id, user_data, messages=None):
+    if not INTERNAL_CHAT_ENABLED:
+        return {
+            "chat_unread_count": 0,
+            "chat_has_unread": False,
+        }
+
     unread_count = get_offer_chat_unread_count(oferta_id, user_data, messages=messages)
     return {
         "chat_unread_count": unread_count,
@@ -305,6 +373,9 @@ def build_offer_chat_summary(oferta_id, user_data, messages=None):
 
 
 def mark_offer_chat_as_read(oferta_id, user_data, messages=None):
+    if not INTERNAL_CHAT_ENABLED:
+        return build_offer_chat_summary(oferta_id, user_data, messages=messages)
+
     user_key = get_offer_chat_user_key(user_data)
     chat_messages = messages if messages is not None else load_offer_chat_messages(oferta_id)
     if not user_key:
@@ -333,6 +404,9 @@ def build_offer_chat_author(user_data):
 
 
 def append_offer_chat_message(oferta_id, user_data, message_text):
+    if not INTERNAL_CHAT_ENABLED:
+        raise RuntimeError("El chat interno está desactivado")
+
     normalized_message = normalize_required_text(message_text, "Mensaje", 2000)
     existing_messages = load_offer_chat_messages(oferta_id)
     author = build_offer_chat_author(user_data or {})
@@ -347,15 +421,52 @@ def append_offer_chat_message(oferta_id, user_data, message_text):
     return message_entry
 
 
-def get_imported_email_attachments_dir(token, create=False):
+def normalize_imported_email_attachment_bucket(bucket_name):
+    normalized_bucket = re.sub(r"[^a-zA-Z0-9_-]", "_", str(bucket_name or "").strip())
+    normalized_bucket = normalized_bucket.strip("_")
+    return normalized_bucket or "pendientes"
+
+
+def get_imported_email_attachments_dir(token, create=False, bucket_name=None):
     normalized_token = re.sub(r"[^a-zA-Z0-9_-]", "", str(token or "").strip())
     if not normalized_token:
         raise ValueError("Token de adjuntos importados no válido")
 
-    directory = os.path.join(IMPORTED_EMAIL_ATTACHMENTS_DIR, normalized_token)
+    normalized_bucket = normalize_imported_email_attachment_bucket(bucket_name)
+    directory = os.path.join(IMPORTED_EMAIL_ATTACHMENTS_DIR, normalized_bucket, normalized_token)
     if create:
         os.makedirs(directory, exist_ok=True)
     return directory
+
+
+def cleanup_imported_email_attachment_bucket(directory):
+    parent_dir = os.path.dirname(directory)
+    if not parent_dir or os.path.normcase(parent_dir) == os.path.normcase(IMPORTED_EMAIL_ATTACHMENTS_DIR):
+        return
+
+    try:
+        if os.path.isdir(parent_dir) and not os.listdir(parent_dir):
+            os.rmdir(parent_dir)
+    except OSError:
+        pass
+
+
+def find_imported_email_attachments_dir(token):
+    pending_dir = get_imported_email_attachments_dir(token)
+    if os.path.isdir(pending_dir):
+        return pending_dir
+
+    try:
+        bucket_entries = os.listdir(IMPORTED_EMAIL_ATTACHMENTS_DIR)
+    except OSError:
+        return pending_dir
+
+    for bucket_name in bucket_entries:
+        candidate_dir = get_imported_email_attachments_dir(token, bucket_name=bucket_name)
+        if os.path.isdir(candidate_dir):
+            return candidate_dir
+
+    return pending_dir
 
 
 def get_offer_attachment_metadata_path(file_path):
@@ -485,8 +596,8 @@ def get_offer_attachment_mimetype(filename):
     return guessed_type or "application/octet-stream"
 
 
-def build_offer_attachment_payload(oferta_id, stored_name):
-    attachments_dir = get_offer_attachments_dir(oferta_id)
+def build_offer_attachment_payload(oferta_id, stored_name, numero_oferta=None):
+    attachments_dir = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
     file_path = os.path.join(attachments_dir, stored_name)
     if not os.path.isfile(file_path):
         return None
@@ -508,8 +619,8 @@ def build_offer_attachment_payload(oferta_id, stored_name):
     }
 
 
-def list_offer_attachments(oferta_id):
-    attachments_dir = get_offer_attachments_dir(oferta_id)
+def list_offer_attachments(oferta_id, numero_oferta=None):
+    attachments_dir = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
     if not os.path.isdir(attachments_dir):
         return []
 
@@ -517,7 +628,7 @@ def list_offer_attachments(oferta_id):
     for entry in os.listdir(attachments_dir):
         if entry.endswith(".meta.json"):
             continue
-        attachment = build_offer_attachment_payload(oferta_id, entry)
+        attachment = build_offer_attachment_payload(oferta_id, entry, numero_oferta=numero_oferta)
         if attachment:
             attachments.append(attachment)
 
@@ -555,13 +666,13 @@ def save_offer_attachment(oferta_id, file_storage):
     return build_offer_attachment_payload(oferta_id, stored_name)
 
 
-def stage_imported_email_attachments(parsed_email):
+def stage_imported_email_attachments(parsed_email, bucket_name=None):
     attachments = list((parsed_email or {}).get("attachments") or [])
     if not attachments:
         return None
 
     token = secrets.token_urlsafe(18)
-    target_dir = get_imported_email_attachments_dir(token, create=True)
+    target_dir = get_imported_email_attachments_dir(token, create=True, bucket_name=bucket_name)
     staged_attachments = []
     try:
         for attachment in attachments:
@@ -585,12 +696,12 @@ def stage_imported_email_attachments(parsed_email):
     return {"token": token, "attachments": staged_attachments}
 
 
-def move_staged_imported_email_attachments_to_offer(oferta_id, token):
-    source_dir = get_imported_email_attachments_dir(token)
+def move_staged_imported_email_attachments_to_offer(oferta_id, token, numero_oferta=None):
+    source_dir = find_imported_email_attachments_dir(token)
     if not os.path.isdir(source_dir):
         return []
 
-    target_dir = get_offer_attachments_dir(oferta_id, create=True)
+    target_dir = get_offer_attachments_dir(oferta_id, create=True, numero_oferta=numero_oferta)
     moved_names = []
     for entry in os.listdir(source_dir):
         if entry.endswith(".meta.json"):
@@ -610,9 +721,10 @@ def move_staged_imported_email_attachments_to_offer(oferta_id, token):
     shutil.rmtree(source_dir, ignore_errors=True)
     payloads = []
     for stored_name in moved_names:
-        attachment_payload = build_offer_attachment_payload(oferta_id, stored_name)
+        attachment_payload = build_offer_attachment_payload(oferta_id, stored_name, numero_oferta=numero_oferta)
         if attachment_payload:
             payloads.append(attachment_payload)
+    cleanup_imported_email_attachment_bucket(source_dir)
     return payloads
 
 
@@ -637,6 +749,7 @@ def cleanup_offer_attachment_entries(oferta_id, stored_names):
 
 
 def get_configured_oauth_redirect_uri():
+    apply_local_oauth_env_overrides()
     redirect_uri = get_env_value("OAUTH_REDIRECT_URI", "AZURE_REDIRECT_URI", "MICROSOFT_REDIRECT_URI", "OUTLOOK_REDIRECT_URI", default="")
     if not redirect_uri:
         return None
@@ -661,12 +774,65 @@ def is_local_or_private_host(hostname):
     return parsed_ip.is_loopback or parsed_ip.is_private
 
 
+_LOCAL_ENV_CACHE = None
+
+
+def load_local_env_values():
+    global _LOCAL_ENV_CACHE
+    if _LOCAL_ENV_CACHE is not None:
+        return _LOCAL_ENV_CACHE
+
+    local_env_path = os.path.join(PROJECT_DIR, ".env")
+    if not os.path.exists(local_env_path):
+        _LOCAL_ENV_CACHE = {}
+        return _LOCAL_ENV_CACHE
+
+    try:
+        _LOCAL_ENV_CACHE = {
+            str(key): str(value).strip()
+            for key, value in dotenv_values(local_env_path).items()
+            if key and value is not None and str(value).strip() != ""
+        }
+    except Exception:
+        _LOCAL_ENV_CACHE = {}
+
+    return _LOCAL_ENV_CACHE
+
+
+def should_prefer_local_oauth_env():
+    if getattr(sys, "frozen", False):
+        return False
+    if not has_request_context():
+        return False
+
+    current_host = (request.host.split(":", 1)[0] or "").strip().lower()
+    return is_local_or_private_host(current_host)
+
+
+def apply_local_oauth_env_overrides():
+    if not should_prefer_local_oauth_env():
+        return
+
+    local_values = load_local_env_values()
+    if not local_values:
+        return
+
+    for key, value in local_values.items():
+        normalized_key = str(key).strip().upper()
+        if (
+            normalized_key.startswith(("OAUTH_", "AZURE_", "MICROSOFT_", "OUTLOOK_"))
+            or normalized_key in {"CLIENT_ID", "CLIENT_SECRET", "TENANT_ID"}
+        ):
+            os.environ[normalized_key] = str(value)
+
+
 def get_request_oauth_redirect_uri():
+    apply_local_oauth_env_overrides()
     configured_redirect = get_configured_oauth_redirect_uri()
     if configured_redirect is None:
         return None
 
-    if app.config.get("APP_ENV") == "production":
+    if app.config.get("APP_ENV") == "production" and not should_prefer_local_oauth_env():
         return configured_redirect.geturl()
 
     current_host = (request.host.split(":", 1)[0] or "").strip().lower()
@@ -1021,10 +1187,21 @@ def build_offer_notification_message(
     cliente,
     referencia,
     emisor,
+    sender_department_name=None,
     assigned_by_name=None,
+    detail_department_name=None,
+    department_intro_message=None,
+    source_department_name=None,
+    target_department_name=None,
 ):
     estado_nombre = translate_notification_state_name(estado_nombre) or "Bez stavu"
     departamento_nombre = translate_notification_department_name(departamento_nombre)
+    sender_department_name = translate_notification_department_name(sender_department_name)
+    detail_department_name = translate_notification_department_name(
+        detail_department_name if detail_department_name is not None else departamento_nombre
+    )
+    source_department_name = translate_notification_department_name(source_department_name)
+    target_department_name = translate_notification_department_name(target_department_name)
     logo_src = get_notification_logo_src()
 
     # Referencia original en espanol:
@@ -1039,7 +1216,7 @@ def build_offer_notification_message(
     #   <li><strong>Referencia / asunto:</strong> {referencia}</li>
     #   <li><strong>Emisor:</strong> {emisor}</li>
     # </ul>"""
-    subject = f"OFERTAS | Nabidka {oferta_label} - {estado_nombre}"
+    subject = f"OFERTAS | Nabídka {oferta_label} byla převedena do stavu {estado_nombre}"
     assigned_by_html = ""
     if assigned_by_name:
         assigned_by_html = (
@@ -1050,6 +1227,52 @@ def build_offer_notification_message(
         ).format(assigned_by=html_escape(assigned_by_name))
 
     logo_html = ""
+    department_intro_html = ""
+    if source_department_name or target_department_name:
+        source_label = html_escape(source_department_name or "Bez oddeleni")
+        target_label = html_escape(target_department_name or "Bez oddeleni")
+        department_intro_html = """
+            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
+                Nabídka byla přesunuta z oddělení <strong>{source_department}</strong> do oddělení <strong>{target_department}</strong>.
+            </p>
+        """.format(
+            source_department=source_label,
+            target_department=target_label,
+        )
+    elif detail_department_name:
+        intro_message = department_intro_message or "Tento stav spadá pod oddělení"
+        department_intro_html = """
+            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
+                {intro_message} <strong>{department_name}</strong>.
+            </p>
+        """.format(
+            intro_message=html_escape(intro_message),
+            department_name=html_escape(detail_department_name),
+        )
+
+    department_row_html = ""
+    if source_department_name or target_department_name:
+        department_row_html = """
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení původu</td>
+                <td style="padding: 8px 0;">{source_department}</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení cíle</td>
+                <td style="padding: 8px 0;">{target_department}</td>
+            </tr>
+        """.format(
+            source_department=html_escape(source_department_name or "Bez oddeleni"),
+            target_department=html_escape(target_department_name or "Bez oddeleni"),
+        )
+    elif detail_department_name:
+        department_row_html = """
+            <tr>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení</td>
+                <td style="padding: 8px 0;">{department_name}</td>
+            </tr>
+        """.format(department_name=html_escape(detail_department_name))
+
     if logo_src:
         logo_html = (
             '<img src="{src}" alt="EMESA" '
@@ -1069,53 +1292,49 @@ def build_offer_notification_message(
             </div>
         </div>
         <div style="padding: 28px;">
-            <p style="margin: 0 0 16px; font-size: 16px; color: #102a43;"><strong>Dobry den,</strong></p>
+            <p style="margin: 0 0 16px; font-size: 16px; color: #102a43;"><strong>Dobrý den,</strong></p>
             <p style="margin: 0 0 14px; font-size: 15px;">
-                potvrzujeme, ze nabidka <strong>{oferta}</strong> byla uspesne presunuta do stavu
-                <strong>{estado}</strong>.
+                potvrzujeme, že nabídka <strong>{oferta}</strong> byla převedena do stavu
+                <strong>„{estado}“</strong>.
             </p>
-            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
-                Zpracovani tohoto kroku spada pod oddeleni <strong>{departamento}</strong>.
-            </p>
+            {department_intro_html}
             <div style="background: #f8fafc; border: 1px solid #d9e2ec; border-radius: 12px; padding: 18px 20px;">
-                <h3 style="margin: 0 0 14px; font-size: 17px; color: #102a43;">Prehled nabidky</h3>
+                <h3 style="margin: 0 0 14px; font-size: 17px; color: #102a43;">Přehled nabídky</h3>
         <table style="width: 100%; border-collapse: collapse;">
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; width: 190px; vertical-align: top; color: #102a43;">Nabidka</td>
+                <td style="padding: 8px 0; font-weight: 600; width: 190px; vertical-align: top; color: #102a43;">Nabídka</td>
                 <td style="padding: 8px 0;">{oferta}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Stav</td>
                 <td style="padding: 8px 0;">{estado}</td>
             </tr>
+            {department_row_html}
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddeleni</td>
-                <td style="padding: 8px 0;">{departamento}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Zakaznik</td>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Zákazník</td>
                 <td style="padding: 8px 0;">{cliente}</td>
             </tr>
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Reference / predmet e-mailu</td>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Reference / předmět e-mailu</td>
                 <td style="padding: 8px 0;">{referencia}</td>
             </tr>
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Odesilatel</td>
+                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Odesílatel</td>
                 <td style="padding: 8px 0;">{emisor}</td>
             </tr>
             {assigned_by_html}
         </table>
             </div>
             <p style="margin: 22px 0 0; font-size: 13px; color: #52606d;">
-                Toto je automaticke upozorneni ze systemu OFERTAS. V pripade dotazu kontaktujte prosim prislusne oddeleni.
+                Toto je automatické upozornění ze systému OFERTAS. V případě dotazů kontaktujte prosím příslušné oddělení.
             </p>
         </div>
     </div>
 </div>""".format(
         oferta=html_escape(oferta_label),
         estado=html_escape(estado_nombre),
-        departamento=html_escape(departamento_nombre or "Bez oddeleni"),
+        department_intro_html=department_intro_html,
+        department_row_html=department_row_html,
         cliente=html_escape(cliente or "Bez zakaznika"),
         referencia=html_escape(referencia or "Bez reference"),
         emisor=html_escape(emisor or "Bez odesilatele"),
@@ -1125,7 +1344,78 @@ def build_offer_notification_message(
     return {"subject": subject, "body": body}
 
 
-def build_estado_manager_notification(cursor, oferta_id, estado_id):
+def normalize_notification_matching_label(value):
+    normalized = unicodedata.normalize("NFKD", str(value or "").strip().lower())
+    normalized = "".join(character for character in normalized if not unicodedata.combining(character))
+    normalized = re.sub(r"\s+", " ", normalized)
+    return normalized.strip()
+
+
+def get_manager_notification_recipients(cursor, department_id):
+    if department_id is None:
+        return []
+
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(LTRIM(RTRIM(uc.email)))
+        FROM ofertas.usuarios_config uc
+        LEFT JOIN ofertas.roles r
+            ON r.id_rol = uc.id_rol
+        WHERE uc.id_departamento = ?
+          AND uc.email IS NOT NULL
+          AND LTRIM(RTRIM(uc.email)) <> ''
+          AND (
+              uc.id_rol = 1
+              OR LOWER(LTRIM(RTRIM(ISNULL(r.nombre_rol, '')))) = 'manager'
+          )
+        """,
+        (department_id,),
+    )
+    return [row[0] for row in cursor.fetchall() if row and row[0]]
+
+
+def resolve_notification_department_fallback(cursor, estado_nombre, current_department_id=None):
+    normalized_state_name = normalize_notification_matching_label(estado_nombre)
+    if not normalized_state_name:
+        return None
+
+    cursor.execute(
+        """
+        SELECT id_departamento, nombre_departamento
+        FROM ofertas.departamentos
+        WHERE ISNULL(estado_activo, 1) = 1
+        ORDER BY id_departamento ASC
+        """
+    )
+    candidates = []
+    for row in cursor.fetchall():
+        department_id = row[0]
+        department_name = normalize_optional_text(row[1], 255)
+        normalized_department_name = normalize_notification_matching_label(department_name)
+        if not normalized_department_name or department_id == current_department_id:
+            continue
+        if normalized_department_name in normalized_state_name or normalized_state_name in normalized_department_name:
+            candidates.append((len(normalized_department_name), department_id, department_name))
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda item: (-item[0], item[1]))
+    _, department_id, department_name = candidates[0]
+    return {
+        "id_departamento": department_id,
+        "nombre_departamento": department_name,
+    }
+
+
+def build_estado_manager_notification(
+    cursor,
+    oferta_id,
+    estado_id,
+    sender_department_name=None,
+    source_department_name=None,
+    target_department_name=None,
+):
     cursor.execute(
         """
         SELECT
@@ -1147,6 +1437,8 @@ def build_estado_manager_notification(cursor, oferta_id, estado_id):
     estado_nombre = normalize_optional_text(estado_row[0], 255) or f"#{estado_id}"
     id_departamento = estado_row[1]
     departamento_nombre = normalize_optional_text(estado_row[2], 255)
+    display_target_department_name = normalize_optional_text(target_department_name, 255) or departamento_nombre
+    display_source_department_name = normalize_optional_text(source_department_name, 255)
 
     if id_departamento is None:
         return {
@@ -1155,31 +1447,25 @@ def build_estado_manager_notification(cursor, oferta_id, estado_id):
             "estado": estado_nombre,
         }
 
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(LTRIM(RTRIM(uc.email)))
-        FROM ofertas.usuarios_config uc
-        LEFT JOIN ofertas.roles r
-            ON r.id_rol = uc.id_rol
-        WHERE uc.id_departamento = ?
-          AND uc.email IS NOT NULL
-          AND LTRIM(RTRIM(uc.email)) <> ''
-          AND (
-              uc.id_rol = 1
-              OR LOWER(LTRIM(RTRIM(ISNULL(r.nombre_rol, '')))) = 'manager'
-          )
-        """,
-        (id_departamento,),
-    )
-    recipient_rows = cursor.fetchall()
-    recipients = [row[0] for row in recipient_rows if row and row[0]]
+    recipients = get_manager_notification_recipients(cursor, id_departamento)
+
+    if not recipients:
+        fallback_department = resolve_notification_department_fallback(
+            cursor,
+            estado_nombre,
+            current_department_id=id_departamento,
+        )
+        if fallback_department is not None:
+            fallback_recipients = get_manager_notification_recipients(cursor, fallback_department["id_departamento"])
+            if fallback_recipients:
+                recipients = fallback_recipients
 
     if not recipients:
         return {
             "skipped": True,
             "message": "No hay managers con email configurado en el departamento del estado",
             "estado": estado_nombre,
-            "departamento": departamento_nombre,
+            "departamento": display_target_department_name,
         }
 
     cursor.execute(
@@ -1205,13 +1491,19 @@ def build_estado_manager_notification(cursor, oferta_id, estado_id):
     emisor = format_sender_display(oferta_row[3], oferta_row[4]) if oferta_row else None
 
     oferta_label = numero_oferta or f"ID {oferta_id}"
+    display_department_name = normalize_optional_text(sender_department_name, 255)
     message_payload = build_offer_notification_message(
         oferta_label=oferta_label,
         estado_nombre=estado_nombre,
-        departamento_nombre=departamento_nombre,
+        departamento_nombre=display_target_department_name,
         cliente=cliente,
         referencia=referencia,
         emisor=emisor,
+        sender_department_name=sender_department_name,
+        detail_department_name=display_department_name,
+        department_intro_message="Změnu provedlo oddělení",
+        source_department_name=display_source_department_name,
+        target_department_name=display_target_department_name,
     )
 
     return {
@@ -1221,7 +1513,7 @@ def build_estado_manager_notification(cursor, oferta_id, estado_id):
         "subject": message_payload["subject"],
         "body": message_payload["body"],
         "estado": estado_nombre,
-        "departamento": departamento_nombre,
+        "departamento": display_target_department_name,
     }
 
 
@@ -1938,8 +2230,22 @@ def clean_email_body(body_text):
     normalized = str(body_text or "").replace("\r\n", "\n").replace("\r", "\n")
     lines = normalized.split("\n")
 
-    header_regex = re.compile(r"^(from|de|sent|enviado|to|para|cc|subject|asunto)\s*:", re.IGNORECASE)
-    original_message_regex = re.compile(r"^(-----\s*(?:original|quoted)\s*message\s*-----|_{5,})$", re.IGNORECASE)
+    header_regex = re.compile(
+        r"^(from|de|sent|enviado|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět)\s*:",
+        re.IGNORECASE,
+    )
+    original_message_regex = re.compile(
+        r"^(?:-{2,}\s*(?:original|quoted)\s*message\s*-*|-{2,}\s*p[ůu]vodn[ií]\s*e[-‑–—]?mail\s*-*|_{5,})$",
+        re.IGNORECASE,
+    )
+    forwarded_message_regex = re.compile(
+        r"^(?:-{2,}\s*)?(?:forwarded message|mensaje reenviado|přeposlaná zpráva|preposlana zprava)(?:\s*-{2,})?$|^begin forwarded message:\s*$",
+        re.IGNORECASE,
+    )
+    forwarding_intro_regex = re.compile(
+        r"^(?:te\s+lo\s+reenv[ií]o|reenv[ií]o|reenviado|forwarding|forwarded|fyi|přepos[ií]l[aá]m|preposilam)\b",
+        re.IGNORECASE,
+    )
     mobile_signatures = {
         "sent from my iphone",
         "sent from my ipad",
@@ -1961,6 +2267,29 @@ def clean_email_body(body_text):
 
     cleaned_lines = []
     signature_name = None
+    seen_message_content = False
+
+    def looks_like_forwarded_header_block(start_index):
+        matched_headers = 0
+        for candidate_line in lines[start_index:start_index + 5]:
+            candidate = candidate_line.strip()
+            if not candidate:
+                continue
+            if header_regex.match(candidate):
+                matched_headers += 1
+                continue
+            break
+        return matched_headers >= 2
+
+    def append_quoted_divider():
+        if not cleaned_lines:
+            return
+        while cleaned_lines and cleaned_lines[-1] == "":
+            cleaned_lines.pop()
+        if cleaned_lines and cleaned_lines[-1] != "----- quoted message -----":
+            cleaned_lines.append("")
+            cleaned_lines.append("----- quoted message -----")
+            cleaned_lines.append("")
 
     for index, line in enumerate(lines):
         stripped = line.strip()
@@ -1971,15 +2300,22 @@ def clean_email_body(body_text):
                 cleaned_lines.append("")
             continue
 
+        if header_regex.match(stripped) and looks_like_forwarded_header_block(index):
+            append_quoted_divider()
+            continue
+
         if stripped.startswith(">") or header_regex.match(stripped):
             continue
 
+        if forwarded_message_regex.match(stripped):
+            append_quoted_divider()
+            continue
+
+        if not seen_message_content and forwarding_intro_regex.match(stripped):
+            continue
+
         if original_message_regex.match(stripped):
-            if cleaned_lines and cleaned_lines[-1] != "":
-                cleaned_lines.append("")
-            cleaned_lines.append("----- quoted message -----")
-            if cleaned_lines[-1] != "":
-                cleaned_lines.append("")
+            append_quoted_divider()
             continue
 
         if lowered in mobile_signatures:
@@ -1996,6 +2332,7 @@ def clean_email_body(body_text):
             break
 
         cleaned_lines.append(stripped)
+        seen_message_content = True
 
     while cleaned_lines and cleaned_lines[-1] == "":
         cleaned_lines.pop()
@@ -2161,12 +2498,54 @@ def parse_uploaded_email(file_storage):
     if not file_bytes:
         raise ValueError("El archivo de correo está vacío")
 
-    if extension == ".eml":
-        return parse_eml_bytes(file_bytes)
-    if extension == ".msg":
-        return parse_msg_bytes(file_bytes)
+    msg_signature = b"\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1"
 
-    raise ValueError("Formato de correo no soportado. Usa un archivo .eml o .msg")
+    def looks_like_eml_bytes(raw_bytes):
+        if not raw_bytes:
+            return False
+        if raw_bytes.startswith(msg_signature):
+            return False
+
+        sample = raw_bytes[:8192]
+        lowered = sample.lower()
+        eml_markers = (b"\nfrom:", b"\nsubject:", b"\ndate:", b"\nmessage-id:", b"\nmime-version:")
+        marker_hits = sum(1 for marker in eml_markers if marker in lowered)
+        if marker_hits >= 2:
+            return True
+
+        # Some files include folded headers or start directly with a mail header line.
+        return lowered.startswith((b"from:", b"subject:", b"date:", b"message-id:", b"mime-version:"))
+
+    def detect_uploaded_email_format(raw_bytes, hinted_extension):
+        hinted = str(hinted_extension or "").lower()
+        if raw_bytes.startswith(msg_signature):
+            return "msg"
+        if looks_like_eml_bytes(raw_bytes):
+            return "eml"
+        if hinted == ".msg":
+            return "msg"
+        if hinted == ".eml":
+            return "eml"
+        return None
+
+    detected_format = detect_uploaded_email_format(file_bytes, extension)
+    if detected_format is None:
+        raise ValueError("Formato de correo no soportado. Usa un archivo .eml o .msg")
+
+    if detected_format == "eml":
+        try:
+            return parse_eml_bytes(file_bytes)
+        except Exception:
+            if file_bytes.startswith(msg_signature):
+                return parse_msg_bytes(file_bytes)
+            raise
+
+    try:
+        return parse_msg_bytes(file_bytes)
+    except Exception:
+        if looks_like_eml_bytes(file_bytes):
+            return parse_eml_bytes(file_bytes)
+        raise
 
 
 def build_imported_email_response_data(parsed_email, cliente_resolution=None):
@@ -2308,6 +2687,21 @@ def build_email_body_sha256(body_text):
     return hashlib.sha256(normalized_body.encode("utf-8")).hexdigest()
 
 
+def normalize_email_subject_for_matching(subject):
+    normalized = normalize_optional_text(subject, 500)
+    if not normalized:
+        return None
+
+    normalized = normalized.strip()
+    prefix_regex = re.compile(r"^(?:(?:re|fw|fwd|rv|sv|wg|aw|tr|odp)\s*:\s*)+", re.IGNORECASE)
+    previous = None
+    while previous != normalized:
+        previous = normalized
+        normalized = prefix_regex.sub("", normalized).strip()
+
+    return normalized.lower() or None
+
+
 def oferta_email_tracking_table_exists(cursor):
     cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.oferta_correos_importados', 'U') IS NOT NULL")
     return cursor.fetchone() is not None
@@ -2408,22 +2802,15 @@ def imported_email_already_registered(cursor, oferta_id, metadata):
             return True
 
     body_sha256 = metadata.get("body_sha256")
-    received_at = normalize_email_datetime(metadata.get("received_at"))
-    sender_email = normalize_optional_text(metadata.get("sender_email"), 255)
-    if sender_email:
-        sender_email = sender_email.lower()
-
-    if body_sha256 and received_at is not None:
+    if body_sha256:
         cursor.execute(
             """
             SELECT TOP 1 1
             FROM ofertas.oferta_correos_importados
             WHERE id_oferta = ?
               AND body_sha256 = ?
-              AND received_at = ?
-              AND LOWER(LTRIM(RTRIM(ISNULL(sender_email, '')))) = LOWER(LTRIM(RTRIM(ISNULL(?, ''))))
             """,
-            (oferta_id, body_sha256, received_at, sender_email),
+            (oferta_id, body_sha256),
         )
         if cursor.fetchone() is not None:
             return True
@@ -2477,19 +2864,194 @@ def register_imported_email_metadata(cursor, oferta_id, parsed_email):
 def discard_staged_imported_email_attachments(token):
     if not token:
         return
-    shutil.rmtree(get_imported_email_attachments_dir(token), ignore_errors=True)
+    target_dir = find_imported_email_attachments_dir(token)
+    shutil.rmtree(target_dir, ignore_errors=True)
+    cleanup_imported_email_attachment_bucket(target_dir)
+
+
+def split_offer_conversation_segments(body_text):
+    normalized = str(body_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not normalized:
+        return []
+
+    lines = normalized.split("\n")
+    segments = []
+    current_lines = []
+    hard_divider_regex = re.compile(
+        r"^(?:-{2,}\s*(?:original message|mensaje original|quoted message|p[ůu]vodn[ií]\s*e[-‑–—]?mail)\s*-*|_{5,})$",
+        re.IGNORECASE,
+    )
+    wrote_regex = re.compile(r"^on\s.+wrote:$", re.IGNORECASE)
+    header_line_regex = re.compile(
+        r"^(from|de|sent|enviado|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět)\s*:",
+        re.IGNORECASE,
+    )
+
+    def push_segment():
+        text = "\n".join(current_lines).strip()
+        if text:
+            segments.append(text)
+        current_lines.clear()
+
+    for index, line in enumerate(lines):
+        trimmed = line.strip()
+
+        if not trimmed:
+            if current_lines and current_lines[-1] != "":
+                current_lines.append("")
+            continue
+
+        next_lines = [item.strip() for item in lines[index:index + 4] if item.strip()]
+        header_matches = sum(1 for item in next_lines if header_line_regex.match(item))
+        starts_quoted_block = hard_divider_regex.match(trimmed) or wrote_regex.match(trimmed) or header_matches >= 2
+
+        if starts_quoted_block:
+            push_segment()
+            continue
+
+        current_lines.append(trimmed)
+
+    push_segment()
+    return segments or [normalized]
+
+
+def normalize_offer_conversation_segment(segment):
+    header_line_regex = re.compile(
+        r"^(from|de|sent|enviado(?:\s+el)?|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět)\s*:",
+        re.IGNORECASE,
+    )
+    original_marker_regex = re.compile(
+        r"^(?:-{2,}\s*(?:original message|mensaje original|quoted message|p[ůu]vodn[ií]\s*e[-‑–—]?mail)\s*-*|_{5,})$",
+        re.IGNORECASE,
+    )
+
+    normalized_lines = []
+    raw_segment = unicodedata.normalize("NFKC", str(segment or ""))
+    raw_segment = raw_segment.replace("\u00a0", " ").replace("\u200b", "")
+    raw_segment = raw_segment.replace("‑", "-").replace("–", "-").replace("—", "-")
+
+    for raw_line in raw_segment.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = raw_line.strip()
+        if not line:
+            continue
+        line = re.sub(r"<mailto:([^>]+)>", r"\1", line, flags=re.IGNORECASE)
+        line = re.sub(r"\s+", " ", line).strip()
+        if header_line_regex.match(line) or original_marker_regex.match(line):
+            continue
+        normalized_lines.append(line)
+
+    return "\n".join(normalized_lines).strip().lower()
+
+
+def build_offer_conversation_segment_fingerprints(segment):
+    normalized_segment = normalize_offer_conversation_segment(segment)
+    if not normalized_segment:
+        return set()
+
+    paragraphs = [
+        re.sub(r"\s+", " ", paragraph).strip()
+        for paragraph in re.split(r"\n{2,}", normalized_segment)
+    ]
+    substantial_paragraphs = [paragraph for paragraph in paragraphs if len(paragraph) >= 80]
+
+    if not substantial_paragraphs and len(normalized_segment) >= 160:
+        substantial_paragraphs = [re.sub(r"\s+", " ", normalized_segment).strip()]
+
+    return {
+        hashlib.sha256(paragraph.encode("utf-8")).hexdigest()
+        for paragraph in substantial_paragraphs
+        if paragraph
+    }
+
+
+def build_offer_conversation_match_context(body_text):
+    segments = split_offer_conversation_segments(body_text)
+    normalized_segments = []
+    normalized_segment_keys = set()
+    paragraph_fingerprints = set()
+
+    for segment in segments:
+        normalized_segment = normalize_offer_conversation_segment(segment)
+        if not normalized_segment:
+            continue
+        normalized_segments.append(normalized_segment)
+        normalized_segment_keys.add(normalized_segment)
+        paragraph_fingerprints.update(build_offer_conversation_segment_fingerprints(segment))
+
+    return {
+        "normalized_segments": normalized_segments,
+        "normalized_segment_keys": normalized_segment_keys,
+        "paragraph_fingerprints": paragraph_fingerprints,
+    }
+
+
+def offer_conversation_segment_already_exists(segment, existing_context):
+    normalized_segment = normalize_offer_conversation_segment(segment)
+    if not normalized_segment:
+        return True
+
+    existing_segment_keys = existing_context.get("normalized_segment_keys") or set()
+    if normalized_segment in existing_segment_keys:
+        return True
+
+    existing_normalized_segments = existing_context.get("normalized_segments") or []
+    if any(
+        len(existing_segment) >= 120 and len(normalized_segment) >= 120
+        and (normalized_segment in existing_segment or existing_segment in normalized_segment)
+        for existing_segment in existing_normalized_segments
+    ):
+        return True
+
+    candidate_fingerprints = build_offer_conversation_segment_fingerprints(segment)
+    existing_fingerprints = existing_context.get("paragraph_fingerprints") or set()
+    if candidate_fingerprints and candidate_fingerprints.issubset(existing_fingerprints):
+        return True
+
+    return False
 
 
 def prepend_imported_message_to_observaciones(existing_observaciones, new_body):
-    cleaned_body = str(new_body or "").strip()
-    if not cleaned_body:
-        return existing_observaciones
+    new_segments = split_offer_conversation_segments(new_body)
+    if not new_segments:
+        return str(existing_observaciones or "").strip()
 
     existing_text = str(existing_observaciones or "").strip()
-    if not existing_text:
-        return cleaned_body
+    existing_context = build_offer_conversation_match_context(existing_text)
 
-    return f"{cleaned_body}\n\n----- quoted message -----\n\n{existing_text}"
+    merged_new_segments = []
+    for segment in new_segments:
+        if offer_conversation_segment_already_exists(segment, existing_context):
+            continue
+
+        normalized_segment = normalize_offer_conversation_segment(segment)
+        if normalized_segment:
+            existing_context["normalized_segments"].append(normalized_segment)
+            existing_context["normalized_segment_keys"].add(normalized_segment)
+            existing_context["paragraph_fingerprints"].update(build_offer_conversation_segment_fingerprints(segment))
+        merged_new_segments.append(segment.strip())
+
+    if not merged_new_segments:
+        return existing_text
+
+    merged_new_text = "\n\n----- quoted message -----\n\n".join(merged_new_segments)
+    if not existing_text:
+        return merged_new_text
+
+    return f"{merged_new_text}\n\n----- quoted message -----\n\n{existing_text}"
+
+
+def imported_email_adds_new_offer_content(existing_observaciones, new_body):
+    new_segments = split_offer_conversation_segments(new_body)
+    if not new_segments:
+        return False
+
+    existing_context = build_offer_conversation_match_context(existing_observaciones)
+
+    for segment in new_segments:
+        if not offer_conversation_segment_already_exists(segment, existing_context):
+            return True
+
+    return False
 
 
 def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_email_attachment_token=None):
@@ -2525,6 +3087,10 @@ def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_e
             skipped_count += 1
             continue
 
+        if not imported_email_adds_new_offer_content(current_observaciones, parsed_email.get("body")):
+            skipped_count += 1
+            continue
+
         current_observaciones = prepend_imported_message_to_observaciones(current_observaciones, parsed_email.get("body"))
         register_imported_email_metadata(cursor, oferta_id, parsed_email)
         latest_message = parsed_email
@@ -2553,7 +3119,11 @@ def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_e
             ),
         )
         if imported_email_attachment_token:
-            attachments = move_staged_imported_email_attachments_to_offer(oferta_id, imported_email_attachment_token)
+            attachments = move_staged_imported_email_attachments_to_offer(
+                oferta_id,
+                imported_email_attachment_token,
+                numero_oferta=numero_oferta,
+            )
     elif imported_email_attachment_token:
         discard_staged_imported_email_attachments(imported_email_attachment_token)
 
@@ -2566,12 +3136,14 @@ def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_e
     }
 
 
-def build_import_result_payload(response_data=None, sync_result=None, message=None):
+def build_import_result_payload(response_data=None, sync_result=None, message=None, message_key=None, message_params=None):
     if sync_result is not None:
         return {
             "success": True,
             "mode": "synced_existing_offer",
             "message": message,
+            "message_key": message_key,
+            "message_params": message_params or {},
             **sync_result,
         }
 
@@ -2579,6 +3151,8 @@ def build_import_result_payload(response_data=None, sync_result=None, message=No
         "success": True,
         "mode": "form_prefill",
         "message": message,
+        "message_key": message_key,
+        "message_params": message_params or {},
         "data": response_data or {},
     }
 
@@ -2602,6 +3176,7 @@ def build_oferta_payload(data):
         "fecha_alta_oferta": normalize_optional_date(data.get("fecha_alta_oferta"), "fecha_alta_oferta"),
         "ref_cliente_asunto_email": normalize_optional_text(data.get("ref_cliente_asunto_email"), 500),
         "id_cliente": normalize_required_int(data.get("id_cliente") if data.get("id_cliente") is not None else data.get("cliente"), "Cliente"),
+        "id_bom": normalize_optional_int(data.get("id_bom"), "BOM"),
         "observaciones": normalize_optional_text(data.get("observaciones")),
         "nombre_emisor": sender_identity["sender_name"],
         "email_emisor": sender_identity["sender_email"],
@@ -2631,10 +3206,12 @@ def build_oferta_etc_payload(data):
         "po_original": normalize_optional_text(data.get("po_original"), 100),
         "pedido_b2b": normalize_optional_text(data.get("pedido_b2b"), 100),
         "proyecto": normalize_optional_text(data.get("proyecto"), 255),
+        "sales_orders": normalize_optional_text(data.get("sales_orders"), 100),
+        "request_delivery_date": normalize_optional_date(data.get("request_delivery_date"), "request_delivery_date"),
         "nombre_solicitante": normalize_optional_text(data.get("nombre_solicitante"), 255),
         "email_solicitante": normalize_optional_text(data.get("email_solicitante"), 255),
         "empresa_solicitante": normalize_optional_text(data.get("empresa_solicitante"), 255),
-        "incoterm": normalize_required_text(data.get("incoterm"), "incoterm", 10),
+        "incoterm": normalize_optional_text(data.get("incoterm"), 50),
         "moneda": (normalize_optional_text(data.get("moneda"), 3) or "EUR").upper(),
         "prioridad": normalize_etc_priority(data.get("prioridad")),
         "es_urgente": normalize_optional_bool(data.get("es_urgente"), "es_urgente"),
@@ -2727,6 +3304,7 @@ def get_available_offer_columns():
         {"value": "fecha_email", "label": "Fecha e-mail", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "fecha_alta_oferta", "label": "Fecha alta oferta", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "fecha_limite", "label": "Fecha límite", "source": "ofertas.vw_listado_ofertas_interacciones"},
+        {"value": "fecha_envio_oferta", "label": "Fecha envío oferta", "source": "ofertas.oferta_etc"},
         {"value": "numero_oferta", "label": "Nº oferta", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "ref_cliente_asunto_email", "label": "Ref. cliente / asunto e-mail", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "cliente", "label": "Cliente", "source": "ofertas.vw_listado_ofertas_interacciones"},
@@ -2735,6 +3313,24 @@ def get_available_offer_columns():
         {"value": "tipo_interaccion", "label": "Tipos interacción", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "fecha_interaccion", "label": "Fechas interacción", "source": "ofertas.vw_listado_ofertas_interacciones"},
         {"value": "observaciones_interaccion", "label": "Observaciones interacción", "source": "ofertas.vw_listado_ofertas_interacciones"},
+        {"value": "nombre_responsable", "label": "Responsable", "source": "ofertas.oferta_etc"},
+        {"value": "nombre_departamento_destino", "label": "Departamento destino", "source": "ofertas.oferta_etc"},
+        {"value": "codigo_externo_oferta", "label": "Código externo", "source": "ofertas.oferta_etc"},
+        {"value": "codigo_interno_oferta", "label": "Material number", "source": "ofertas.oferta_etc"},
+        {"value": "referencia_cliente", "label": "Referencia cliente", "source": "ofertas.oferta_etc"},
+        {"value": "numero_comision", "label": "Commission number", "source": "ofertas.oferta_etc"},
+        {"value": "proyecto", "label": "Proyecto", "source": "ofertas.oferta_etc"},
+        {"value": "nombre_solicitante", "label": "Nombre solicitante", "source": "ofertas.oferta_etc"},
+        {"value": "email_solicitante", "label": "Email solicitante", "source": "ofertas.oferta_etc"},
+        {"value": "incoterm", "label": "Incoterm", "source": "ofertas.oferta_etc"},
+        {"value": "prioridad", "label": "Prioridad", "source": "ofertas.oferta_etc"},
+        {"value": "total_material_eur", "label": "Total material EUR", "source": "ofertas.oferta_etc"},
+        {"value": "total_fee_eur", "label": "Total fee EUR", "source": "ofertas.oferta_etc"},
+        {"value": "observaciones_cliente", "label": "Observaciones cliente", "source": "ofertas.oferta_etc"},
+        {"value": "pedido_b2b", "label": "Pedido B2B", "source": "ofertas.oferta_etc"},
+        {"value": "po_original", "label": "PO original", "source": "ofertas.oferta_etc"},
+        {"value": "sales_orders", "label": "Sales Orders", "source": "ofertas.oferta_etc"},
+        {"value": "request_delivery_date", "label": "Request Delivery Date", "source": "ofertas.oferta_etc"},
     ]
 
 
@@ -2792,6 +3388,9 @@ DEFAULT_GLOBAL_CONFIG_COLUMNS = [
     "emisor",
     "observaciones_oferta",
     "estado",
+    "codigo_externo_oferta",
+    "sales_orders",
+    "request_delivery_date",
 ]
 
 def is_global_config_scope(estado_id):
@@ -2896,6 +3495,214 @@ def serialize_decimal(value):
     return float(value)
 
 
+def get_history_actor_label(user_data):
+    if not isinstance(user_data, dict):
+        return None
+
+    display_name = normalize_optional_text(user_data.get("nombre") or user_data.get("display_name"), 255)
+    email = normalize_optional_text(user_data.get("email"), 255)
+    num_operario = normalize_optional_text(user_data.get("num_operario"), 50)
+
+    if display_name and num_operario:
+        return f"{display_name} ({num_operario})"
+    if display_name:
+        return display_name
+    if email and num_operario:
+        return f"{email} ({num_operario})"
+    if email:
+        return email
+    if num_operario:
+        return f"Operario {num_operario}"
+    return None
+
+
+def format_history_change_value(value):
+    if value is None:
+        return "Sin valor"
+    if isinstance(value, bool):
+        return "Si" if value else "No"
+    if isinstance(value, Decimal):
+        normalized = value.quantize(Decimal("0.01"))
+        return format(normalized, "f").rstrip("0").rstrip(".") or "0"
+    if isinstance(value, float):
+        return format(value, ".2f").rstrip("0").rstrip(".") or "0"
+    if isinstance(value, datetime):
+        return value.strftime("%d/%m/%Y %H:%M")
+    if hasattr(value, "strftime"):
+        try:
+            return value.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+
+    normalized = normalize_optional_text(value)
+    return normalized if normalized is not None else "Sin valor"
+
+
+def build_history_change_entries(before_snapshot, after_snapshot, field_labels, actor_label=None):
+    if not before_snapshot or not after_snapshot:
+        return []
+
+    actor_suffix = f"\nActualizado por: {actor_label}" if actor_label else ""
+    entries = []
+    for field_name, label in field_labels:
+        before_value = format_history_change_value(before_snapshot.get(field_name))
+        after_value = format_history_change_value(after_snapshot.get(field_name))
+        if before_value == after_value:
+            continue
+
+        observation = f"{label}: {before_value} -> {after_value}{actor_suffix}"
+        if len(observation) > 500:
+            observation = f"{observation[:497].rstrip()}..."
+        entries.append(observation)
+
+    return entries
+
+
+def insert_offer_interaction_entry(cursor, oferta_id, interaction_type, interaction_date, observaciones=None, fecha_limite=None):
+    cursor.execute(
+        """
+        INSERT INTO ofertas.oferta_interacciones (
+            id_oferta,
+            tipo_interaccion,
+            fecha_interaccion,
+            fecha_limite,
+            observaciones
+        )
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (oferta_id, interaction_type, interaction_date, fecha_limite, observaciones),
+    )
+
+
+def get_offer_audit_snapshot(cursor, oferta_id):
+    cursor.execute(
+        """
+        SELECT
+            e.descripcion_estado,
+            lo.fecha_email,
+            lo.fecha_alta_oferta,
+            lo.ref_cliente_asunto_email,
+            c.descripcion_cliente,
+            b.material,
+            lo.observaciones,
+            lo.nombre_emisor,
+            lo.email_emisor
+        FROM ofertas.listado_ofertas lo
+        LEFT JOIN ofertas.estados e
+            ON e.id_estado = lo.id_estado
+        LEFT JOIN ofertas.clientes c
+            ON c.id_cliente = lo.id_cliente
+        LEFT JOIN ofertas.materiales_precio b
+            ON b.id_material_precio = lo.id_bom
+        WHERE lo.id_oferta = ?
+        """,
+        (oferta_id,),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+
+    return {
+        "estado": row[0],
+        "fecha_email": row[1],
+        "fecha_alta_oferta": row[2],
+        "ref_cliente_asunto_email": row[3],
+        "cliente": row[4],
+        "bom": row[5],
+        "observaciones": row[6],
+        "emisor": format_sender_display(row[7], row[8]),
+    }
+
+
+def get_offer_etc_audit_snapshot(cursor, oferta_etc_id):
+    cursor.execute(
+        """
+        SELECT
+            o.fecha_recepcion,
+            o.fecha_envio_oferta,
+            o.fecha_limite_respuesta,
+            e.descripcion_estado,
+            c.descripcion_cliente,
+            COALESCE(NULLIF(LTRIM(RTRIM(gu.nombre)), ''), CAST(o.num_operario_responsable AS NVARCHAR(50))),
+            d.nombre_departamento,
+            o.codigo_externo_oferta,
+            o.codigo_interno_oferta,
+            o.referencia_cliente,
+            o.numero_comision,
+            o.po_original,
+            o.pedido_b2b,
+            o.sales_orders,
+            o.request_delivery_date,
+            o.proyecto,
+            o.nombre_solicitante,
+            o.email_solicitante,
+            o.empresa_solicitante,
+            o.incoterm,
+            o.moneda,
+            o.prioridad,
+            o.es_urgente,
+            o.resumen_material_solicitado,
+            o.resumen_material_ofertado,
+            o.total_material_eur,
+            o.total_fee_eur,
+            o.observaciones_cliente,
+            o.observaciones_tecnicas,
+            o.observaciones_internas,
+            o.origen_registro,
+            o.activo
+        FROM ofertas.oferta_etc o
+        LEFT JOIN ofertas.estados e
+            ON e.id_estado = o.id_estado
+        LEFT JOIN ofertas.clientes c
+            ON c.id_cliente = o.id_cliente
+        LEFT JOIN general.usuarios gu
+            ON gu.num_operario = o.num_operario_responsable
+        LEFT JOIN ofertas.departamentos d
+            ON d.id_departamento = o.id_departamento_destino
+        WHERE o.id_oferta_etc = ?
+        """,
+        (oferta_etc_id,),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        return None
+
+    return {
+        "fecha_recepcion": row[0],
+        "fecha_envio_oferta": row[1],
+        "fecha_limite_respuesta": row[2],
+        "estado": row[3],
+        "cliente": row[4],
+        "responsable": row[5],
+        "departamento_destino": row[6],
+        "codigo_externo_oferta": row[7],
+        "codigo_interno_oferta": row[8],
+        "referencia_cliente": row[9],
+        "numero_comision": row[10],
+        "po_original": row[11],
+        "pedido_b2b": row[12],
+        "sales_orders": row[13],
+        "request_delivery_date": row[14],
+        "proyecto": row[15],
+        "nombre_solicitante": row[16],
+        "email_solicitante": row[17],
+        "empresa_solicitante": row[18],
+        "incoterm": row[19],
+        "moneda": row[20],
+        "prioridad": row[21],
+        "es_urgente": bool(row[22]) if row[22] is not None else False,
+        "resumen_material_solicitado": row[23],
+        "resumen_material_ofertado": row[24],
+        "total_material_eur": row[25],
+        "total_fee_eur": row[26],
+        "observaciones_cliente": row[27],
+        "observaciones_tecnicas": row[28],
+        "observaciones_internas": row[29],
+        "origen_registro": row[30],
+        "activo": bool(row[31]) if row[31] is not None else True,
+    }
+
+
 def materiales_precio_table_exists(cursor):
     cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.materiales_precio', 'U') IS NOT NULL")
     return cursor.fetchone() is not None
@@ -2906,10 +3713,534 @@ def materiales_precio_has_fecha_creacion(cursor):
     return cursor.fetchone() is not None
 
 
+def oferta_has_bom_column(cursor):
+    cursor.execute("SELECT 1 WHERE COL_LENGTH('ofertas.listado_ofertas', 'id_bom') IS NOT NULL")
+    return cursor.fetchone() is not None
+
+
+def ensure_bom_catalog_schema(cursor):
+    if not materiales_precio_table_exists(cursor):
+        raise ValueError("La tabla ofertas.materiales_precio no existe todavía")
+
+    if not materiales_precio_has_fecha_creacion(cursor):
+        raise ValueError(
+            "La tabla ofertas.materiales_precio debe incluir la columna fecha_creacion antes de usar BOM en ofertas"
+        )
+
+    if not oferta_has_bom_column(cursor):
+        cursor.execute("ALTER TABLE ofertas.listado_ofertas ADD id_bom INT NULL")
+
+    cursor.execute(
+        """
+        SELECT OBJECT_NAME(referenced_object_id)
+        FROM sys.foreign_keys
+        WHERE name = 'fk_listado_ofertas_bom'
+          AND parent_object_id = OBJECT_ID('ofertas.listado_ofertas')
+        """
+    )
+    fk_row = cursor.fetchone()
+    if fk_row and fk_row[0] != 'materiales_precio':
+        cursor.execute(
+            "ALTER TABLE ofertas.listado_ofertas DROP CONSTRAINT fk_listado_ofertas_bom"
+        )
+        fk_row = None
+
+    if fk_row is None:
+        cursor.execute(
+            """
+            ALTER TABLE ofertas.listado_ofertas WITH CHECK
+            ADD CONSTRAINT fk_listado_ofertas_bom
+            FOREIGN KEY (id_bom) REFERENCES ofertas.materiales_precio(id_material_precio)
+            """
+        )
+
+
+def ensure_offer_bom_links_schema(cursor):
+    ensure_bom_catalog_schema(cursor)
+    cursor.execute(
+        """
+        IF OBJECT_ID('ofertas.oferta_bom_materiales', 'U') IS NULL
+        BEGIN
+            CREATE TABLE ofertas.oferta_bom_materiales (
+                id_oferta INT NOT NULL,
+                id_material_precio INT NOT NULL,
+                fecha_asignacion DATETIME2(0) NOT NULL CONSTRAINT df_oferta_bom_materiales_fecha_asignacion DEFAULT (SYSDATETIME()),
+                CONSTRAINT pk_oferta_bom_materiales PRIMARY KEY CLUSTERED (id_oferta ASC, id_material_precio ASC),
+                CONSTRAINT fk_oferta_bom_materiales_oferta FOREIGN KEY (id_oferta) REFERENCES ofertas.listado_ofertas(id_oferta),
+                CONSTRAINT fk_oferta_bom_materiales_material FOREIGN KEY (id_material_precio) REFERENCES ofertas.materiales_precio(id_material_precio)
+            )
+        END
+        """
+    )
+    cursor.execute(
+        """
+        INSERT INTO ofertas.oferta_bom_materiales (id_oferta, id_material_precio)
+        SELECT lo.id_oferta, lo.id_bom
+        FROM ofertas.listado_ofertas lo
+        LEFT JOIN ofertas.oferta_bom_materiales obm
+            ON obm.id_oferta = lo.id_oferta
+           AND obm.id_material_precio = lo.id_bom
+        WHERE lo.id_bom IS NOT NULL
+          AND obm.id_oferta IS NULL
+        """
+    )
+
+
+def ensure_offer_bom_price_override_schema(cursor):
+    ensure_offer_bom_links_schema(cursor)
+    cursor.execute(
+        """
+        IF OBJECT_ID('ofertas.oferta_bom_precio_override', 'U') IS NULL
+        BEGIN
+            CREATE TABLE ofertas.oferta_bom_precio_override (
+                id_override INT IDENTITY(1,1) NOT NULL,
+                id_oferta INT NOT NULL,
+                id_material_precio INT NOT NULL,
+                precio_catalogo_snapshot DECIMAL(18, 2) NOT NULL,
+                precio_oferta DECIMAL(18, 2) NOT NULL,
+                num_operario INT NULL,
+                comentario NVARCHAR(500) NULL,
+                activo BIT NOT NULL CONSTRAINT df_oferta_bom_precio_override_activo DEFAULT ((1)),
+                fecha_creacion DATETIME2(0) NOT NULL CONSTRAINT df_oferta_bom_precio_override_fecha_creacion DEFAULT (SYSDATETIME()),
+                fecha_actualizacion DATETIME2(0) NOT NULL CONSTRAINT df_oferta_bom_precio_override_fecha_actualizacion DEFAULT (SYSDATETIME()),
+                CONSTRAINT pk_oferta_bom_precio_override PRIMARY KEY CLUSTERED (id_override ASC),
+                CONSTRAINT fk_oferta_bom_precio_override_oferta FOREIGN KEY (id_oferta) REFERENCES ofertas.listado_ofertas(id_oferta),
+                CONSTRAINT fk_oferta_bom_precio_override_material FOREIGN KEY (id_material_precio) REFERENCES ofertas.materiales_precio(id_material_precio)
+            )
+        END
+        """
+    )
+    cursor.execute(
+        """
+        IF NOT EXISTS (
+            SELECT 1
+            FROM sys.indexes
+            WHERE name = 'ux_oferta_bom_precio_override_activo'
+              AND object_id = OBJECT_ID('ofertas.oferta_bom_precio_override')
+        )
+        BEGIN
+            CREATE UNIQUE INDEX ux_oferta_bom_precio_override_activo
+            ON ofertas.oferta_bom_precio_override (id_oferta, id_material_precio)
+            WHERE activo = 1
+        END
+        """
+    )
+
+
+def get_offer_bom_material_catalog_state(cursor, oferta_id, material_id):
+    ensure_offer_bom_price_override_schema(cursor)
+    cursor.execute(
+        """
+        SELECT TOP 1
+            obm.id_oferta,
+            obm.id_material_precio,
+            mp.material,
+            mp.precio,
+            mp.fecha_creacion
+        FROM ofertas.oferta_bom_materiales obm
+        INNER JOIN ofertas.materiales_precio mp
+            ON mp.id_material_precio = obm.id_material_precio
+        WHERE obm.id_oferta = ?
+          AND obm.id_material_precio = ?
+        """,
+        (oferta_id, material_id),
+    )
+    row = cursor.fetchone()
+    if row is None:
+        raise ValueError("El material BOM no esta asociado a la oferta")
+
+    return {
+        "id_oferta": row[0],
+        "id_material_precio": row[1],
+        "material": row[2],
+        "precio_catalogo": row[3],
+        "fecha_catalogo": row[4],
+    }
+
+
+def upsert_offer_bom_material_price_override(cursor, oferta_id, material_id, precio_oferta, user_data=None, comentario=None):
+    catalog_state = get_offer_bom_material_catalog_state(cursor, oferta_id, material_id)
+
+    precio_normalizado = precio_oferta.quantize(Decimal("0.01"))
+    if precio_normalizado < 0:
+        raise ValueError("El precio BOM de la oferta no puede ser negativo")
+
+    num_operario = None
+    try:
+        num_operario = int((user_data or {}).get("num_operario"))
+    except (TypeError, ValueError, AttributeError):
+        num_operario = None
+
+    comentario_normalizado = normalize_optional_text(comentario, 500)
+
+    cursor.execute(
+        """
+        SELECT TOP 1 id_override
+        FROM ofertas.oferta_bom_precio_override
+        WHERE id_oferta = ?
+          AND id_material_precio = ?
+          AND activo = 1
+        ORDER BY id_override DESC
+        """,
+        (oferta_id, material_id),
+    )
+    existing_row = cursor.fetchone()
+
+    if existing_row is None:
+        cursor.execute(
+            """
+            INSERT INTO ofertas.oferta_bom_precio_override (
+                id_oferta,
+                id_material_precio,
+                precio_catalogo_snapshot,
+                precio_oferta,
+                num_operario,
+                comentario,
+                activo,
+                fecha_actualizacion
+            )
+            VALUES (?, ?, ?, ?, ?, ?, 1, SYSDATETIME())
+            """,
+            (
+                oferta_id,
+                material_id,
+                catalog_state["precio_catalogo"],
+                precio_normalizado,
+                num_operario,
+                comentario_normalizado,
+            ),
+        )
+        created = True
+    else:
+        cursor.execute(
+            """
+            UPDATE ofertas.oferta_bom_precio_override
+            SET precio_catalogo_snapshot = ?,
+                precio_oferta = ?,
+                num_operario = ?,
+                comentario = ?,
+                activo = 1,
+                fecha_actualizacion = SYSDATETIME()
+            WHERE id_override = ?
+            """,
+            (
+                catalog_state["precio_catalogo"],
+                precio_normalizado,
+                num_operario,
+                comentario_normalizado,
+                existing_row[0],
+            ),
+        )
+        created = False
+
+    return {
+        "created": created,
+        "material": catalog_state["material"],
+        "precio_catalogo": catalog_state["precio_catalogo"],
+        "precio_oferta": precio_normalizado,
+    }
+
+
+def remove_offer_bom_material_price_override(cursor, oferta_id, material_id):
+    catalog_state = get_offer_bom_material_catalog_state(cursor, oferta_id, material_id)
+
+    cursor.execute(
+        """
+        UPDATE ofertas.oferta_bom_precio_override
+        SET activo = 0,
+            fecha_actualizacion = SYSDATETIME()
+        WHERE id_oferta = ?
+          AND id_material_precio = ?
+          AND activo = 1
+        """,
+        (oferta_id, material_id),
+    )
+
+    return {
+        "removed": cursor.rowcount > 0,
+        "material": catalog_state["material"],
+        "precio_catalogo": catalog_state["precio_catalogo"],
+    }
+
+
+def load_offer_bom_materials_map(cursor, offer_ids):
+    normalized_ids = []
+    for offer_id in offer_ids or []:
+        try:
+            normalized_ids.append(int(offer_id))
+        except (TypeError, ValueError):
+            continue
+
+    if not normalized_ids:
+        return {}
+
+    ensure_offer_bom_price_override_schema(cursor)
+
+    placeholders = ", ".join(["?"] * len(normalized_ids))
+    cursor.execute(
+        f"""
+        WITH
+        active_overrides AS (
+            SELECT
+                o.id_oferta,
+                o.id_material_precio,
+                o.precio_catalogo_snapshot,
+                o.precio_oferta,
+                o.fecha_actualizacion
+            FROM ofertas.oferta_bom_precio_override o
+            WHERE o.activo = 1
+        )
+        SELECT
+            obm.id_oferta,
+            obm.id_material_precio,
+            mp.material,
+            COALESCE(ao.precio_oferta, mp.precio) AS precio,
+            CASE
+                WHEN ao.id_material_precio IS NOT NULL THEN ao.fecha_actualizacion
+                ELSE mp.fecha_creacion
+            END AS fecha_creacion,
+            obm.fecha_asignacion,
+            mp.precio AS precio_catalogo,
+            mp.fecha_creacion AS fecha_catalogo,
+            ao.precio_catalogo_snapshot,
+            ao.precio_oferta,
+            CAST(CASE WHEN ao.id_material_precio IS NULL THEN 0 ELSE 1 END AS BIT) AS tiene_precio_override,
+            CASE
+                WHEN ao.id_material_precio IS NULL THEN NULL
+                ELSE ao.precio_oferta - mp.precio
+            END AS diferencia_precio
+        FROM ofertas.oferta_bom_materiales obm
+        INNER JOIN ofertas.materiales_precio mp
+            ON mp.id_material_precio = obm.id_material_precio
+        LEFT JOIN active_overrides ao
+            ON ao.id_oferta = obm.id_oferta
+           AND ao.id_material_precio = obm.id_material_precio
+        WHERE obm.id_oferta IN ({placeholders})
+        ORDER BY obm.id_oferta ASC, obm.fecha_asignacion DESC, mp.material ASC
+        """,
+        tuple(normalized_ids),
+    )
+
+    materials_by_offer = {offer_id: [] for offer_id in normalized_ids}
+    for row in cursor.fetchall():
+        materials_by_offer.setdefault(row[0], []).append(
+            {
+                "id_material_precio": row[1],
+                "material": row[2],
+                "precio": serialize_decimal(row[3]),
+                "fecha_creacion": serialize_date(row[4]),
+                "fecha_asignacion": serialize_date(row[5]),
+                "precio_catalogo": serialize_decimal(row[6]),
+                "fecha_catalogo": serialize_date(row[7]),
+                "precio_catalogo_snapshot": serialize_decimal(row[8]),
+                "precio_oferta": serialize_decimal(row[9]),
+                "tiene_precio_override": bool(row[10]),
+                "precio_anterior": None,
+                "diferencia_precio": serialize_decimal(row[11]),
+            }
+        )
+
+    return materials_by_offer
+
+
+def list_offer_bom_materials(cursor, oferta_id):
+    return load_offer_bom_materials_map(cursor, [oferta_id]).get(int(oferta_id), [])
+
+
+def sync_offer_primary_bom(cursor, oferta_id):
+    cursor.execute(
+        """
+        SELECT TOP 1 obm.id_material_precio
+        FROM ofertas.oferta_bom_materiales obm
+        WHERE obm.id_oferta = ?
+        ORDER BY obm.fecha_asignacion DESC, obm.id_material_precio DESC
+        """,
+        (oferta_id,),
+    )
+    row = cursor.fetchone()
+    cursor.execute(
+        "UPDATE ofertas.listado_ofertas SET id_bom = ? WHERE id_oferta = ?",
+        (row[0] if row else None, oferta_id),
+    )
+    return row[0] if row else None
+
+
+def add_offer_bom_material_link(cursor, oferta_id, material_id):
+    ensure_offer_bom_links_schema(cursor)
+
+    if not ensure_offer_exists(cursor, oferta_id):
+        raise ValueError("Oferta no encontrada")
+
+    cursor.execute(
+        "SELECT material FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+        (material_id,),
+    )
+    material_row = cursor.fetchone()
+    if material_row is None:
+        raise ValueError("BOM no encontrado")
+
+    cursor.execute(
+        "SELECT 1 FROM ofertas.oferta_bom_materiales WHERE id_oferta = ? AND id_material_precio = ?",
+        (oferta_id, material_id),
+    )
+    already_exists = cursor.fetchone() is not None
+
+    if not already_exists:
+        cursor.execute(
+            "INSERT INTO ofertas.oferta_bom_materiales (id_oferta, id_material_precio) VALUES (?, ?)",
+            (oferta_id, material_id),
+        )
+
+    sync_offer_primary_bom(cursor, oferta_id)
+    return {
+        "added": not already_exists,
+        "material": material_row[0],
+    }
+
+
+def remove_offer_bom_material_link(cursor, oferta_id, material_id):
+    ensure_offer_bom_links_schema(cursor)
+    ensure_offer_bom_price_override_schema(cursor)
+
+    if not ensure_offer_exists(cursor, oferta_id):
+        raise ValueError("Oferta no encontrada")
+
+    cursor.execute(
+        "SELECT material FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+        (material_id,),
+    )
+    material_row = cursor.fetchone()
+    if material_row is None:
+        raise ValueError("BOM no encontrado")
+
+    cursor.execute(
+        "DELETE FROM ofertas.oferta_bom_materiales WHERE id_oferta = ? AND id_material_precio = ?",
+        (oferta_id, material_id),
+    )
+    removed = cursor.rowcount > 0
+    if removed:
+        cursor.execute(
+            """
+            UPDATE ofertas.oferta_bom_precio_override
+            SET activo = 0,
+                fecha_actualizacion = SYSDATETIME()
+            WHERE id_oferta = ?
+              AND id_material_precio = ?
+              AND activo = 1
+            """,
+            (oferta_id, material_id),
+        )
+    sync_offer_primary_bom(cursor, oferta_id)
+    return {
+        "removed": removed,
+        "material": material_row[0],
+    }
+
+
+def delete_bom_catalog_material(cursor, bom_id):
+    ensure_offer_bom_price_override_schema(cursor)
+
+    cursor.execute(
+        "SELECT material FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+    material_row = cursor.fetchone()
+    if material_row is None:
+        raise ValueError("BOM no encontrado")
+
+    cursor.execute(
+        "SELECT DISTINCT id_oferta FROM ofertas.oferta_bom_materiales WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+    affected_offer_ids = [int(row[0]) for row in cursor.fetchall()]
+
+    cursor.execute(
+        "SELECT COUNT(*) FROM ofertas.oferta_bom_precio_override WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+    override_count_row = cursor.fetchone()
+    override_count = int(override_count_row[0]) if override_count_row else 0
+
+    cursor.execute(
+        "DELETE FROM ofertas.oferta_bom_precio_override WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+
+    cursor.execute(
+        "DELETE FROM ofertas.oferta_bom_materiales WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+    detached_links = cursor.rowcount
+
+    cursor.execute(
+        "UPDATE ofertas.listado_ofertas SET id_bom = NULL WHERE id_bom = ?",
+        (bom_id,),
+    )
+
+    for offer_id in affected_offer_ids:
+        sync_offer_primary_bom(cursor, offer_id)
+
+    cursor.execute(
+        "DELETE FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+        (bom_id,),
+    )
+    if cursor.rowcount == 0:
+        raise ValueError("BOM no encontrado")
+
+    return {
+        "material": material_row[0],
+        "affected_offer_count": len(affected_offer_ids),
+        "detached_links": detached_links,
+        "deleted_override_count": override_count,
+    }
+
+
+def attach_offer_bom_materials(cursor, offers):
+    if not offers:
+        return offers
+
+    materials_by_offer = load_offer_bom_materials_map(cursor, [offer.get("id_oferta") for offer in offers])
+    for offer in offers:
+        selected_materials = materials_by_offer.get(offer.get("id_oferta"), [])
+        offer["bom_materiales"] = selected_materials
+        offer["nombre_bom"] = ", ".join(
+            material["material"]
+            for material in selected_materials
+            if material.get("material")
+        ) or offer.get("nombre_bom")
+
+    return offers
+
+
+def build_bom_payload(data):
+    precio = normalize_optional_decimal(data.get("precio"), "precio")
+    if precio is None:
+        raise ValueError("El campo precio es obligatorio")
+    if precio < 0:
+        raise ValueError("El campo precio no puede ser negativo")
+
+    return {
+        "material": normalize_required_text(data.get("material"), "Material", 255),
+        "precio": precio.quantize(Decimal("0.01")),
+    }
+
+
+def list_boms_catalog(cursor, only_active=False):
+    materiales = list_materiales_precio_snapshot(cursor)
+    return [
+        {
+            "id_bom": row["id_material_precio"],
+            "material": row["material"],
+            "precio": row["precio"],
+            "fecha_creacion": row["fecha_creacion"],
+        }
+        for row in materiales
+    ]
+
+
 def build_material_precio_payload(data):
     material = normalize_required_text(data.get("material"), "material", 255)
     precio = normalize_optional_decimal(data.get("precio"), "precio")
-
     if precio is None:
         raise ValueError("El campo precio es obligatorio")
     if precio < 0:
@@ -2924,37 +4255,15 @@ def build_material_precio_payload(data):
 def list_materiales_precio_snapshot(cursor):
     cursor.execute(
         """
-        WITH ranked_materiales AS (
-            SELECT
-                mp.id_material_precio,
-                mp.material,
-                mp.precio,
-                mp.fecha_creacion,
-                LOWER(LTRIM(RTRIM(mp.material))) AS material_key,
-                ROW_NUMBER() OVER (
-                    PARTITION BY LOWER(LTRIM(RTRIM(mp.material)))
-                    ORDER BY mp.fecha_creacion DESC, mp.id_material_precio DESC
-                ) AS rn
-            FROM ofertas.materiales_precio mp
-            WHERE mp.material IS NOT NULL
-              AND LTRIM(RTRIM(mp.material)) <> ''
-        )
         SELECT
-            latest_row.id_material_precio,
-            latest_row.material,
-            latest_row.precio,
-            latest_row.fecha_creacion,
-            previous_row.precio AS precio_anterior,
-            CASE
-                WHEN previous_row.precio IS NULL THEN NULL
-                ELSE latest_row.precio - previous_row.precio
-            END AS diferencia_precio
-        FROM ranked_materiales latest_row
-        LEFT JOIN ranked_materiales previous_row
-            ON previous_row.material_key = latest_row.material_key
-           AND previous_row.rn = 2
-        WHERE latest_row.rn = 1
-        ORDER BY latest_row.material ASC
+            mp.id_material_precio,
+            mp.material,
+            mp.precio,
+            mp.fecha_creacion
+        FROM ofertas.materiales_precio mp
+        WHERE mp.material IS NOT NULL
+          AND LTRIM(RTRIM(mp.material)) <> ''
+        ORDER BY mp.material ASC, mp.id_material_precio ASC
         """
     )
 
@@ -2966,8 +4275,8 @@ def list_materiales_precio_snapshot(cursor):
                 "material": row[1],
                 "precio": serialize_decimal(row[2]),
                 "fecha_creacion": serialize_date(row[3]),
-                "precio_anterior": serialize_decimal(row[4]),
-                "diferencia_precio": serialize_decimal(row[5]),
+                "precio_anterior": None,
+                "diferencia_precio": None,
             }
         )
 
@@ -2987,19 +4296,24 @@ def oferta_etc_table_exists(cursor):
 
 def oferta_email_subject_exists(cursor, fecha_email, ref_cliente_asunto_email, excluded_id=None):
     query = """
-        SELECT TOP 1 id_oferta
+        SELECT id_oferta, ref_cliente_asunto_email
         FROM ofertas.listado_ofertas
         WHERE fecha_email = ?
-          AND LOWER(LTRIM(RTRIM(ISNULL(ref_cliente_asunto_email, '')))) = LOWER(LTRIM(RTRIM(ISNULL(?, ''))))
     """
-    params = [fecha_email, ref_cliente_asunto_email]
+    params = [fecha_email]
 
     if excluded_id is not None:
         query += " AND id_oferta <> ?"
         params.append(excluded_id)
 
     cursor.execute(query, tuple(params))
-    return cursor.fetchone() is not None
+    normalized_input_subject = normalize_email_subject_for_matching(ref_cliente_asunto_email)
+
+    for row in cursor.fetchall():
+        if normalize_email_subject_for_matching(row[1]) == normalized_input_subject:
+            return True
+
+    return False
 
 
 def cliente_exists(cursor, descripcion_cliente, excluded_id=None):
@@ -3072,8 +4386,16 @@ def estado_exists(cursor, descripcion_estado, excluded_id=None):
 def get_estado_metadata(cursor, estado_id):
     cursor.execute(
         """
-        SELECT id_estado, descripcion_estado, ISNULL(activo, 1) AS activo, emoji_sidebar
-        FROM ofertas.estados
+        SELECT
+            e.id_estado,
+            e.descripcion_estado,
+            ISNULL(e.activo, 1) AS activo,
+            e.emoji_sidebar,
+            e.id_departamento,
+            d.nombre_departamento
+        FROM ofertas.estados e
+        LEFT JOIN ofertas.departamentos d
+            ON d.id_departamento = e.id_departamento
         WHERE id_estado = ?
         """,
         (estado_id,),
@@ -3087,7 +4409,46 @@ def get_estado_metadata(cursor, estado_id):
         "descripcion_estado": row[1],
         "activo": bool(row[2]),
         "emoji_sidebar": row[3],
+        "id_departamento": row[4],
+        "nombre_departamento": row[5],
     }
+
+
+def resolve_active_estado_for_department(cursor, department_id, fallback_estado_id=None):
+    normalized_department_id = normalize_optional_int(department_id, "Departamento")
+    if normalized_department_id is None:
+        return fallback_estado_id
+
+    cursor.execute(
+        """
+        SELECT TOP 1 id_estado
+        FROM ofertas.estados
+        WHERE id_departamento = ?
+          AND ISNULL(activo, 1) = 1
+        ORDER BY CASE WHEN orden IS NULL THEN 1 ELSE 0 END,
+                 orden ASC,
+                 id_estado ASC
+        """,
+        (normalized_department_id,),
+    )
+    row = cursor.fetchone()
+    if row is not None:
+        return row[0]
+
+    return fallback_estado_id
+
+
+def sync_offer_estado_with_etc(cursor, oferta_id, estado_id):
+    normalized_oferta_id = normalize_optional_int(oferta_id, "Oferta")
+    normalized_estado_id = normalize_optional_int(estado_id, "Estado")
+    if normalized_oferta_id is None or normalized_estado_id is None:
+        return False
+
+    cursor.execute(
+        "UPDATE ofertas.listado_ofertas SET id_estado = ? WHERE id_oferta = ?",
+        (normalized_estado_id, normalized_oferta_id),
+    )
+    return cursor.rowcount > 0
 
 
 def configuracion_columna_exists(cursor, id_estado, columna, excluded_id=None):
@@ -3195,6 +4556,7 @@ def auth_logout():
 
 
 def start_microsoft_login():
+    apply_local_oauth_env_overrides()
     session["microsoft_auth_context"] = "app"
     session["microsoft_post_auth_redirect"] = url_for("index")
     try:
@@ -3256,6 +4618,7 @@ def api_session_check():
 
 @app.route("/api/outlook/status", methods=["GET"])
 def api_outlook_status():
+    apply_local_oauth_env_overrides()
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para usar Outlook"}), 401
@@ -3276,13 +4639,15 @@ def api_outlook_status():
 
 @app.route("/auth/outlook/login", methods=["GET"])
 def auth_outlook_login():
+    apply_local_oauth_env_overrides()
     user_data = get_logged_user_data()
     if not user_data:
         return redirect(url_for("index"))
 
     try:
         session["microsoft_auth_context"] = "outlook"
-        session["outlook_post_auth_redirect"] = url_for("index", open_outlook=1)
+        should_open_outlook = str(request.args.get("open_outlook", "1")).strip().lower() not in {"0", "false", "no"}
+        session["outlook_post_auth_redirect"] = url_for("index", open_outlook=1) if should_open_outlook else url_for("index")
         return redirect(OutlookGraphService.start_auth_flow(session, redirect_uri=get_request_oauth_redirect_uri()))
     except OutlookGraphError as exc:
         return redirect(url_for("index", outlook_error=str(exc)))
@@ -3293,6 +4658,7 @@ def auth_outlook_login():
 
 @app.route("/auth/outlook/callback", methods=["GET"])
 def auth_outlook_callback():
+    apply_local_oauth_env_overrides()
     auth_context = session.pop("microsoft_auth_context", "outlook")
     user_data = get_logged_user_data()
     if auth_context != "app" and not user_data:
@@ -3425,12 +4791,22 @@ def api_outlook_import_message(message_id):
             sync_result = sync_imported_emails_into_offer(cursor, thread_match["id_oferta"], parsed_messages)
             conn.commit()
 
+        offer_reference = sync_result["numero_oferta"] or thread_match["id_oferta"]
         if sync_result["imported_count"] > 0:
-            message_text = f"Se han importado {sync_result['imported_count']} correos nuevos en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+            message_text = f"Se han importado {sync_result['imported_count']} correos nuevos en la oferta {offer_reference}."
+            message_key = "offer.import_existing_offer_success"
         else:
-            message_text = f"No había correos nuevos que añadir en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+            message_text = f"No había correos nuevos que añadir en la oferta {offer_reference}."
+            message_key = "offer.import_existing_offer_duplicate"
 
-        return jsonify(build_import_result_payload(sync_result=sync_result, message=message_text))
+        return jsonify(
+            build_import_result_payload(
+                sync_result=sync_result,
+                message=message_text,
+                message_key=message_key,
+                message_params={"offer": str(offer_reference)},
+            )
+        )
     except OutlookGraphError as exc:
         return jsonify({"success": False, "message": str(exc)}), 409
     except ValueError as exc:
@@ -3495,6 +4871,7 @@ def list_ofertas():
     try:
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
             query = """
                 SELECT
                     vw.id_oferta,
@@ -3504,11 +4881,32 @@ def list_ofertas():
                     vw.fecha_email,
                     vw.fecha_alta_oferta,
                     latest_interaction.fecha_limite,
+                    oetc.fecha_envio_oferta,
                     vw.ref_cliente_asunto_email,
                     lo.id_cliente,
+                    lo.id_bom,
                     vw.cliente,
+                    b.material,
                     vw.emisor,
                     vw.observaciones_oferta,
+                    COALESCE(NULLIF(LTRIM(RTRIM(gu.nombre)), ''), CAST(oetc.num_operario_responsable AS NVARCHAR(50))) AS nombre_responsable,
+                    dd.nombre_departamento AS nombre_departamento_destino,
+                    oetc.codigo_externo_oferta,
+                    oetc.codigo_interno_oferta,
+                    oetc.referencia_cliente,
+                    oetc.numero_comision,
+                    oetc.proyecto,
+                    oetc.nombre_solicitante,
+                    oetc.email_solicitante,
+                    oetc.incoterm,
+                    oetc.prioridad,
+                    oetc.total_material_eur,
+                    oetc.total_fee_eur,
+                    oetc.observaciones_cliente,
+                    oetc.pedido_b2b,
+                    oetc.po_original,
+                    oetc.sales_orders,
+                    oetc.request_delivery_date,
                     STRING_AGG(ISNULL(vw.tipo_interaccion, ''), ' | ') AS tipos_interaccion,
                     STRING_AGG(CONVERT(VARCHAR(19), vw.fecha_interaccion, 120), ' | ') AS fechas_interaccion,
                     STRING_AGG(ISNULL(vw.observaciones_interaccion, ''), ' | ') AS observaciones_interaccion,
@@ -3518,15 +4916,29 @@ def list_ofertas():
                     ON lo.id_oferta = vw.id_oferta
                 LEFT JOIN ofertas.estados e
                     ON e.id_estado = lo.id_estado
-                OUTER APPLY (
-                    SELECT TOP 1 oi.fecha_limite
+                LEFT JOIN ofertas.materiales_precio b
+                    ON b.id_material_precio = lo.id_bom
+                LEFT JOIN ofertas.oferta_etc oetc
+                    ON oetc.id_oferta_etc = lo.id_oferta
+                LEFT JOIN general.usuarios gu
+                    ON gu.num_operario = oetc.num_operario_responsable
+                LEFT JOIN ofertas.departamentos dd
+                    ON dd.id_departamento = oetc.id_departamento_destino
+                LEFT JOIN (
+                    SELECT
+                        oi.id_oferta,
+                        oi.fecha_limite,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY oi.id_oferta
+                            ORDER BY
+                                CASE WHEN oi.fecha_interaccion IS NULL THEN 1 ELSE 0 END,
+                                oi.fecha_interaccion DESC,
+                                oi.id_interaccion DESC
+                        ) AS rn
                     FROM ofertas.oferta_interacciones oi
-                    WHERE oi.id_oferta = lo.id_oferta
-                    ORDER BY
-                        CASE WHEN oi.fecha_interaccion IS NULL THEN 1 ELSE 0 END,
-                        oi.fecha_interaccion DESC,
-                        oi.id_interaccion DESC
                 ) latest_interaction
+                    ON latest_interaction.id_oferta = lo.id_oferta
+                   AND latest_interaction.rn = 1
             """
             params = []
 
@@ -3543,11 +4955,32 @@ def list_ofertas():
                     vw.fecha_email,
                     vw.fecha_alta_oferta,
                     latest_interaction.fecha_limite,
+                    oetc.fecha_envio_oferta,
                     vw.ref_cliente_asunto_email,
                     lo.id_cliente,
+                    lo.id_bom,
                     vw.cliente,
+                    b.material,
                     vw.emisor,
                     vw.observaciones_oferta,
+                    COALESCE(NULLIF(LTRIM(RTRIM(gu.nombre)), ''), CAST(oetc.num_operario_responsable AS NVARCHAR(50))),
+                    dd.nombre_departamento,
+                    oetc.codigo_externo_oferta,
+                    oetc.codigo_interno_oferta,
+                    oetc.referencia_cliente,
+                    oetc.numero_comision,
+                    oetc.proyecto,
+                    oetc.nombre_solicitante,
+                    oetc.email_solicitante,
+                    oetc.incoterm,
+                    oetc.prioridad,
+                    oetc.total_material_eur,
+                    oetc.total_fee_eur,
+                    oetc.observaciones_cliente,
+                    oetc.pedido_b2b,
+                    oetc.po_original,
+                    oetc.sales_orders,
+                    oetc.request_delivery_date,
                     vw.estado
                 ORDER BY vw.id_oferta DESC
             """
@@ -3562,32 +4995,75 @@ def list_ofertas():
                     "fecha_email": serialize_date(row[4]),
                     "fecha_alta_oferta": serialize_date(row[5]),
                     "fecha_limite": serialize_date(row[6]),
-                    "ref_cliente_asunto_email": row[7],
-                    "id_cliente": row[8],
-                    "cliente": row[9],
-                    "emisor": row[10],
-                    "observaciones": row[11],
-                    "observaciones_oferta": row[11],
-                    "interaction_types": row[12],
-                    "interaction_dates": serialize_interaction_date_list(row[13]),
-                    "interaction_observaciones": row[14],
-                    "estado": row[15],
+                    "fecha_envio_oferta": serialize_date(row[7]),
+                    "ref_cliente_asunto_email": row[8],
+                    "id_cliente": row[9],
+                    "id_bom": row[10],
+                    "cliente": row[11],
+                    "nombre_bom": row[12],
+                    "emisor": row[13],
+                    "observaciones": row[14],
+                    "observaciones_oferta": row[14],
+                    "nombre_responsable": row[15],
+                    "nombre_departamento_destino": row[16],
+                    "codigo_externo_oferta": row[17],
+                    "codigo_interno_oferta": row[18],
+                    "referencia_cliente": row[19],
+                    "numero_comision": row[20],
+                    "proyecto": row[21],
+                    "nombre_solicitante": row[22],
+                    "email_solicitante": row[23],
+                    "incoterm": row[24],
+                    "prioridad": row[25],
+                    "total_material_eur": serialize_decimal(row[26]),
+                    "total_fee_eur": serialize_decimal(row[27]),
+                    "observaciones_cliente": row[28],
+                    "pedido_b2b": row[29],
+                    "po_original": row[30],
+                    "sales_orders": row[31],
+                    "request_delivery_date": serialize_date(row[32]),
+                    "interaction_types": row[33],
+                    "interaction_dates": serialize_interaction_date_list(row[34]),
+                    "interaction_observaciones": row[35],
+                    "estado": row[36],
                     "id_oferta": row[0],
                     "numero_oferta": row[3],
                     "fecha_email": serialize_date(row[4]),
                     "fecha_alta_oferta": serialize_date(row[5]),
                     "fecha_limite": serialize_date(row[6]),
-                    "ref_cliente_asunto_email": row[7],
-                    "cliente": row[9],
-                    "emisor": row[10],
-                    "observaciones_oferta": row[11],
-                    "tipo_interaccion": row[12],
-                    "fecha_interaccion": serialize_interaction_date_list(row[13]),
-                    "observaciones_interaccion": row[14],
-                    "estado": row[15],
+                    "fecha_envio_oferta": serialize_date(row[7]),
+                    "ref_cliente_asunto_email": row[8],
+                    "id_bom": row[10],
+                    "cliente": row[11],
+                    "nombre_bom": row[12],
+                    "emisor": row[13],
+                    "observaciones_oferta": row[14],
+                    "nombre_responsable": row[15],
+                    "nombre_departamento_destino": row[16],
+                    "codigo_externo_oferta": row[17],
+                    "codigo_interno_oferta": row[18],
+                    "referencia_cliente": row[19],
+                    "numero_comision": row[20],
+                    "proyecto": row[21],
+                    "nombre_solicitante": row[22],
+                    "email_solicitante": row[23],
+                    "incoterm": row[24],
+                    "prioridad": row[25],
+                    "total_material_eur": serialize_decimal(row[26]),
+                    "total_fee_eur": serialize_decimal(row[27]),
+                    "observaciones_cliente": row[28],
+                    "pedido_b2b": row[29],
+                    "po_original": row[30],
+                    "sales_orders": row[31],
+                    "request_delivery_date": serialize_date(row[32]),
+                    "tipo_interaccion": row[33],
+                    "fecha_interaccion": serialize_interaction_date_list(row[34]),
+                    "observaciones_interaccion": row[35],
+                    "estado": row[36],
                 }
                 for row in cursor.fetchall()
             ]
+            attach_offer_bom_materials(cursor, ofertas)
 
         for oferta in ofertas:
             chat_messages = load_offer_chat_messages(oferta["id_oferta"])
@@ -3634,6 +5110,8 @@ def list_ofertas_etc():
                     o.numero_comision,
                     o.po_original,
                     o.pedido_b2b,
+                    o.sales_orders,
+                    o.request_delivery_date,
                     o.proyecto,
                     o.nombre_solicitante,
                     o.email_solicitante,
@@ -3687,24 +5165,26 @@ def list_ofertas_etc():
                     "numero_comision": row[15],
                     "po_original": row[16],
                     "pedido_b2b": row[17],
-                    "proyecto": row[18],
-                    "nombre_solicitante": row[19],
-                    "email_solicitante": row[20],
-                    "empresa_solicitante": row[21],
-                    "incoterm": row[22],
-                    "moneda": row[23],
-                    "prioridad": row[24],
-                    "es_urgente": bool(row[25]) if row[25] is not None else False,
-                    "resumen_material_solicitado": row[26],
-                    "resumen_material_ofertado": row[27],
-                    "total_material_eur": serialize_decimal(row[28]),
-                    "total_fee_eur": serialize_decimal(row[29]),
-                    "total_oferta_eur": serialize_decimal(row[30]),
-                    "observaciones_cliente": row[31],
-                    "observaciones_tecnicas": row[32],
-                    "observaciones_internas": row[33],
-                    "origen_registro": row[34],
-                    "activo": bool(row[35]) if row[35] is not None else True,
+                    "sales_orders": row[18],
+                    "request_delivery_date": serialize_date(row[19]),
+                    "proyecto": row[20],
+                    "nombre_solicitante": row[21],
+                    "email_solicitante": row[22],
+                    "empresa_solicitante": row[23],
+                    "incoterm": row[24],
+                    "moneda": row[25],
+                    "prioridad": row[26],
+                    "es_urgente": bool(row[27]) if row[27] is not None else False,
+                    "resumen_material_solicitado": row[28],
+                    "resumen_material_ofertado": row[29],
+                    "total_material_eur": serialize_decimal(row[30]),
+                    "total_fee_eur": serialize_decimal(row[31]),
+                    "total_oferta_eur": serialize_decimal(row[32]),
+                    "observaciones_cliente": row[33],
+                    "observaciones_tecnicas": row[34],
+                    "observaciones_internas": row[35],
+                    "origen_registro": row[36],
+                    "activo": bool(row[37]) if row[37] is not None else True,
                     "fecha_creacion": serialize_date(row[36]),
                     "fecha_actualizacion": serialize_date(row[37]),
                 }
@@ -3752,6 +5232,8 @@ def get_oferta_etc(oferta_etc_id):
                     o.numero_comision,
                     o.po_original,
                     o.pedido_b2b,
+                    o.sales_orders,
+                    o.request_delivery_date,
                     o.proyecto,
                     o.nombre_solicitante,
                     o.email_solicitante,
@@ -3809,26 +5291,28 @@ def get_oferta_etc(oferta_etc_id):
                 "numero_comision": row[15],
                 "po_original": row[16],
                 "pedido_b2b": row[17],
-                "proyecto": row[18],
-                "nombre_solicitante": row[19],
-                "email_solicitante": row[20],
-                "empresa_solicitante": row[21],
-                "incoterm": row[22],
-                "moneda": row[23],
-                "prioridad": row[24],
-                "es_urgente": bool(row[25]) if row[25] is not None else False,
-                "resumen_material_solicitado": row[26],
-                "resumen_material_ofertado": row[27],
-                "total_material_eur": serialize_decimal(row[28]),
-                "total_fee_eur": serialize_decimal(row[29]),
-                "total_oferta_eur": serialize_decimal(row[30]),
-                "observaciones_cliente": row[31],
-                "observaciones_tecnicas": row[32],
-                "observaciones_internas": row[33],
-                "origen_registro": row[34],
-                "activo": bool(row[35]) if row[35] is not None else True,
-                "fecha_creacion": serialize_date(row[36]),
-                "fecha_actualizacion": serialize_date(row[37]),
+                "sales_orders": row[18],
+                "request_delivery_date": serialize_date(row[19]),
+                "proyecto": row[20],
+                "nombre_solicitante": row[21],
+                "email_solicitante": row[22],
+                "empresa_solicitante": row[23],
+                "incoterm": row[24],
+                "moneda": row[25],
+                "prioridad": row[26],
+                "es_urgente": bool(row[27]) if row[27] is not None else False,
+                "resumen_material_solicitado": row[28],
+                "resumen_material_ofertado": row[29],
+                "total_material_eur": serialize_decimal(row[30]),
+                "total_fee_eur": serialize_decimal(row[31]),
+                "total_oferta_eur": serialize_decimal(row[32]),
+                "observaciones_cliente": row[33],
+                "observaciones_tecnicas": row[34],
+                "observaciones_internas": row[35],
+                "origen_registro": row[36],
+                "activo": bool(row[37]) if row[37] is not None else True,
+                "fecha_creacion": serialize_date(row[38]),
+                "fecha_actualizacion": serialize_date(row[39]),
             }
 
         return jsonify({"success": True, "oferta_etc": oferta})
@@ -3836,6 +5320,275 @@ def get_oferta_etc(oferta_etc_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo consultar la oferta ETC: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas-etc/<int:oferta_etc_id>", methods=["PUT"])
+def update_oferta_etc(oferta_etc_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para actualizar la oferta ETC"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        payload = build_oferta_etc_payload(data)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            actor_label = get_history_actor_label(user_data)
+            payload["id_estado"] = resolve_active_estado_for_department(
+                cursor,
+                payload.get("id_departamento_destino"),
+                fallback_estado_id=payload.get("id_estado"),
+            )
+
+            if not oferta_etc_table_exists(cursor):
+                return jsonify({"success": False, "message": "La tabla ofertas.oferta_etc no existe todavía"}), 404
+
+            cursor.execute("SELECT 1 FROM ofertas.oferta_etc WHERE id_oferta_etc = ?", (oferta_etc_id,))
+            record_exists = cursor.fetchone() is not None
+            current_snapshot = get_offer_etc_audit_snapshot(cursor, oferta_etc_id) if record_exists else None
+
+            if not record_exists:
+                cursor.execute("SELECT 1 FROM ofertas.listado_ofertas WHERE id_oferta = ?", (oferta_etc_id,))
+                if cursor.fetchone() is None:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "Oferta ETC no encontrada"}), 404
+
+            estado_metadata = get_estado_metadata(cursor, payload["id_estado"])
+            if estado_metadata is None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Estado no encontrado"}), 404
+            if not estado_metadata["activo"]:
+                conn.rollback()
+                return jsonify({"success": False, "message": "El estado seleccionado está inactivo y no se puede usar en procesos"}), 409
+
+            if payload["id_cliente"] is not None:
+                cursor.execute("SELECT descripcion_cliente FROM ofertas.clientes WHERE id_cliente = ?", (payload["id_cliente"],))
+                client_row = cursor.fetchone()
+                if client_row is None:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "Cliente no encontrado"}), 404
+                client_label = client_row[0]
+            else:
+                client_label = None
+
+            cursor.execute(
+                """
+                SELECT TOP 1 COALESCE(NULLIF(LTRIM(RTRIM(gu.nombre)), ''), CAST(uc.num_operario AS NVARCHAR(50)))
+                FROM ofertas.usuarios_config uc
+                LEFT JOIN general.usuarios gu
+                    ON gu.num_operario = uc.num_operario
+                WHERE uc.num_operario = ?
+                """,
+                (payload["num_operario_responsable"],),
+            )
+            responsable_row = cursor.fetchone()
+            if responsable_row is None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Responsable no encontrado en ofertas.usuarios_config"}), 404
+            responsable_label = responsable_row[0]
+
+            cursor.execute(
+                "SELECT nombre_departamento FROM ofertas.departamentos WHERE id_departamento = ?",
+                (payload["id_departamento_destino"],),
+            )
+            department_row = cursor.fetchone()
+            if department_row is None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Departamento no encontrado"}), 404
+            department_label = department_row[0]
+
+            updated_snapshot = {
+                "fecha_recepcion": payload["fecha_recepcion"],
+                "fecha_envio_oferta": payload["fecha_envio_oferta"],
+                "fecha_limite_respuesta": payload["fecha_limite_respuesta"],
+                "estado": estado_metadata["descripcion_estado"],
+                "cliente": client_label,
+                "responsable": responsable_label,
+                "departamento_destino": department_label,
+                "codigo_externo_oferta": payload["codigo_externo_oferta"],
+                "codigo_interno_oferta": payload["codigo_interno_oferta"],
+                "referencia_cliente": payload["referencia_cliente"],
+                "numero_comision": payload["numero_comision"],
+                "po_original": payload["po_original"],
+                "pedido_b2b": payload["pedido_b2b"],
+                "proyecto": payload["proyecto"],
+                "sales_orders": payload["sales_orders"],
+                "request_delivery_date": payload["request_delivery_date"],
+                "nombre_solicitante": payload["nombre_solicitante"],
+                "email_solicitante": payload["email_solicitante"],
+                "empresa_solicitante": payload["empresa_solicitante"],
+                "incoterm": payload["incoterm"],
+                "moneda": payload["moneda"],
+                "prioridad": payload["prioridad"],
+                "es_urgente": bool(payload["es_urgente"]),
+                "resumen_material_solicitado": payload["resumen_material_solicitado"],
+                "resumen_material_ofertado": payload["resumen_material_ofertado"],
+                "total_material_eur": payload["total_material_eur"],
+                "total_fee_eur": payload["total_fee_eur"],
+                "observaciones_cliente": payload["observaciones_cliente"],
+                "observaciones_tecnicas": payload["observaciones_tecnicas"],
+                "observaciones_internas": payload["observaciones_internas"],
+                "origen_registro": payload["origen_registro"],
+                "activo": bool(payload["activo"]),
+            }
+
+            if payload["proyecto"] is not None:
+                cursor.execute(
+                    "SELECT 1 FROM ofertas.proyectos WHERE LTRIM(RTRIM(descripcion_proyecto)) = LTRIM(RTRIM(?))",
+                    (payload["proyecto"],),
+                )
+                if cursor.fetchone() is None:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "proyecto no encontrado en la configuración"}), 404
+
+            if not record_exists:
+                insert_oferta_etc_record(cursor, payload, explicit_id=oferta_etc_id)
+            else:
+                cursor.execute(
+                    """
+                    UPDATE ofertas.oferta_etc
+                    SET fecha_recepcion = ?,
+                        fecha_envio_oferta = ?,
+                        fecha_limite_respuesta = ?,
+                        id_estado = ?,
+                        id_cliente = ?,
+                        num_operario_responsable = ?,
+                        id_departamento_destino = ?,
+                        codigo_externo_oferta = ?,
+                        codigo_interno_oferta = ?,
+                        referencia_cliente = ?,
+                        numero_comision = ?,
+                        po_original = ?,
+                        pedido_b2b = ?,
+                        proyecto = ?,
+                        sales_orders = ?,
+                        request_delivery_date = ?,
+                        nombre_solicitante = ?,
+                        email_solicitante = ?,
+                        empresa_solicitante = ?,
+                        incoterm = ?,
+                        moneda = ?,
+                        prioridad = ?,
+                        es_urgente = ?,
+                        resumen_material_solicitado = ?,
+                        resumen_material_ofertado = ?,
+                        total_material_eur = ?,
+                        total_fee_eur = ?,
+                        observaciones_cliente = ?,
+                        observaciones_tecnicas = ?,
+                        observaciones_internas = ?,
+                        origen_registro = ?,
+                        activo = ?
+                    WHERE id_oferta_etc = ?
+                    """,
+                    (
+                        payload["fecha_recepcion"],
+                        payload["fecha_envio_oferta"],
+                        payload["fecha_limite_respuesta"],
+                        payload["id_estado"],
+                        payload["id_cliente"],
+                        payload["num_operario_responsable"],
+                        payload["id_departamento_destino"],
+                        payload["codigo_externo_oferta"],
+                        payload["codigo_interno_oferta"],
+                        payload["referencia_cliente"],
+                        payload["numero_comision"],
+                        payload["po_original"],
+                        payload["pedido_b2b"],
+                        payload["proyecto"],
+                        payload["sales_orders"],
+                        payload["request_delivery_date"],
+                        payload["nombre_solicitante"],
+                        payload["email_solicitante"],
+                        payload["empresa_solicitante"],
+                        payload["incoterm"],
+                        payload["moneda"],
+                        payload["prioridad"],
+                        1 if payload["es_urgente"] else 0,
+                        payload["resumen_material_solicitado"],
+                        payload["resumen_material_ofertado"],
+                        payload["total_material_eur"],
+                        payload["total_fee_eur"],
+                        payload["observaciones_cliente"],
+                        payload["observaciones_tecnicas"],
+                        payload["observaciones_internas"],
+                        payload["origen_registro"],
+                        1 if payload["activo"] else 0,
+                        oferta_etc_id,
+                    ),
+                )
+
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "No se pudo actualizar la oferta ETC"}), 409
+
+                sync_offer_estado_with_etc(cursor, oferta_etc_id, payload["id_estado"])
+
+            interaction_date = datetime.now()
+            etc_change_entries = build_history_change_entries(
+                current_snapshot,
+                updated_snapshot,
+                [
+                    ("fecha_recepcion", "Fecha recepcion"),
+                    ("fecha_envio_oferta", "Fecha envio oferta"),
+                    ("fecha_limite_respuesta", "Fecha limite respuesta"),
+                    ("estado", "Estado"),
+                    ("cliente", "Cliente"),
+                    ("responsable", "Responsable"),
+                    ("departamento_destino", "Departamento destino"),
+                    ("codigo_externo_oferta", "Codigo externo"),
+                    ("codigo_interno_oferta", "Codigo interno"),
+                    ("referencia_cliente", "Referencia cliente"),
+                    ("numero_comision", "Numero comision"),
+                    ("po_original", "PO original"),
+                    ("pedido_b2b", "Pedido B2B"),
+                    ("proyecto", "Proyecto"),
+                    ("nombre_solicitante", "Nombre solicitante"),
+                    ("email_solicitante", "Email solicitante"),
+                    ("empresa_solicitante", "Empresa solicitante"),
+                    ("incoterm", "Incoterm"),
+                    ("moneda", "Moneda"),
+                    ("prioridad", "Prioridad"),
+                    ("es_urgente", "Urgente"),
+                    ("resumen_material_solicitado", "Resumen material solicitado"),
+                    ("resumen_material_ofertado", "Resumen material ofertado"),
+                    ("total_material_eur", "Total material EUR"),
+                    ("total_fee_eur", "Total fee EUR"),
+                    ("observaciones_cliente", "Observaciones cliente"),
+                    ("observaciones_tecnicas", "Observaciones tecnicas"),
+                    ("observaciones_internas", "Observaciones internas"),
+                    ("origen_registro", "Origen registro"),
+                    ("activo", "Activo"),
+                ],
+                actor_label=actor_label,
+            )
+            for observation in etc_change_entries:
+                insert_offer_interaction_entry(cursor, oferta_etc_id, "Edicion ETC", interaction_date, observaciones=observation)
+
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Oferta ETC actualizada correctamente",
+                "id_oferta_etc": oferta_etc_id,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except pyodbc.IntegrityError as exc:
+        return jsonify({"success": False, "message": f"No se pudo actualizar la oferta ETC por una restricción de datos: {str(exc)}"}), 409
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo actualizar la oferta ETC: {str(exc)}"}), 500
 
 
 @app.route("/api/ofertas/columnas-disponibles", methods=["GET"])
@@ -3871,11 +5624,15 @@ def import_oferta_from_email():
     try:
         cliente_resolution = resolve_cliente_for_sender_email(parsed_email.get("sender_email"))
         matched_cliente = (cliente_resolution or {}).get("cliente")
-        staged_imported_attachments = stage_imported_email_attachments(parsed_email)
+        staged_imported_attachments = None
 
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
             thread_match = get_offer_thread_match(cursor, parsed_email)
+            staging_bucket_name = None
+            if thread_match is not None:
+                staging_bucket_name = thread_match.get("numero_oferta") or thread_match.get("id_oferta")
+            staged_imported_attachments = stage_imported_email_attachments(parsed_email, bucket_name=staging_bucket_name)
             if thread_match is not None:
                 sync_result = sync_imported_emails_into_offer(
                     cursor,
@@ -3885,12 +5642,22 @@ def import_oferta_from_email():
                 )
                 conn.commit()
 
+                offer_reference = sync_result["numero_oferta"] or thread_match["id_oferta"]
                 if sync_result["imported_count"] > 0:
-                    message_text = f"Correo importado dentro de la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+                    message_text = f"Correo importado dentro de la oferta {offer_reference}."
+                    message_key = "offer.import_existing_offer_success"
                 else:
-                    message_text = f"Ese correo ya estaba importado en la oferta {sync_result['numero_oferta'] or thread_match['id_oferta']}."
+                    message_text = f"Ese correo ya estaba importado en la oferta {offer_reference}."
+                    message_key = "offer.import_existing_offer_duplicate"
 
-                return jsonify(build_import_result_payload(sync_result=sync_result, message=message_text))
+                return jsonify(
+                    build_import_result_payload(
+                        sync_result=sync_result,
+                        message=message_text,
+                        message_key=message_key,
+                        message_params={"offer": str(offer_reference)},
+                    )
+                )
 
             conn.commit()
 
@@ -3921,6 +5688,73 @@ def import_oferta_from_email():
         return jsonify({"success": False, "message": f"No se pudo completar la importación del correo: {str(exc)}"}), 500
 
 
+@app.route("/api/ofertas/<int:oferta_id>/importar-correo", methods=["POST"])
+def import_email_into_offer(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para importar correos"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    uploaded_file = request.files.get("correo")
+    if uploaded_file is None:
+        return jsonify({"success": False, "message": "Debes adjuntar un correo .eml o .msg"}), 400
+
+    try:
+        parsed_email = parse_uploaded_email(uploaded_file)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo interpretar el correo: {str(exc)}"}), 500
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            ensure_offer_exists(cursor, oferta_id)
+            cursor.execute(
+                "SELECT numero_oferta FROM ofertas.listado_ofertas WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            offer_row = cursor.fetchone()
+            if offer_row is None:
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            staged_imported_attachments = stage_imported_email_attachments(
+                parsed_email,
+                bucket_name=offer_row[0] or oferta_id,
+            )
+            sync_result = sync_imported_emails_into_offer(
+                cursor,
+                oferta_id,
+                [parsed_email],
+                imported_email_attachment_token=staged_imported_attachments["token"] if staged_imported_attachments else None,
+            )
+            conn.commit()
+
+        offer_reference = sync_result["numero_oferta"] or oferta_id
+        if sync_result["imported_count"] > 0:
+            message_text = f"Correo importado dentro de la oferta {offer_reference}."
+            message_key = "offer.import_existing_offer_success"
+        else:
+            message_text = f"Ese correo ya estaba importado en la oferta {offer_reference}."
+            message_key = "offer.import_existing_offer_duplicate"
+
+        return jsonify(
+            build_import_result_payload(
+                sync_result=sync_result,
+                message=message_text,
+                message_key=message_key,
+                message_params={"offer": str(offer_reference)},
+            )
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo importar el correo en la oferta: {str(exc)}"}), 500
+
+
 @app.route("/api/ofertas/<int:oferta_id>", methods=["GET"])
 def get_oferta(oferta_id):
     user_data = get_logged_user_data()
@@ -3930,6 +5764,7 @@ def get_oferta(oferta_id):
     try:
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
             cursor.execute(
                 """
                 SELECT
@@ -3941,12 +5776,16 @@ def get_oferta(oferta_id):
                     lo.fecha_alta_oferta,
                     lo.ref_cliente_asunto_email,
                     lo.id_cliente,
+                    lo.id_bom,
+                    b.material,
                     lo.observaciones,
                     lo.nombre_emisor,
                     lo.email_emisor
                 FROM ofertas.listado_ofertas lo
                 LEFT JOIN ofertas.estados e
                     ON e.id_estado = lo.id_estado
+                LEFT JOIN ofertas.materiales_precio b
+                    ON b.id_material_precio = lo.id_bom
                 WHERE lo.id_oferta = ?
                 """,
                 (oferta_id,),
@@ -3965,13 +5804,16 @@ def get_oferta(oferta_id):
                 "fecha_alta_oferta": serialize_date(row[5]),
                 "ref_cliente_asunto_email": row[6],
                 "id_cliente": row[7],
-                "observaciones": row[8],
-                "nombre_emisor": row[9],
-                "email_emisor": row[10],
-                "emisor": format_sender_display(row[9], row[10]),
+                "id_bom": row[8],
+                "nombre_bom": row[9],
+                "observaciones": row[10],
+                "nombre_emisor": row[11],
+                "email_emisor": row[12],
+                "emisor": format_sender_display(row[11], row[12]),
                 "interacciones": [],
-                "adjuntos": list_offer_attachments(row[0]),
+                "adjuntos": list_offer_attachments(row[0], numero_oferta=row[1]),
             }
+            attach_offer_bom_materials(cursor, [oferta])
             oferta.update(build_offer_chat_summary(row[0], user_data))
 
             cursor.execute(
@@ -4007,6 +5849,9 @@ def get_oferta(oferta_id):
 
 @app.route("/api/ofertas/<int:oferta_id>/chat", methods=["GET"])
 def get_offer_chat(oferta_id):
+    if not INTERNAL_CHAT_ENABLED:
+        return jsonify({"success": False, "message": "El chat interno está desactivado"}), 404
+
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para consultar el chat"}), 401
@@ -4027,6 +5872,9 @@ def get_offer_chat(oferta_id):
 
 @app.route("/api/ofertas/<int:oferta_id>/chat", methods=["POST"])
 def post_offer_chat_message(oferta_id):
+    if not INTERNAL_CHAT_ENABLED:
+        return jsonify({"success": False, "message": "El chat interno está desactivado"}), 404
+
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para usar el chat"}), 401
@@ -4062,6 +5910,9 @@ def post_offer_chat_message(oferta_id):
 
 @app.route("/api/ofertas/<int:oferta_id>/chat/read", methods=["POST"])
 def mark_offer_chat_read(oferta_id):
+    if not INTERNAL_CHAT_ENABLED:
+        return jsonify({"success": False, "message": "El chat interno está desactivado"}), 404
+
     user_data = get_logged_user_data()
     if not user_data:
         return jsonify({"success": False, "message": "Debes iniciar sesión para actualizar el chat"}), 401
@@ -4180,17 +6031,53 @@ def update_oferta(oferta_id):
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
+            actor_label = get_history_actor_label(user_data)
+            current_snapshot = get_offer_audit_snapshot(cursor, oferta_id)
+            if current_snapshot is None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
 
-            cursor.execute("SELECT 1 FROM ofertas.estados WHERE id_estado = ?", (payload["id_estado"],))
-            if cursor.fetchone() is None:
+            cursor.execute("SELECT descripcion_estado FROM ofertas.estados WHERE id_estado = ?", (payload["id_estado"],))
+            state_row = cursor.fetchone()
+            if state_row is None:
                 conn.rollback()
                 return jsonify({"success": False, "message": "Estado no encontrado"}), 404
+            state_label = state_row[0]
 
             if payload["id_cliente"] is not None:
-                cursor.execute("SELECT 1 FROM ofertas.clientes WHERE id_cliente = ?", (payload["id_cliente"],))
-                if cursor.fetchone() is None:
+                cursor.execute("SELECT descripcion_cliente FROM ofertas.clientes WHERE id_cliente = ?", (payload["id_cliente"],))
+                client_row = cursor.fetchone()
+                if client_row is None:
                     conn.rollback()
                     return jsonify({"success": False, "message": "Cliente no encontrado"}), 404
+                client_label = client_row[0]
+            else:
+                client_label = None
+
+            if payload["id_bom"] is not None:
+                cursor.execute(
+                    "SELECT material FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+                    (payload["id_bom"],),
+                )
+                bom_row = cursor.fetchone()
+                if bom_row is None:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "BOM no encontrado"}), 404
+                bom_label = bom_row[0]
+            else:
+                bom_label = None
+
+            updated_snapshot = {
+                "estado": state_label,
+                "fecha_email": payload["fecha_email"],
+                "fecha_alta_oferta": payload["fecha_alta_oferta"],
+                "ref_cliente_asunto_email": payload["ref_cliente_asunto_email"],
+                "cliente": client_label,
+                "bom": bom_label,
+                "observaciones": payload["observaciones"],
+                "emisor": payload["emisor"],
+            }
 
             if oferta_email_subject_exists(
                 cursor,
@@ -4209,6 +6096,7 @@ def update_oferta(oferta_id):
                     fecha_alta_oferta = ?,
                     ref_cliente_asunto_email = ?,
                     id_cliente = ?,
+                    id_bom = ?,
                     observaciones = ?,
                     nombre_emisor = ?,
                     email_emisor = ?
@@ -4220,6 +6108,7 @@ def update_oferta(oferta_id):
                     payload["fecha_alta_oferta"],
                     payload["ref_cliente_asunto_email"],
                     payload["id_cliente"],
+                    payload["id_bom"],
                     payload["observaciones"],
                     payload["nombre_emisor"],
                     payload["email_emisor"],
@@ -4230,6 +6119,30 @@ def update_oferta(oferta_id):
             if cursor.rowcount == 0:
                 conn.rollback()
                 return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            if payload["id_bom"] is not None:
+                add_offer_bom_material_link(cursor, oferta_id, payload["id_bom"])
+            else:
+                sync_offer_primary_bom(cursor, oferta_id)
+
+            interaction_date = datetime.now()
+            offer_change_entries = build_history_change_entries(
+                current_snapshot,
+                updated_snapshot,
+                [
+                    ("estado", "Estado"),
+                    ("fecha_email", "Fecha email"),
+                    ("fecha_alta_oferta", "Fecha alta oferta"),
+                    ("ref_cliente_asunto_email", "Asunto"),
+                    ("cliente", "Cliente"),
+                    ("bom", "BOM"),
+                    ("observaciones", "Observaciones"),
+                    ("emisor", "Emisor"),
+                ],
+                actor_label=actor_label,
+            )
+            for observation in offer_change_entries:
+                insert_offer_interaction_entry(cursor, oferta_id, "Edicion oferta", interaction_date, observaciones=observation)
 
             conn.commit()
 
@@ -4253,6 +6166,7 @@ def delete_oferta(oferta_id):
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
+            ensure_offer_bom_price_override_schema(cursor)
 
             cursor.execute(
                 "SELECT numero_oferta FROM ofertas.listado_ofertas WHERE id_oferta = ?",
@@ -4270,6 +6184,18 @@ def delete_oferta(oferta_id):
                 (oferta_id,),
             )
             cursor.execute(
+                "DELETE FROM ofertas.oferta_correos_importados WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            cursor.execute(
+                "DELETE FROM ofertas.oferta_bom_precio_override WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            cursor.execute(
+                "DELETE FROM ofertas.oferta_bom_materiales WHERE id_oferta = ?",
+                (oferta_id,),
+            )
+            cursor.execute(
                 "DELETE FROM ofertas.listado_ofertas WHERE id_oferta = ?",
                 (oferta_id,),
             )
@@ -4279,6 +6205,8 @@ def delete_oferta(oferta_id):
                 return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
 
             conn.commit()
+
+        delete_offer_attachment_storage(oferta_id, numero_oferta=numero_oferta)
 
         return jsonify(
             {
@@ -4342,6 +6270,10 @@ def update_oferta_estado(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 400
 
     notification_result = None
+    sender_department_name = None
+    sender_departments = user_data.get("departamentos") if isinstance(user_data, dict) else None
+    if isinstance(sender_departments, list) and sender_departments:
+        sender_department_name = normalize_optional_text(sender_departments[0].get("nombre_departamento"), 255)
 
     try:
         with db_connection(autocommit=False) as conn:
@@ -4368,6 +6300,11 @@ def update_oferta_estado(oferta_id):
 
             previous_estado_id = oferta_row[1]
             previous_estado = (oferta_row[2] or "Sin estado").strip()
+            previous_estado_metadata = get_estado_metadata(cursor, previous_estado_id) if previous_estado_id is not None else None
+            previous_department_name = normalize_optional_text(
+                (previous_estado_metadata or {}).get("nombre_departamento"),
+                255,
+            )
 
             next_estado_metadata = get_estado_metadata(cursor, payload["id_estado"])
             if next_estado_metadata is None:
@@ -4382,8 +6319,13 @@ def update_oferta_estado(oferta_id):
                 return jsonify({"success": False, "message": "Debes seleccionar un estado distinto al actual"}), 400
 
             next_estado = (next_estado_metadata["descripcion_estado"] or "Sin estado").strip()
+            next_department_name = normalize_optional_text(next_estado_metadata.get("nombre_departamento"), 255)
             interaction_date = datetime.now()
             interaction_type = f"{previous_estado} -> {next_estado}"
+            actor_label = get_history_actor_label(user_data)
+            interaction_comment = normalize_optional_text(payload["comentario"])
+            if actor_label:
+                interaction_comment = f"{interaction_comment}\nActualizado por: {actor_label}" if interaction_comment else f"Actualizado por: {actor_label}"
 
             cursor.execute(
                 """
@@ -4409,10 +6351,17 @@ def update_oferta_estado(oferta_id):
                 )
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (oferta_id, interaction_type, interaction_date, payload["fecha_limite"], payload["comentario"]),
+                (oferta_id, interaction_type, interaction_date, payload["fecha_limite"], interaction_comment),
             )
 
-            notification_payload = build_estado_manager_notification(cursor, oferta_id, payload["id_estado"])
+            notification_payload = build_estado_manager_notification(
+                cursor,
+                oferta_id,
+                payload["id_estado"],
+                sender_department_name=sender_department_name,
+                source_department_name=previous_department_name,
+                target_department_name=next_department_name,
+            )
 
             conn.commit()
 
@@ -4985,6 +6934,205 @@ def create_material_precio():
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo guardar el precio BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms", methods=["GET"])
+def list_boms():
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para consultar los BOM"}), 401
+
+    only_active = request.args.get("only_active", default=0, type=int) == 1
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            ensure_bom_catalog_schema(cursor)
+            boms = list_boms_catalog(cursor, only_active=only_active)
+
+        return jsonify({"success": True, "boms": boms})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudieron consultar los BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms", methods=["POST"])
+def create_bom():
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para crear BOM"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        payload = build_bom_payload(data)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            ensure_bom_catalog_schema(cursor)
+
+            cursor.execute(
+                """
+                SELECT 1
+                                FROM ofertas.materiales_precio
+                                WHERE material IS NOT NULL
+                                    AND LTRIM(RTRIM(material)) <> ''
+                                    AND LOWER(LTRIM(RTRIM(material))) = LOWER(LTRIM(RTRIM(?)))
+                """,
+                (payload["material"],),
+            )
+            if cursor.fetchone() is not None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Ya existe un BOM con ese material"}), 409
+
+            cursor.execute(
+                """
+                INSERT INTO ofertas.materiales_precio (material, precio)
+                OUTPUT INSERTED.id_material_precio, INSERTED.fecha_creacion
+                VALUES (?, ?)
+                """,
+                (payload["material"], payload["precio"]),
+            )
+            inserted = cursor.fetchone()
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "BOM creado correctamente",
+                "bom": {
+                    "id_bom": inserted[0] if inserted else None,
+                    "material": payload["material"],
+                    "precio": serialize_decimal(payload["precio"]),
+                    "fecha_creacion": serialize_date(inserted[1]) if inserted else None,
+                },
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo crear el BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms/<int:bom_id>", methods=["PUT"])
+def update_bom(bom_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para editar BOM"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        payload = build_bom_payload(data)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            ensure_bom_catalog_schema(cursor)
+
+            cursor.execute(
+                """
+                SELECT 1
+                                FROM ofertas.materiales_precio
+                                WHERE material IS NOT NULL
+                                    AND LTRIM(RTRIM(material)) <> ''
+                                    AND LOWER(LTRIM(RTRIM(material))) = LOWER(LTRIM(RTRIM(?)))
+                  AND id_material_precio <> ?
+                """,
+                (payload["material"], bom_id),
+            )
+            if cursor.fetchone() is not None:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Ya existe otro BOM con ese material"}), 409
+
+            cursor.execute(
+                """
+                UPDATE ofertas.materiales_precio
+                SET material = ?, precio = ?
+                WHERE id_material_precio = ?
+                """,
+                (payload["material"], payload["precio"], bom_id),
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({"success": False, "message": "BOM no encontrado"}), 404
+
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "BOM actualizado correctamente",
+                "bom": {
+                    "id_bom": bom_id,
+                    "material": payload["material"],
+                    "precio": serialize_decimal(payload["precio"]),
+                },
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo actualizar el BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms/<int:bom_id>", methods=["DELETE"])
+def delete_bom(bom_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para eliminar BOM"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response()
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = delete_bom_catalog_material(cursor, bom_id)
+            conn.commit()
+
+        affected_offer_count = result.get("affected_offer_count", 0)
+        deleted_override_count = result.get("deleted_override_count", 0)
+        detail_parts = []
+        if affected_offer_count:
+            detail_parts.append(f"{affected_offer_count} ofertas actualizadas")
+        if deleted_override_count:
+            detail_parts.append(f"{deleted_override_count} excepciones eliminadas")
+
+        detail_suffix = f" ({', '.join(detail_parts)})" if detail_parts else ""
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"BOM eliminado correctamente{detail_suffix}.",
+                "deleted_bom": {
+                    "id_bom": bom_id,
+                    "material": result.get("material"),
+                },
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo eliminar el BOM: {str(exc)}"}), 500
 
 
 @app.route("/api/estados", methods=["GET"])
@@ -6053,7 +8201,21 @@ def create_oferta():
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
+
+            if payload["id_bom"] is not None:
+                cursor.execute(
+                    "SELECT 1 FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+                    (payload["id_bom"],),
+                )
+                if cursor.fetchone() is None:
+                    conn.rollback()
+                    return jsonify({"success": False, "message": "BOM no encontrado"}), 404
+
             inserted_id, numero_oferta = insert_oferta_record(cursor, payload)
+
+            if inserted_id is not None and payload["id_bom"] is not None:
+                add_offer_bom_material_link(cursor, inserted_id, payload["id_bom"])
 
             conn.commit()
 
@@ -6089,18 +8251,20 @@ def insert_oferta_record(cursor, payload):
             fecha_alta_oferta,
             ref_cliente_asunto_email,
             id_cliente,
+            id_bom,
             observaciones,
             nombre_emisor,
             email_emisor
         )
         OUTPUT INSERTED.id_oferta INTO #inserted_oferta
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             payload["fecha_email"],
             payload["fecha_alta_oferta"],
             payload["ref_cliente_asunto_email"],
             payload["id_cliente"],
+            payload["id_bom"],
             payload["observaciones"],
             payload["nombre_emisor"],
             payload["email_emisor"],
@@ -6122,9 +8286,236 @@ def insert_oferta_record(cursor, payload):
     return inserted_id, numero_oferta
 
 
+@app.route("/api/ofertas/<int:oferta_id>/boms", methods=["GET"])
+def get_offer_boms(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para consultar los BOM de la oferta"}), 401
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
+            if not ensure_offer_exists(cursor, oferta_id):
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            boms = list_offer_bom_materials(cursor, oferta_id)
+
+        return jsonify(
+            {
+                "success": True,
+                "boms": boms,
+                "nombre_bom": ", ".join(item["material"] for item in boms if item.get("material")),
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudieron consultar los BOM de la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/boms", methods=["POST"])
+def add_offer_bom(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para modificar los BOM de la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        material_id = normalize_required_int(data.get("id_material_precio") or data.get("id_bom"), "BOM")
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = add_offer_bom_material_link(cursor, oferta_id, material_id)
+            selected_boms = list_offer_bom_materials(cursor, oferta_id)
+            if result["added"]:
+                insert_offer_interaction_entry(
+                    cursor,
+                    oferta_id,
+                    "Edicion oferta",
+                    datetime.now(),
+                    observaciones=f"BOM añadido: {result['material']}",
+                )
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "BOM añadido a la oferta" if result["added"] else "El BOM ya estaba asociado a la oferta",
+                "boms": selected_boms,
+                "nombre_bom": ", ".join(item["material"] for item in selected_boms if item.get("material")),
+                "id_bom": selected_boms[0]["id_material_precio"] if selected_boms else None,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo añadir el BOM a la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/boms/<int:material_id>/precio-override", methods=["PUT"])
+def set_offer_bom_price_override(oferta_id, material_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para modificar el precio BOM de la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        precio_oferta = normalize_optional_decimal(data.get("precio"), "precio")
+        if precio_oferta is None:
+            raise ValueError("El nuevo precio es obligatorio")
+        precio_oferta = precio_oferta.quantize(Decimal("0.01"))
+        if precio_oferta < 0:
+            raise ValueError("El precio BOM de la oferta no puede ser negativo")
+        comentario = normalize_optional_text(data.get("comentario"), 500)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = upsert_offer_bom_material_price_override(
+                cursor,
+                oferta_id,
+                material_id,
+                precio_oferta,
+                user_data=user_data,
+                comentario=comentario,
+            )
+            selected_boms = list_offer_bom_materials(cursor, oferta_id)
+            insert_offer_interaction_entry(
+                cursor,
+                oferta_id,
+                "Edicion oferta",
+                datetime.now(),
+                observaciones=(
+                    f"Precio BOM especifico {'establecido' if result['created'] else 'actualizado'}: "
+                    f"{result['material']} ({serialize_decimal(result['precio_catalogo'])} -> {serialize_decimal(result['precio_oferta'])})"
+                ),
+            )
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "Precio BOM especifico de la oferta guardado correctamente.",
+                "boms": selected_boms,
+                "nombre_bom": ", ".join(item["material"] for item in selected_boms if item.get("material")),
+                "id_bom": selected_boms[0]["id_material_precio"] if selected_boms else None,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo guardar el precio BOM de la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/boms/<int:material_id>/precio-override", methods=["DELETE"])
+def clear_offer_bom_price_override(oferta_id, material_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para modificar el precio BOM de la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = remove_offer_bom_material_price_override(cursor, oferta_id, material_id)
+            selected_boms = list_offer_bom_materials(cursor, oferta_id)
+            if result["removed"]:
+                insert_offer_interaction_entry(
+                    cursor,
+                    oferta_id,
+                    "Edicion oferta",
+                    datetime.now(),
+                    observaciones=(
+                        f"Precio BOM especifico eliminado: {result['material']} "
+                        f"(vuelve a catalogo {serialize_decimal(result['precio_catalogo'])})"
+                    ),
+                )
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "La oferta vuelve a usar el precio del catalogo." if result["removed"] else "El material ya usaba el precio del catalogo.",
+                "boms": selected_boms,
+                "nombre_bom": ", ".join(item["material"] for item in selected_boms if item.get("material")),
+                "id_bom": selected_boms[0]["id_material_precio"] if selected_boms else None,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo limpiar el precio BOM de la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/boms/<int:material_id>", methods=["DELETE"])
+def remove_offer_bom(oferta_id, material_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para modificar los BOM de la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = remove_offer_bom_material_link(cursor, oferta_id, material_id)
+            selected_boms = list_offer_bom_materials(cursor, oferta_id)
+            if result["removed"]:
+                insert_offer_interaction_entry(
+                    cursor,
+                    oferta_id,
+                    "Edicion oferta",
+                    datetime.now(),
+                    observaciones=f"BOM eliminado: {result['material']}",
+                )
+            conn.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": "BOM eliminado de la oferta" if result["removed"] else "El BOM no estaba asociado a la oferta",
+                "boms": selected_boms,
+                "nombre_bom": ", ".join(item["material"] for item in selected_boms if item.get("material")),
+                "id_bom": selected_boms[0]["id_material_precio"] if selected_boms else None,
+            }
+        )
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 404
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo eliminar el BOM de la oferta: {str(exc)}"}), 500
+
+
 def insert_oferta_etc_record(cursor, payload, explicit_id=None):
     if not oferta_etc_table_exists(cursor):
         raise ValueError("La tabla ofertas.oferta_etc no existe todavía")
+
+    payload = {**payload}
+    payload["id_estado"] = resolve_active_estado_for_department(
+        cursor,
+        payload.get("id_departamento_destino"),
+        fallback_estado_id=payload.get("id_estado"),
+    )
 
     estado_metadata = get_estado_metadata(cursor, payload["id_estado"])
     if estado_metadata is None:
@@ -6177,6 +8568,8 @@ def insert_oferta_etc_record(cursor, payload, explicit_id=None):
         payload["po_original"],
         payload["pedido_b2b"],
         payload["proyecto"],
+        payload["sales_orders"],
+        payload["request_delivery_date"],
         payload["nombre_solicitante"],
         payload["email_solicitante"],
         payload["empresa_solicitante"],
@@ -6216,6 +8609,8 @@ def insert_oferta_etc_record(cursor, payload, explicit_id=None):
                     po_original,
                     pedido_b2b,
                     proyecto,
+                    sales_orders,
+                    request_delivery_date,
                     nombre_solicitante,
                     email_solicitante,
                     empresa_solicitante,
@@ -6234,7 +8629,7 @@ def insert_oferta_etc_record(cursor, payload, explicit_id=None):
                     activo
                 )
                 OUTPUT INSERTED.id_oferta_etc INTO #inserted_oferta_etc
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (explicit_id, *insert_params),
             )
@@ -6258,6 +8653,8 @@ def insert_oferta_etc_record(cursor, payload, explicit_id=None):
                 po_original,
                 pedido_b2b,
                 proyecto,
+                sales_orders,
+                request_delivery_date,
                 nombre_solicitante,
                 email_solicitante,
                 empresa_solicitante,
@@ -6276,13 +8673,16 @@ def insert_oferta_etc_record(cursor, payload, explicit_id=None):
                 activo
             )
             OUTPUT INSERTED.id_oferta_etc INTO #inserted_oferta_etc
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             insert_params,
         )
     cursor.execute("SELECT id_oferta_etc FROM #inserted_oferta_etc")
     inserted = cursor.fetchone()
-    return inserted[0] if inserted else None
+    inserted_id = inserted[0] if inserted else None
+    if explicit_id is not None:
+        sync_offer_estado_with_etc(cursor, explicit_id, payload["id_estado"])
+    return inserted_id
 
 
 def build_minimal_oferta_etc_payload(oferta_row, estado_department_id, responsable_num_operario=None):
@@ -6301,6 +8701,8 @@ def build_minimal_oferta_etc_payload(oferta_row, estado_department_id, responsab
         "po_original": None,
         "pedido_b2b": None,
         "proyecto": None,
+        "sales_orders": oferta_row.get("sales_orders"),
+        "request_delivery_date": oferta_row.get("request_delivery_date"),
         "nombre_solicitante": None,
         "email_solicitante": None,
         "empresa_solicitante": None,
@@ -6366,11 +8768,12 @@ def create_oferta_completa():
             inserted_id, numero_oferta = insert_oferta_record(cursor, oferta_payload)
             inserted_etc_id = insert_oferta_etc_record(cursor, oferta_etc_payload, explicit_id=inserted_id)
             if imported_email_attachment_token:
-                staged_attachment_payloads = move_staged_imported_email_attachments_to_offer(inserted_id, imported_email_attachment_token)
-            if imported_email_metadata:
-                register_imported_email_metadata(cursor, inserted_id, imported_email_metadata)
+                staged_attachment_payloads = move_staged_imported_email_attachments_to_offer(
+                    inserted_id,
+                    imported_email_attachment_token,
+                    numero_oferta=numero_oferta,
+                )
             conn.commit()
-
         return jsonify(
             {
                 "success": True,
@@ -6393,8 +8796,6 @@ def create_oferta_completa():
         if inserted_id and staged_attachment_payloads:
             cleanup_offer_attachment_entries(inserted_id, [item.get("stored_name") for item in staged_attachment_payloads if item.get("stored_name")])
         return jsonify({"success": False, "message": f"No se pudo guardar la oferta completa: {str(exc)}"}), 500
-
-
 @app.route("/api/ofertas-etc", methods=["POST"])
 def create_oferta_etc():
     user_data = get_logged_user_data()
@@ -6477,6 +8878,10 @@ def get_runtime_ssl_context(use_https):
 
     cert_path = resolve_ssl_file(app.config.get("SSL_CERT_FILE"))
     key_path = resolve_ssl_file(app.config.get("SSL_KEY_FILE"))
+    if cert_path and os.path.basename(cert_path).lower() == "cert.pem":
+        cert_chain_candidate = os.path.join(os.path.dirname(cert_path), "cert_chain.pem")
+        if os.path.exists(cert_chain_candidate):
+            cert_path = cert_chain_candidate
     if cert_path and key_path:
         return (cert_path, key_path)
 

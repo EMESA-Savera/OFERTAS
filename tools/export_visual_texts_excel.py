@@ -70,7 +70,7 @@ MANUAL_LITERAL_ROWS = [
     LiteralRow("literal.etc.priority", "templates/index.html", "Prioridad", "Priority", "Priorita"),
     LiteralRow("literal.etc.mark_urgent", "templates/index.html", "Marcar como urgente", "Mark as urgent", "Označit jako urgentní"),
     LiteralRow("literal.etc.internal_code", "templates/index.html", "Código interno", "Internal code", "Interní kód"),
-    LiteralRow("literal.etc.commission_number", "templates/index.html", "Número comisión", "Commission number", "Číslo provize"),
+    LiteralRow("literal.etc.commission_number", "templates/index.html", "Número comisión", "Commision number", "Commision number"),
     LiteralRow("literal.etc.project", "templates/index.html", "Proyecto", "Project", "Projekt"),
     LiteralRow("literal.etc.no_project", "templates/index.html", "Sin proyecto", "No project", "Bez projektu"),
     LiteralRow("literal.etc.po_original", "templates/index.html", "PO original", "Original PO", "Původní PO"),

@@ -1,12 +1,12 @@
 {
   "summary": {
     "files_scanned": 11,
-    "keyed_entries": 293,
-    "raw_entries": 422,
+    "keyed_entries": 417,
+    "raw_entries": 457,
     "missing_by_language": {
-      "es": 0,
-      "en": 0,
-      "cs": 0
+      "es": 119,
+      "en": 119,
+      "cs": 75
     }
   },
   "keyed_entries": [
@@ -285,6 +285,86 @@
       }
     },
     {
+      "key": "common.add",
+      "source_text": "Añadir",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Añadir"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.attachment",
+      "source_text": "Adjunto",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Adjunto"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Adjunto"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Adjunto"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.attachments",
+      "source_text": "Adjuntos",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Adjuntos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.back",
+      "source_text": "Volver",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Volver"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "common.cancel",
       "source_text": "Cancelar",
       "occurrences": [
@@ -313,9 +393,21 @@
           "fallback": "Cancelar"
         },
         {
-          "file": "templates/index.html",
-          "source": "html",
-          "context": "text",
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cancelar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cancelar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
           "fallback": "Cancelar"
         },
         {
@@ -353,6 +445,35 @@
           "source": "html",
           "context": "text",
           "fallback": "Cancelar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Cancelar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Cancelar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.clear",
+      "source_text": "Limpiar",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Limpiar"
         }
       ],
       "present_in": {
@@ -386,6 +507,30 @@
           "file": "static/js/ofertas.js",
           "source": "js.t",
           "context": "js_call",
+          "fallback": "Cerrar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cerrar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cerrar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "aria_label",
+          "fallback": "Cerrar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "aria_label",
           "fallback": "Cerrar"
         },
         {
@@ -493,6 +638,12 @@
           "source": "html",
           "context": "text",
           "fallback": "Aceptar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Aceptar"
         }
       ],
       "present_in": {
@@ -518,6 +669,12 @@
           "fallback": "Eliminar"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Eliminar"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -528,6 +685,52 @@
           "source": "html",
           "context": "text",
           "fallback": "Eliminar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.download",
+      "source_text": "Descargar",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descargar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descargar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.download_file",
+      "source_text": "Descargar archivo",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descargar archivo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descargar archivo"
         }
       ],
       "present_in": {
@@ -587,6 +790,47 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Editar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Editar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Editar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Editar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.file",
+      "source_text": "Archivo",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Archivo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Archivo"
         }
       ],
       "present_in": {
@@ -638,6 +882,46 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Ocultas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.history",
+      "source_text": "Histórico",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Histórico"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Histórico"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.inactive",
+      "source_text": "Inactivo",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Inactivo"
         }
       ],
       "present_in": {
@@ -712,6 +996,70 @@
       }
     },
     {
+      "key": "common.preview",
+      "source_text": "Vista previa",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Vista previa"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Vista previa"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Vista previa"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Vista previa"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Vista previa"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "common.remove",
+      "source_text": "Quitar",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Quitar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Quitar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "common.save",
       "source_text": "Guardar",
       "occurrences": [
@@ -732,6 +1080,30 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Guardar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Guardar"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Guardar"
         }
       ],
       "present_in": {
@@ -744,6 +1116,12 @@
       "key": "common.save_changes",
       "source_text": "Guardar cambios",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardar cambios"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -789,6 +1167,126 @@
           "source": "html",
           "context": "text",
           "fallback": "Añadir columnas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.bom_delete_confirm",
+      "source_text": "",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": ""
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.bom_material_placeholder",
+      "source_text": "Escribe el material BOM",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "placeholder",
+          "fallback": "Escribe el material BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.boms",
+      "source_text": "BOM",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "BOM"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "BOM"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.boms_description",
+      "source_text": "Alta y mantenimiento del catálogo BOM disponible para enlazarlo a las ofertas.",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Alta y mantenimiento del catálogo BOM disponible para enlazarlo a las ofertas."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.boms_empty",
+      "source_text": "No hay BOM creados todavía.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No hay BOM creados todavía."
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "No hay BOM creados todavía."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.boms_management",
+      "source_text": "Gestión de BOM",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "aria_label",
+          "fallback": "Gestión de BOM"
         }
       ],
       "present_in": {
@@ -1034,6 +1532,23 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "No hay columnas configuradas para este estado."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "config.create_bom",
+      "source_text": "Crear BOM",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Crear BOM"
         }
       ],
       "present_in": {
@@ -1392,6 +1907,23 @@
       }
     },
     {
+      "key": "config.view_boms",
+      "source_text": "Ver BOM",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Ver BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "config.view_clients",
       "source_text": "Ver clientes",
       "occurrences": [
@@ -1534,6 +2066,23 @@
       }
     },
     {
+      "key": "crm.etc_edit",
+      "source_text": "Edición ETC",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Edición ETC"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "crm.flow",
       "source_text": "Flujo CRM",
       "occurrences": [
@@ -1582,6 +2131,301 @@
           "source": "html",
           "context": "text",
           "fallback": "Sin interacciones registradas."
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Sin interacciones registradas."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_active",
+      "source_text": "Activo",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_client",
+      "source_text": "Cliente",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cliente"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_currency",
+      "source_text": "Moneda",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Moneda"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_email_date",
+      "source_text": "Fecha email",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha email"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_internal_notes",
+      "source_text": "Observaciones internas",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Observaciones internas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_material_summary_offered",
+      "source_text": "Resumen material ofertado",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Resumen material ofertado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_offer_created_date",
+      "source_text": "Fecha alta oferta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha alta oferta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_offer_sent_date",
+      "source_text": "Fecha envío oferta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha envío oferta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_received_date",
+      "source_text": "Fecha recepción",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha recepción"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_requester_company",
+      "source_text": "Empresa solicitante",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Empresa solicitante"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_response_deadline",
+      "source_text": "Fecha límite respuesta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha límite respuesta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_sender",
+      "source_text": "Emisor",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Emisor"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_source",
+      "source_text": "Origen registro",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Origen registro"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_state",
+      "source_text": "Estado",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Estado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_subject",
+      "source_text": "Asunto",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Asunto"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_technical_notes",
+      "source_text": "Observaciones técnicas",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Observaciones técnicas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.history_field_urgent",
+      "source_text": "Urgente",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Urgente"
         }
       ],
       "present_in": {
@@ -1677,6 +2521,57 @@
       }
     },
     {
+      "key": "crm.no_value",
+      "source_text": "Sin valor",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sin valor"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.offer_edit",
+      "source_text": "Edición oferta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Edición oferta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.reassignment",
+      "source_text": "Reasignación",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Reasignación"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "crm.save_status_change",
       "source_text": "Guardar cambio de estado",
       "occurrences": [
@@ -1708,6 +2603,234 @@
           "source": "html",
           "context": "text",
           "fallback": "Sin definir"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.updated_by",
+      "source_text": "Actualizado por",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Actualizado por"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.value_no",
+      "source_text": "No",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "crm.value_yes",
+      "source_text": "Sí",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sí"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.administration",
+      "source_text": "Administración",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Administración"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Administración"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.description.administration",
+      "source_text": "Departamento de Administración",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento de Administración"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento de Administración"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.description.purchasing",
+      "source_text": "Departamento de Compras y Adquisiciones",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento de Compras y Adquisiciones"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.description.sales",
+      "source_text": "Departamento de Ventas",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento de Ventas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.description.technical",
+      "source_text": "Departamento Técnico",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento Técnico"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento Técnico"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.purchasing",
+      "source_text": "Compras",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Compras"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.sales",
+      "source_text": "Ventas",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Ventas"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.technical",
+      "source_text": "Técnico",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Técnico"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Técnico"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "department.test",
+      "source_text": "Prueba",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Prueba"
         }
       ],
       "present_in": {
@@ -1918,6 +3041,74 @@
       }
     },
     {
+      "key": "listing.quick_filters_all_clients",
+      "source_text": "Todos",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "listing.quick_filters_all_statuses",
+      "source_text": "Todos",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "listing.quick_filters_hide",
+      "source_text": "Ocultar filtros",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Ocultar filtros"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "listing.quick_filters_show",
+      "source_text": "Mostrar filtros",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Mostrar filtros"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.bom.acronym",
       "source_text": "BOM",
       "occurrences": [
@@ -1926,6 +3117,35 @@
           "source": "html",
           "context": "text",
           "fallback": "BOM"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "BOM"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.add_materials_to_offer",
+      "source_text": "Anadir materiales",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Anadir materiales"
         }
       ],
       "present_in": {
@@ -1952,9 +3172,38 @@
       }
     },
     {
+      "key": "literal.bom.catalog_title",
+      "source_text": "Catalogo de materiales",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Catalogo de materiales"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.bom.current_price",
       "source_text": "Precio actual",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Precio actual"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Precio actual"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -1966,23 +3215,24 @@
           "source": "html",
           "context": "text",
           "fallback": "Precio actual"
-        }
-      ],
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "key": "literal.bom.difference",
-      "source_text": "Diferencia",
-      "occurrences": [
+        },
         {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
-          "fallback": "Diferencia"
+          "fallback": "Precio actual"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Precio actual"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Precio actual"
         }
       ],
       "present_in": {
@@ -2013,6 +3263,12 @@
       "source_text": "Se insertará un nuevo registro para mantener el histórico del material.",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Se insertará un nuevo registro para mantener el histórico del material."
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2030,6 +3286,12 @@
       "source_text": "Cargando materiales...",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cargando materiales..."
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2043,9 +3305,56 @@
       }
     },
     {
+      "key": "literal.bom.manage_offer_materials",
+      "source_text": "Gestionar materiales BOM",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Gestionar materiales BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.bom.material",
       "source_text": "Material",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Material"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Material"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Material"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Material"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Material"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2083,6 +3392,23 @@
       }
     },
     {
+      "key": "literal.bom.no_materials",
+      "source_text": "No hay materiales registrados todavia.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No hay materiales registrados todavia."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.bom.no_subject",
       "source_text": "(sin asunto)",
       "occurrences": [
@@ -2097,6 +3423,92 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "(sin asunto)"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.none",
+      "source_text": "Sin BOM",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sin BOM"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sin BOM"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.none_selected_for_offer",
+      "source_text": "Todavia no hay BOM seleccionados para esta oferta.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todavia no hay BOM seleccionados para esta oferta."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todavia no hay BOM seleccionados para esta oferta."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todavia no hay BOM seleccionados para esta oferta."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.offer_override_help",
+      "source_text": "Este cambio solo afecta a esta oferta hasta que el usuario lo cambie o lo quite.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Este cambio solo afecta a esta oferta hasta que el usuario lo cambie o lo quite."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.offer_selector_title",
+      "source_text": "Seleccionar BOM para la oferta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Seleccionar BOM para la oferta"
         }
       ],
       "present_in": {
@@ -2131,6 +3543,23 @@
           "source": "html",
           "context": "text",
           "fallback": "Guardar nuevo precio"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.bom.search_empty",
+      "source_text": "No hay materiales que coincidan con la busqueda.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No hay materiales que coincidan con la busqueda."
         }
       ],
       "present_in": {
@@ -2218,6 +3647,24 @@
       "source_text": "Actualizado",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Actualizado"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Actualizado"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Actualizado"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2256,6 +3703,18 @@
           "source": "html",
           "context": "text",
           "fallback": "ETC"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "ETC"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "ETC"
         }
       ],
       "present_in": {
@@ -2268,6 +3727,18 @@
       "key": "literal.etc.b2b_order",
       "source_text": "Pedido B2B",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Pedido B2B"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Pedido B2B"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2286,6 +3757,18 @@
       "source_text": "Observaciones cliente",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Observaciones cliente"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Observaciones cliente"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2303,6 +3786,18 @@
       "source_text": "Referencia cliente",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Referencia cliente"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Referencia cliente"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2319,6 +3814,18 @@
       "key": "literal.etc.commission_number",
       "source_text": "Número comisión",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Número comisión"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Numero comision"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2341,6 +3848,40 @@
           "source": "html",
           "context": "text",
           "fallback": "Si eliges un departamento, se propondrá automáticamente su manager."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.edit_help",
+      "source_text": "Actualiza los datos ETC guardados y guarda los cambios cuando termines.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Actualiza los datos ETC guardados y guarda los cambios cuando termines."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.edit_title",
+      "source_text": "Modificar ETC",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Modificar ETC"
         }
       ],
       "present_in": {
@@ -2377,6 +3918,18 @@
       "source_text": "Código externo",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Código externo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Codigo externo"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2411,6 +3964,18 @@
       "source_text": "Incoterm",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Incoterm"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Incoterm"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2424,14 +3989,89 @@
       }
     },
     {
+      "key": "literal.etc.info_help",
+      "source_text": "Consulta los datos ETC guardados para esta oferta. Los campos sin completar se muestran con un guion.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Consulta los datos ETC guardados para esta oferta. Los campos sin completar se muestran con un guion."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.info_title",
+      "source_text": "Informacion ETC",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Informacion ETC"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Informacion ETC"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.etc.internal_code",
       "source_text": "Código interno",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Código interno"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Codigo interno"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
           "fallback": "Código interno"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.load_error",
+      "source_text": "No se pudieron cargar los datos ETC de la oferta.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron cargar los datos ETC de la oferta."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron cargar los datos ETC de la oferta."
         }
       ],
       "present_in": {
@@ -2478,6 +4118,18 @@
       "key": "literal.etc.material_summary",
       "source_text": "Resumen material solicitado",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Resumen material solicitado"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Resumen material solicitado"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2568,8 +4220,14 @@
     },
     {
       "key": "literal.etc.offer_sent_date",
-      "source_text": "Fecha envío oferta",
+      "source_text": "Fecha envio oferta",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha envio oferta"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2588,6 +4246,18 @@
       "source_text": "PO original",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "PO original"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "PO original"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2604,6 +4274,18 @@
       "key": "literal.etc.priority",
       "source_text": "Prioridad",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Prioridad"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Prioridad"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2622,6 +4304,18 @@
       "source_text": "Proyecto",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Proyecto"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Proyecto"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2638,6 +4332,18 @@
       "key": "literal.etc.requester_email",
       "source_text": "Email solicitante",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Email solicitante"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Email solicitante"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2656,6 +4362,18 @@
       "source_text": "Nombre solicitante",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Nombre solicitante"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Nombre solicitante"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2672,6 +4390,18 @@
       "key": "literal.etc.responsible",
       "source_text": "Responsable",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Responsable"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Responsable"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2690,6 +4420,12 @@
       "source_text": "Guardar ETC y finalizar",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardar ETC y finalizar"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2706,6 +4442,12 @@
       "key": "literal.etc.saved_header_help",
       "source_text": "La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso."
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2747,6 +4489,12 @@
       "source_text": "Paso 2: completar ETC",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Paso 2: completar ETC"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2763,6 +4511,18 @@
       "key": "literal.etc.target_department",
       "source_text": "Departamento destino",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento destino"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento destino"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -2781,6 +4541,18 @@
       "source_text": "Total fee EUR",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Total fee EUR"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Total fee EUR"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -2798,10 +4570,119 @@
       "source_text": "Total material EUR",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Total material EUR"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Total material EUR"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
           "fallback": "Total material EUR"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.unsaved_changes_confirm",
+      "source_text": "Has realizado cambios en el formulario ETC y no se han guardado. Si continúas, se perderán. ¿Quieres cerrar igualmente?",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Has realizado cambios en el formulario ETC y no se han guardado. Si continúas, se perderán. ¿Quieres cerrar igualmente?"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Has realizado cambios en el formulario ETC y no se han guardado. Si continúas, se perderán. ¿Quieres cerrar igualmente?"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.unsaved_changes_hint",
+      "source_text": "Pulsa aceptar para descartar los cambios o cancelar para seguir editando.",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Pulsa aceptar para descartar los cambios o cancelar para seguir editando."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.unsaved_changes_title",
+      "source_text": "Cambios sin guardar",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Cambios sin guardar"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.update_error",
+      "source_text": "No se pudieron guardar los cambios del ETC.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron guardar los cambios del ETC."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.etc.update_success",
+      "source_text": "ETC actualizado correctamente.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "ETC actualizado correctamente."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "ETC actualizado correctamente."
         }
       ],
       "present_in": {
@@ -2841,6 +4722,12 @@
           "file": "static/js/ofertas.js",
           "source": "js.t",
           "context": "js_call",
+          "fallback": "No se pudieron cargar los materiales BOM"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
           "fallback": "No se pudieron cargar los materiales BOM."
         }
       ],
@@ -2852,8 +4739,20 @@
     },
     {
       "key": "literal.feedback.bom_save_error",
-      "source_text": "No se pudo guardar el nuevo precio BOM.",
+      "source_text": "No se pudo guardar la selección BOM.",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo guardar la selección BOM."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo guardar la selección BOM."
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -2869,8 +4768,14 @@
     },
     {
       "key": "literal.feedback.bom_saved",
-      "source_text": "Precio BOM guardado correctamente.",
+      "source_text": "BOM actualizado correctamente.",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "BOM actualizado correctamente."
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -2922,6 +4827,72 @@
       "key": "literal.feedback.loading_state",
       "source_text": "Guardando...",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Guardando..."
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -3373,10 +5344,63 @@
       "source_text": "Activo",
       "occurrences": [
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Activo"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
           "fallback": "Activo"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Activo"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.states.active_title",
+      "source_text": "Estado activo en sidebar y procesos",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Estado activo en sidebar y procesos"
         }
       ],
       "present_in": {
@@ -3443,6 +5467,23 @@
       }
     },
     {
+      "key": "literal.states.inactive",
+      "source_text": "Inactivo",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Inactivo"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "literal.states.inactive_prefix",
       "source_text": "[Inactivo]",
       "occurrences": [
@@ -3451,6 +5492,23 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "[Inactivo]"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.states.inactive_title",
+      "source_text": "Estado inactivo: solo visible en administración",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Estado inactivo: solo visible en administración"
         }
       ],
       "present_in": {
@@ -3522,6 +5580,30 @@
           "fallback": "ID"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "ID"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "ID"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "ID"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "ID"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -3558,14 +5640,14 @@
       }
     },
     {
-      "key": "literal.users.add_department",
-      "source_text": "+ Departamento",
+      "key": "literal.users.add_user",
+      "source_text": "Añadir usuario",
       "occurrences": [
         {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
-          "fallback": "+ Departamento"
+          "fallback": "Añadir usuario"
         }
       ],
       "present_in": {
@@ -3575,14 +5657,99 @@
       }
     },
     {
-      "key": "literal.users.add_user",
-      "source_text": "Añadir usuario",
+      "key": "literal.users.department_create_error",
+      "source_text": "No se pudo crear el departamento.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo crear el departamento."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.department_description_placeholder",
+      "source_text": "Añade una descripción opcional",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "placeholder",
+          "fallback": "Añade una descripción opcional"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.department_prompt_label",
+      "source_text": "Nombre del departamento",
       "occurrences": [
         {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
-          "fallback": "Añadir usuario"
+          "fallback": "Nombre del departamento"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.department_prompt_placeholder",
+      "source_text": "Escribe el nombre del departamento",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "placeholder",
+          "fallback": "Escribe el nombre del departamento"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.department_prompt_required",
+      "source_text": "Debes indicar un nombre de departamento.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Debes indicar un nombre de departamento."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.department_prompt_title",
+      "source_text": "Crear departamento",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Crear departamento"
         }
       ],
       "present_in": {
@@ -3608,6 +5775,24 @@
           "fallback": "Departamentos"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamentos"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Departamentos"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Departamentos"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -3618,6 +5803,57 @@
           "source": "html",
           "context": "text",
           "fallback": "Departamentos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.departments_description",
+      "source_text": "Alta y mantenimiento de departamentos disponibles para usuarios y estados.",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Alta y mantenimiento de departamentos disponibles para usuarios y estados."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.departments_empty",
+      "source_text": "No hay departamentos creados todavía.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No hay departamentos creados todavía."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.departments_management",
+      "source_text": "Gestión de departamentos",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "aria_label",
+          "fallback": "Gestión de departamentos"
         }
       ],
       "present_in": {
@@ -3859,8 +6095,14 @@
     },
     {
       "key": "literal.users.title",
-      "source_text": "Usuarios",
+      "source_text": "Usuario",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Usuario"
+        },
         {
           "file": "templates/index.html",
           "source": "html",
@@ -3872,6 +6114,23 @@
           "source": "html",
           "context": "text",
           "fallback": "Usuarios"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "literal.users.view_departments",
+      "source_text": "Ver departamentos",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Ver departamentos"
         }
       ],
       "present_in": {
@@ -3965,6 +6224,18 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Inicio"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Inicio"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Inicio"
         }
       ],
       "present_in": {
@@ -4008,6 +6279,18 @@
           "fallback": "Configuración"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Configuración"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Configuración"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "title",
@@ -4036,6 +6319,18 @@
           "source": "html",
           "context": "aria_label",
           "fallback": ""
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Configuración"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Configuración"
         },
         {
           "file": "templates/index.html",
@@ -4075,6 +6370,63 @@
       }
     },
     {
+      "key": "offer.all_files",
+      "source_text": "Todos los archivos",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Todos los archivos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.attachment_selected_error",
+      "source_text": "No se pudo recuperar el adjunto seleccionado.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar el adjunto seleccionado."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.attachments_empty",
+      "source_text": "Sin archivos adjuntos todavía.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sin archivos adjuntos todavía."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Sin archivos adjuntos todavía."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "offer.budget",
       "source_text": "Presupuesto",
       "occurrences": [
@@ -4089,6 +6441,194 @@
           "source": "html",
           "context": "text",
           "fallback": "Presupuesto"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Presupuesto"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.center_title",
+      "source_text": "Centro de oferta",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Centro de oferta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_empty",
+      "source_text": "Todavia no hay mensajes en este chat.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todavia no hay mensajes en este chat."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Todavia no hay mensajes en este chat."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_error_load",
+      "source_text": "No se pudo cargar el chat.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo cargar el chat."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_error_retrieve",
+      "source_text": "No se pudieron recuperar los mensajes.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron recuperar los mensajes."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_error_send",
+      "source_text": "No se pudo enviar el mensaje.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo enviar el mensaje."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_label",
+      "source_text": "Chat",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Chat"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_loading",
+      "source_text": "Cargando mensajes...",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cargando mensajes..."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_send",
+      "source_text": "Enviar mensaje",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Enviar mensaje"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Enviar mensaje"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_sending",
+      "source_text": "Enviando mensaje",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Enviando mensaje"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.chat_start_prompt",
+      "source_text": "Escribe un mensaje para iniciar la conversacion.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Escribe un mensaje para iniciar la conversacion."
         }
       ],
       "present_in": {
@@ -4115,6 +6655,23 @@
       }
     },
     {
+      "key": "offer.close_history",
+      "source_text": "Cerrar histórico",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "aria_label",
+          "fallback": "Cerrar histórico"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "offer.current_message",
       "source_text": "Mensaje actual",
       "occurrences": [
@@ -4123,6 +6680,71 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Mensaje actual"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.current_offer_error",
+      "source_text": "No se pudo recuperar la oferta actual.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo recuperar la oferta actual."
         }
       ],
       "present_in": {
@@ -4512,6 +7134,23 @@
       }
     },
     {
+      "key": "offer.load_error",
+      "source_text": "No se pudo cargar la oferta.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo cargar la oferta."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "offer.loading",
       "source_text": "Consultando...",
       "occurrences": [
@@ -4571,6 +7210,46 @@
           "source": "html",
           "context": "aria_label",
           "fallback": "Importar correo arrastrando un archivo .eml o .msg"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.main_email",
+      "source_text": "Correo principal",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Correo principal"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.more_info",
+      "source_text": "+Info",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "+Info"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "+Info"
         }
       ],
       "present_in": {
@@ -4682,6 +7361,29 @@
       }
     },
     {
+      "key": "offer.offer_label",
+      "source_text": "Oferta",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Oferta"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Oferta"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "offer.outlook_description",
       "source_text": "Selecciona un correo del buzón corporativo para traer emisor, asunto, fecha y cuerpo al formulario.",
       "occurrences": [
@@ -4724,23 +7426,6 @@
           "source": "html",
           "context": "text",
           "fallback": "Importar correo seleccionado"
-        }
-      ],
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "key": "offer.outlook_import_success",
-      "source_text": "Correo de Outlook importado correctamente.",
-      "occurrences": [
-        {
-          "file": "static/js/ofertas.js",
-          "source": "js.t",
-          "context": "js_call",
-          "fallback": "Correo de Outlook importado correctamente."
         }
       ],
       "present_in": {
@@ -4827,6 +7512,74 @@
           "source": "html",
           "context": "text",
           "fallback": "Importar desde Outlook"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.preview_error",
+      "source_text": "No se pudo cargar la vista previa del archivo.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo cargar la vista previa del archivo."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.preview_error_generic",
+      "source_text": "No se pudo cargar la vista previa.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudo cargar la vista previa."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.preview_loading",
+      "source_text": "Cargando vista previa...",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cargando vista previa..."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.preview_unavailable",
+      "source_text": "Este formato no se puede previsualizar directamente en el navegador.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Este formato no se puede previsualizar directamente en el navegador."
         }
       ],
       "present_in": {
@@ -5138,6 +7891,160 @@
       }
     },
     {
+      "key": "offer.status_changes_title",
+      "source_text": "Cambios de estado",
+      "occurrences": [
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Cambios de estado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.upload_files",
+      "source_text": "Subir archivos",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Subir archivos"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.upload_files_error",
+      "source_text": "No se pudieron subir los archivos.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron subir los archivos."
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "No se pudieron subir los archivos."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.upload_files_success",
+      "source_text": "Archivos subidos correctamente.",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Archivos subidos correctamente."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.uploading_file",
+      "source_text": "Subiendo archivo...",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Subiendo archivo..."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "offer.uploading_files",
+      "source_text": "Subiendo archivos...",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Subiendo archivos..."
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "role.manager",
+      "source_text": "Manager",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Manager"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "role.standard",
+      "source_text": "Estandar",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Estandar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Estandar"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Standard"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "sidebar.new_offer",
       "source_text": "Insertar Presupuesto",
       "occurrences": [
@@ -5357,6 +8264,66 @@
           "fallback": "Acciones"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Acciones"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Acciones"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -5443,6 +8410,12 @@
       "key": "table.client",
       "source_text": "Cliente",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cliente"
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -5550,9 +8523,50 @@
       }
     },
     {
+      "key": "table.comments",
+      "source_text": "Comentarios",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Comentarios"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Comentarios"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Comentarios"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Comentarios"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "table.created_date",
       "source_text": "Fecha alta",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha alta"
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -5606,6 +8620,24 @@
           "fallback": "Departamento"
         },
         {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Departamento"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Departamento"
+        },
+        {
           "file": "templates/index.html",
           "source": "html",
           "context": "text",
@@ -5632,6 +8664,30 @@
           "file": "static/js/ofertas.js",
           "source": "js.t",
           "context": "js_call",
+          "fallback": "Descripción"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descripción"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Descripción"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
+          "fallback": "Descripción"
+        },
+        {
+          "file": "templates/index.html",
+          "source": "html",
+          "context": "text",
           "fallback": "Descripción"
         },
         {
@@ -5697,6 +8753,12 @@
       "key": "table.email_date",
       "source_text": "Fecha e-mail",
       "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Fecha e-mail"
+        },
         {
           "file": "static/js/ofertas.js",
           "source": "js.t",
@@ -5931,6 +8993,40 @@
           "source": "js.t",
           "context": "js_call",
           "fallback": "Filtrar estado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "table.filter_status_change",
+      "source_text": "Filtrar cambio estado",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Filtrar cambio estado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "table.filter_subject",
+      "source_text": "Filtrar asunto",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Filtrar asunto"
         }
       ],
       "present_in": {
@@ -6187,6 +9283,40 @@
       }
     },
     {
+      "key": "table.quick_filters",
+      "source_text": "Filtros",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Filtros"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "table.search_comments",
+      "source_text": "Buscar comentarios",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Buscar comentarios"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "table.search_notes",
       "source_text": "Buscar observación",
       "occurrences": [
@@ -6361,6 +9491,46 @@
       }
     },
     {
+      "key": "table.status_change",
+      "source_text": "Cambio estado",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cambio estado"
+        },
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Cambio estado"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "key": "table.subject",
+      "source_text": "Asunto",
+      "occurrences": [
+        {
+          "file": "static/js/ofertas.js",
+          "source": "js.t",
+          "context": "js_call",
+          "fallback": "Asunto"
+        }
+      ],
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "key": "¡Bienvenido",
       "source_text": "",
       "occurrences": [
@@ -6430,6 +9600,66 @@
     {
       "generated_key": "auto.api.app.ofertas.py.dict_message.aviso_enviado_al_usuario_reasignado.920374ce",
       "text": "Aviso enviado al usuario reasignado",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.bom_a_adido_a_la_oferta.a912abef",
+      "text": "BOM añadido a la oferta",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.bom_actualizado_correctamente.edc656bb",
+      "text": "BOM actualizado correctamente",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.bom_creado_correctamente.50c2d545",
+      "text": "BOM creado correctamente",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.bom_eliminado_de_la_oferta.c1e28893",
+      "text": "BOM eliminado de la oferta",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.bom_no_encontrado.bba897df",
+      "text": "BOM no encontrado",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -6632,6 +9862,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_actualizar_la_oferta_e.40d3bfd5",
+      "text": "Debes iniciar sesión para actualizar la oferta ETC",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_actualizar_usuarios.b677b036",
       "text": "Debes iniciar sesión para actualizar usuarios",
       "file": "api/app_ofertas.py",
@@ -6776,6 +10018,30 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_consultar_los_bom.f809f453",
+      "text": "Debes iniciar sesión para consultar los BOM",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_consultar_los_bom_de_l.a5af9a03",
+      "text": "Debes iniciar sesión para consultar los BOM de la oferta",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_consultar_los_clientes.7afd8bf9",
       "text": "Debes iniciar sesión para consultar los clientes",
       "file": "api/app_ofertas.py",
@@ -6884,6 +10150,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_crear_bom.723d92a4",
+      "text": "Debes iniciar sesión para crear BOM",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_crear_clientes.0780ec4b",
       "text": "Debes iniciar sesión para crear clientes",
       "file": "api/app_ofertas.py",
@@ -6980,6 +10258,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_editar_bom.78195558",
+      "text": "Debes iniciar sesión para editar BOM",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_editar_clientes.54e6cfae",
       "text": "Debes iniciar sesión para editar clientes",
       "file": "api/app_ofertas.py",
@@ -7030,6 +10320,18 @@
     {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_editar_proyectos.a3c1b9f6",
       "text": "Debes iniciar sesión para editar proyectos",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_eliminar_bom.95d643d7",
+      "text": "Debes iniciar sesión para eliminar BOM",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -7138,6 +10440,30 @@
     {
       "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_importar_correos_de_ou.3631385d",
       "text": "Debes iniciar sesión para importar correos de Outlook",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_modificar_el_precio_bo.36809192",
+      "text": "Debes iniciar sesión para modificar el precio BOM de la oferta",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.debes_iniciar_sesi_n_para_modificar_los_bom_de_l.d4a25103",
+      "text": "Debes iniciar sesión para modificar los BOM de la oferta",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -7292,8 +10618,32 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.el_chat_interno_est_desactivado.cad8b65d",
+      "text": "El chat interno está desactivado",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.el_estado_no_tiene_un_departamento_asociado.49281ca7",
       "text": "El estado no tiene un departamento asociado",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.el_estado_seleccionado_est_inactivo_y_no_se_pued.62ccc702",
+      "text": "El estado seleccionado está inactivo y no se puede usar en procesos",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -7532,6 +10882,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.la_oferta_vuelve_a_usar_el_precio_del_catalogo.5412f4b6",
+      "text": "La oferta vuelve a usar el precio del catalogo.",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.la_oferta_ya_est_asignada_a_ese_usuario.33ace3bc",
       "text": "La oferta ya está asignada a ese usuario",
       "file": "api/app_ofertas.py",
@@ -7664,6 +11026,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.no_se_pudo_actualizar_la_oferta_etc.cd8b5207",
+      "text": "No se pudo actualizar la oferta ETC",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.no_se_pudo_actualizar_la_reasignacion.9efc4d92",
       "text": "No se pudo actualizar la reasignacion",
       "file": "api/app_ofertas.py",
@@ -7702,6 +11076,18 @@
     {
       "generated_key": "auto.api.app.ofertas.py.dict_message.oferta_actualizada_correctamente.6322d730",
       "text": "Oferta actualizada correctamente",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.oferta_etc_actualizada_correctamente.ec35f2fc",
+      "text": "Oferta ETC actualizada correctamente",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -7820,6 +11206,18 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.precio_bom_especifico_de_la_oferta_guardado_corr.3458855d",
+      "text": "Precio BOM especifico de la oferta guardado correctamente.",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.precio_bom_guardado_correctamente_se_ha_creado_u.379338ea",
       "text": "Precio BOM guardado correctamente. Se ha creado un nuevo registro para conservar el histórico.",
       "file": "api/app_ofertas.py",
@@ -7868,8 +11266,32 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.proyecto_no_encontrado_en_la_configuraci_n.85ad6e78",
+      "text": "proyecto no encontrado en la configuración",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.ref_cliente_asunto_e_mail.e98abf19",
       "text": "Ref. cliente / asunto e-mail",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.responsable_no_encontrado_en_ofertas_usuarios_co.057a7d13",
+      "text": "Responsable no encontrado en ofertas.usuarios_config",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -8012,8 +11434,32 @@
       }
     },
     {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.ya_existe_otro_bom_con_ese_material.b0d9790f",
+      "text": "Ya existe otro BOM con ese material",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.api.app.ofertas.py.dict_message.ya_existe_otro_departamento_con_ese_nombre.1e747f08",
       "text": "Ya existe otro departamento con ese nombre",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "dict_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.dict_message.ya_existe_un_bom_con_ese_material.bec85e0d",
+      "text": "Ya existe un BOM con ese material",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "dict_message",
@@ -8110,6 +11556,18 @@
     {
       "generated_key": "auto.api.app.ofertas.py.jsonify_message.correo_de_outlook_preparado_para_crear_una_ofert.d4db4bef",
       "text": "Correo de Outlook preparado para crear una oferta nueva.",
+      "file": "api/app_ofertas.py",
+      "source": "python",
+      "context": "jsonify_message",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.api.app.ofertas.py.jsonify_message.offer.182660c7",
+      "text": "offer",
       "file": "api/app_ofertas.py",
       "source": "python",
       "context": "jsonify_message",
@@ -9116,30 +12574,6 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.return_literal.p_class_attachments_gallery_empty_sin_archivos_a.9d6abbf9",
-      "text": "<p class=\"attachments-gallery__empty\">Sin archivos adjuntos todavía.</p>",
-      "file": "static/js/ofertas.js",
-      "source": "js",
-      "context": "return_literal",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.static.js.ofertas.js.return_literal.p_class_offer_center_attachments_empty_sin_archi.861e2d3e",
-      "text": "<p class=\"offer-center__attachments-empty\">Sin archivos adjuntos todavía.</p>",
-      "file": "static/js/ofertas.js",
-      "source": "js",
-      "context": "return_literal",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
       "generated_key": "auto.static.js.ofertas.js.return_literal.pending.d3788c9b",
       "text": "pending",
       "file": "static/js/ofertas.js",
@@ -9154,18 +12588,6 @@
     {
       "generated_key": "auto.static.js.ofertas.js.return_literal.sent.36f85975",
       "text": "sent",
-      "file": "static/js/ofertas.js",
-      "source": "js",
-      "context": "return_literal",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.static.js.ofertas.js.return_literal.span_class_bom_diff_bom_diff_neutral_sin_hist_ri.a8e01c2c",
-      "text": "<span class=\"bom-diff bom-diff--neutral\">Sin histórico</span>",
       "file": "static/js/ofertas.js",
       "source": "js",
       "context": "return_literal",
@@ -9200,8 +12622,8 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_attachment_original_name_vista_previa.328e2b81",
-      "text": "${escapeHtml(attachment.original_name || 'Vista previa')}",
+      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_attachment_original_name_t_common_pre.62dffcfb",
+      "text": "${escapeHtml(attachment.original_name || t('common.preview', 'Vista previa'))}",
       "file": "static/js/ofertas.js",
       "source": "js",
       "context": "text_assignment",
@@ -9224,18 +12646,6 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_estado_descripcion_estado.7c48e4c8",
-      "text": "${escapeHtml(estado.descripcion_estado)}",
-      "file": "static/js/ofertas.js",
-      "source": "js",
-      "context": "text_assignment",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
       "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_filterplaceholder.10412b57",
       "text": "${escapeHtml(filterPlaceholder)}",
       "file": "static/js/ofertas.js",
@@ -9248,8 +12658,8 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_isactive_estado_activo_en_sidebar_y_p.4a8038b9",
-      "text": "${escapeHtml(isActive ? 'Estado activo en sidebar y procesos' : 'Estado inactivo: solo visible en administración')}",
+      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_isactive_t_literal_states_active_titl.b47c7147",
+      "text": "${escapeHtml(isActive ? t('literal.states.active_title', 'Estado activo en sidebar y procesos') : t('literal.states.inactive_title', 'Estado inactivo: solo visible en administración'))}",
       "file": "static/js/ofertas.js",
       "source": "js",
       "context": "text_assignment",
@@ -9308,8 +12718,8 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.text_assignment.guardando.a4f6a6ff",
-      "text": "Guardando...",
+      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_translatedcolumnlabel.8b952464",
+      "text": "${escapeHtml(translatedColumnLabel)}",
       "file": "static/js/ofertas.js",
       "source": "js",
       "context": "text_assignment",
@@ -9320,59 +12730,11 @@
       }
     },
     {
-      "generated_key": "auto.static.js.ofertas.js.text_assignment.vista_previa.f9938cfa",
-      "text": "Vista previa",
+      "generated_key": "auto.static.js.ofertas.js.text_assignment.escapehtml_translatedstatelabel.4ee91135",
+      "text": "${escapeHtml(translatedStateLabel)}",
       "file": "static/js/ofertas.js",
       "source": "js",
       "context": "text_assignment",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.templates.index.html.aria_label.cerrar_chat.b43d320e",
-      "text": "Cerrar chat",
-      "file": "templates/index.html",
-      "source": "html",
-      "context": "aria_label",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.templates.index.html.aria_label.cerrar_hist_rico.496d40d1",
-      "text": "Cerrar histórico",
-      "file": "templates/index.html",
-      "source": "html",
-      "context": "aria_label",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.templates.index.html.aria_label.enviar_mensaje.e0a2c83b",
-      "text": "Enviar mensaje",
-      "file": "templates/index.html",
-      "source": "html",
-      "context": "aria_label",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.templates.index.html.placeholder.escribe_un_mensaje.deb1e62d",
-      "text": "Escribe un mensaje...",
-      "file": "templates/index.html",
-      "source": "html",
-      "context": "placeholder",
       "present_in": {
         "es": true,
         "en": true,
@@ -9512,6 +12874,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.alta_y_mantenimiento_de_departamentos_disponible.db6972de",
+      "text": "Alta y mantenimiento de departamentos disponibles para usuarios y estados.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.alta_y_mantenimiento_de_estados_junto_con_la_con.8b7574fd",
       "text": "Alta y mantenimiento de estados, junto con la configuración de columnas visibles para cada uno.",
       "file": "templates/index.html",
@@ -9526,6 +12900,30 @@
     {
       "generated_key": "auto.templates.index.html.text.alta_y_mantenimiento_de_proyectos_disponibles_pa.492b9043",
       "text": "Alta y mantenimiento de proyectos disponibles para el formulario ETC.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.alta_y_mantenimiento_del_cat_logo_bom_disponible.add7d549",
+      "text": "Alta y mantenimiento del catálogo BOM disponible para enlazarlo a las ofertas.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.anadir_materiales.7d0e56f3",
+      "text": "Anadir materiales",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9632,6 +13030,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.cambios_sin_guardar.fb26595e",
+      "text": "Cambios sin guardar",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.cancelar.4b597b35",
       "text": "Cancelar",
       "file": "templates/index.html",
@@ -9656,8 +13066,8 @@
       }
     },
     {
-      "generated_key": "auto.templates.index.html.text.centro_de_oferta.3abdbbb5",
-      "text": "Centro de oferta",
+      "generated_key": "auto.templates.index.html.text.catalogo_de_materiales.45d36725",
+      "text": "Catalogo de materiales",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9668,8 +13078,8 @@
       }
     },
     {
-      "generated_key": "auto.templates.index.html.text.chat_oferta.21d07480",
-      "text": "Chat · Oferta",
+      "generated_key": "auto.templates.index.html.text.centro_de_oferta.3abdbbb5",
+      "text": "Centro de oferta",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9812,8 +13222,32 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.crear_bom.d25450b9",
+      "text": "Crear BOM",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.crear_cliente.7bf642fd",
       "text": "Crear cliente",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.crear_departamento.ded8b455",
+      "text": "Crear departamento",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9850,18 +13284,6 @@
     {
       "generated_key": "auto.templates.index.html.text.critica.96f19057",
       "text": "CRITICA",
-      "file": "templates/index.html",
-      "source": "html",
-      "context": "text",
-      "present_in": {
-        "es": true,
-        "en": true,
-        "cs": true
-      }
-    },
-    {
-      "generated_key": "auto.templates.index.html.text.departamento.77b8f207",
-      "text": "+ Departamento",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9956,8 +13378,8 @@
       }
     },
     {
-      "generated_key": "auto.templates.index.html.text.diferencia.231ec36e",
-      "text": "Diferencia",
+      "generated_key": "auto.templates.index.html.text.dominio.5dd2c08a",
+      "text": "Dominio",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -9968,8 +13390,8 @@
       }
     },
     {
-      "generated_key": "auto.templates.index.html.text.dominio.5dd2c08a",
-      "text": "Dominio",
+      "generated_key": "auto.templates.index.html.text.editar.15173342",
+      "text": "Editar",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -10220,6 +13642,30 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.gestionar_materiales_bom.1ae68093",
+      "text": "Gestionar materiales BOM",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.guardar.2b3e7086",
+      "text": "Guardar",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.guardar_cambio_de_estado.387edbf4",
       "text": "Guardar cambio de estado",
       "file": "templates/index.html",
@@ -10328,6 +13774,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.has_realizado_cambios_en_el_formulario_etc_y_no.ae8103c0",
+      "text": "Has realizado cambios en el formulario ETC y no se han guardado. Si continúas, se perderán. ¿Quieres cerrar igualmente?",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.hist_rico.c3338565",
       "text": "Histórico",
       "file": "templates/index.html",
@@ -10390,6 +13848,18 @@
     {
       "generated_key": "auto.templates.index.html.text.incoterm.1ac78ffb",
       "text": "Incoterm",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.informacion_etc.6d954396",
+      "text": "Informacion ETC",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -10496,6 +13966,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.modificar.613db26e",
+      "text": "Modificar",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.muestra_campos_de_menor_uso_detectados_en_el_his.862ec48e",
       "text": "Muestra campos de menor uso detectados en el histórico del Excel.",
       "file": "templates/index.html",
@@ -10556,8 +14038,32 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.no_hay_bom_creados_todav_a.b733b2c9",
+      "text": "No hay BOM creados todavía.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.no_hay_clientes_creados_todav_a.a614ae54",
       "text": "No hay clientes creados todavía.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.no_hay_departamentos_creados_todav_a.17241aa4",
+      "text": "No hay departamentos creados todavía.",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -10630,6 +14136,18 @@
     {
       "generated_key": "auto.templates.index.html.text.nombre_del_cliente.d23a2ed4",
       "text": "Nombre del cliente",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.nombre_del_departamento.ea6f36a5",
+      "text": "Nombre del departamento",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -10940,6 +14458,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.pulsa_aceptar_para_descartar_los_cambios_o_cance.54a6c197",
+      "text": "Pulsa aceptar para descartar los cambios o cancelar para seguir editando.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.qui_n_lo_env_a.3a248315",
       "text": "QUIÉN LO ENVÍA",
       "file": "templates/index.html",
@@ -11216,8 +14746,20 @@
       }
     },
     {
-      "generated_key": "auto.templates.index.html.text.todavia_no_hay_mensajes_en_este_chat.e1c9a1a4",
-      "text": "Todavia no hay mensajes en este chat.",
+      "generated_key": "auto.templates.index.html.text.todavia_no_hay_bom_seleccionados_para_esta_ofert.6f82456c",
+      "text": "Todavia no hay BOM seleccionados para esta oferta.",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.todavia_no_hay_materiales_bom_anadidos_a_esta_of.c93fa0cc",
+      "text": "Todavia no hay materiales BOM anadidos a esta oferta.",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -11276,6 +14818,18 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.usar_precio_catalogo.cb1dc687",
+      "text": "Usar precio catalogo",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.usuario_del_departamento.c1ac4041",
       "text": "Usuario del departamento",
       "file": "templates/index.html",
@@ -11300,8 +14854,32 @@
       }
     },
     {
+      "generated_key": "auto.templates.index.html.text.ver_bom.8445369b",
+      "text": "Ver BOM",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
       "generated_key": "auto.templates.index.html.text.ver_clientes.9b88ac3d",
       "text": "Ver clientes",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.ver_departamentos.20d020fd",
+      "text": "Ver departamentos",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",
@@ -11350,6 +14928,18 @@
     {
       "generated_key": "auto.templates.index.html.text.vista_previa.fe2c919f",
       "text": "Vista previa",
+      "file": "templates/index.html",
+      "source": "html",
+      "context": "text",
+      "present_in": {
+        "es": true,
+        "en": true,
+        "cs": true
+      }
+    },
+    {
+      "generated_key": "auto.templates.index.html.text.volver.f24e9f51",
+      "text": "Volver",
       "file": "templates/index.html",
       "source": "html",
       "context": "text",

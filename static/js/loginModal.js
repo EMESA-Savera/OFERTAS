@@ -4,7 +4,7 @@
 // Configuración global
 const LOGIN_MODAL_CONFIG = {
   AUTO_CHECK_INTERVAL: 30000, // Verificar cada 30 segundos si hay usuario
-  REDIRECT_DELAY: 1500, // Delay antes de redireccionar después del login exitoso
+  REDIRECT_DELAY: 150, // Delay mínimo para mostrar confirmación antes de continuar
   STYLES_LOADED: false
 };
 
@@ -317,23 +317,29 @@ async function handleLoginSubmit(event) {
       
       // Mostrar mensaje de éxito
       showLoginMessage(`${t('¡Bienvenido')}, ${userData.nombre || userData.num_operario}!`, 'success');
-      
-      // Ocultar modal después de un breve delay
-      setTimeout(async () => {
+
+      let outlookRequirement = { requiresRedirect: false };
+      try {
+        outlookRequirement = await ensureOutlookConnectedAfterLogin();
+      } catch (error) {
+        console.warn('No se pudo comprobar la conexión obligatoria de Outlook:', error);
+      }
+
+      if (outlookRequirement.requiresRedirect && outlookRequirement.loginUrl) {
         hideLoginModal();
-        
-        // Esperar a que el modal de login se anime completamente
-        await new Promise(resolve => setTimeout(resolve, 300));
-        // Flujo híbrido: NO solicitar credenciales aquí.
-        // OAuth2 se pedirá únicamente cuando una acción lo requiera.
-        
+        window.location.href = outlookRequirement.loginUrl;
+        return;
+      }
+
+      setTimeout(() => {
+        hideLoginModal();
+
         // Emitir evento personalizado para notificar a la página (carga datos sin reload)
-        window.dispatchEvent(new CustomEvent('userLoggedIn', { 
-          detail: userData 
+        window.dispatchEvent(new CustomEvent('userLoggedIn', {
+          detail: userData
         }));
-        
+
         console.log('✅ Usuario autenticado exitosamente:', userData.num_operario);
-        
       }, LOGIN_MODAL_CONFIG.REDIRECT_DELAY);
       
     } else {
@@ -356,6 +362,37 @@ async function handleLoginSubmit(event) {
     btnText.style.display = 'inline';
     spinner.style.display = 'none';
   }
+}
+
+async function ensureOutlookConnectedAfterLogin() {
+  const response = await fetch('/api/outlook/status', { credentials: 'same-origin' });
+  if (response.status === 401) {
+    throw new Error('La sesión ha caducado después del login.');
+  }
+
+  const result = await response.json();
+  if (!response.ok || result.success === false) {
+    throw new Error(result.message || 'No se pudo consultar el estado de Outlook');
+  }
+
+  if (!result.configured || !result.available) {
+    return { requiresRedirect: false };
+  }
+
+  if (result.connected) {
+    outlookConnectionState = {
+      checked: true,
+      connected: true,
+      mailbox: result.mailbox || result.account?.username || '',
+      disconnectUrl: result.disconnect_url || '/api/outlook/disconnect'
+    };
+    return { requiresRedirect: false };
+  }
+
+  const loginUrl = result.login_url || '/auth/outlook/login';
+  const redirectUrl = new URL(loginUrl, window.location.origin);
+  redirectUrl.searchParams.set('open_outlook', '0');
+  return { requiresRedirect: true, loginUrl: redirectUrl.toString() };
 }
 
 // Función para mostrar mensajes en el modal

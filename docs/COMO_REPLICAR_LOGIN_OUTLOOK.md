@@ -55,12 +55,15 @@ OAUTH_USE_SYSTEM_TRUST_STORE=1
 
 SESSION_SECRET=<flask-secret>
 SESSION_COOKIE_SAMESITE=Lax
+SESSION_COOKIE_SECURE=true
 
 CORS_ALLOWED_ORIGINS=https://<host-productivo>:3548
 
 HOST=0.0.0.0
 PORT=3548
 AUTO_GENERATE_SSL_CERT=0
+SSL_CERT_FILE=cert_chain.pem
+SSL_KEY_FILE=key.pem
 ```
 
 ### Que significa cada bloque en produccion
@@ -101,6 +104,17 @@ AUTO_GENERATE_SSL_CERT=0
 
 - en produccion DECOCAB no genera certificados autofirmados
 - se espera usar `cert.pem` y `key.pem` reales en el servidor
+
+`SSL_CERT_FILE` y `SSL_KEY_FILE`
+
+- fijan de forma explicita que certificado y clave debe servir el backend
+- evita depender de nombres por defecto o de ficheros sobrantes dejados junto al ejecutable
+- si dispones de `cert_chain.pem`, es preferible usarlo frente a `cert.pem` para entregar la cadena completa
+
+`SESSION_COOKIE_SECURE=true`
+
+- obliga a que la cookie de sesion solo viaje por HTTPS
+- en un despliegue productivo con TLS no deberia dejarse en `false`
 
 ## Componentes que participan en produccion
 
@@ -467,9 +481,12 @@ OAUTH_SCOPES=https://graph.microsoft.com/.default
 OAUTH_CACHE_DIR=C:/ProgramData/MiApp/data/oauth
 OAUTH_USE_SYSTEM_TRUST_STORE=1
 SESSION_SECRET=...
+SESSION_COOKIE_SECURE=true
 HOST=0.0.0.0
 PORT=3548
 AUTO_GENERATE_SSL_CERT=0
+SSL_CERT_FILE=cert_chain.pem
+SSL_KEY_FILE=key.pem
 ```
 
 ## Paso D. Implementar backend OAuth server-side

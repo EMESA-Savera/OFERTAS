@@ -60,7 +60,7 @@ Si la aplicacion no usa OAuth o no dispone de una variable como `AUTO_GENERATE_S
 Nota especifica de este proyecto:
 
 - Si se arranca desde codigo con `python api/app_ofertas.py` o `python app_ofertas.py`, el proyecto debe ejecutarse con `APP_ENV=production` o `FLASK_ENV=production` para que tambien cargue `.env.production`.
-- En esa modalidad, este proyecto toma `SSL_CERT_FILE=certificados_ofertas/cert.pem` y `SSL_KEY_FILE=certificados_ofertas/key.pem`, por lo que no debe caer en certificados `adhoc` temporales.
+- En esa modalidad, este proyecto toma `SSL_CERT_FILE=certificados_ofertas/cert_chain.pem` y `SSL_KEY_FILE=certificados_ofertas/key.pem`, por lo que no debe caer en certificados `adhoc` temporales y sirve la cadena completa cuando existe.
 - Si al arrancar se observa `https://localhost:3010` en vez de la IP publica, o si vuelve a pedirse confianza tras reiniciar, revisar primero que no se este usando solo `.env` sin `.env.production`.
 
 ## Paso 4. Instalar la CA raiz en clientes Windows

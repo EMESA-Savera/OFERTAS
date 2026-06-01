@@ -43,8 +43,9 @@
 
       <!-- Importación de correo: mismo comportamiento, menor altura visual -->
       <section class="mail-import-card mail-import-card--compact" aria-labelledby="mailImportTitle">
-        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml o .msg" data-translate-key-aria-label="offer.mail_import_aria">
-          <input id="mailFileInput" type="file" accept=".eml,.msg,message/rfc822" hidden />
+        <p class="mail-import-card__subtle-note" data-translate-key="offer.outlook_new_download_hint">Si usas Outlook nuevo, descargar el correo (.eml) da mayor precisión.</p>
+        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml" data-translate-key-aria-label="offer.mail_import_aria">
+          <input id="mailFileInput" type="file" accept=".eml,message/rfc822" hidden />
           <span class="mail-dropzone__icon" aria-hidden="true">✉️</span>
           <div class="mail-dropzone__content">
             <strong data-translate-key="offer.mail_drop_title">Arrastra aquí el correo</strong>
@@ -84,6 +85,8 @@
             </select>
           </div>
 
+          
+
           <div class="form-field field-group field-group--wide field-group--desktop-span-2">
             <label for="emisor" data-translate-key="offer.fields.sender">QUIÉN LO ENVÍA</label>
             <input id="emisor" name="emisor" class="input-compact" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" pattern=".*@.*" title="Indica al menos un correo electrónico válido" data-translate-key-title="literal.valid_email_title" required />
@@ -116,7 +119,7 @@
             <div>
               <p class="page-eyebrow" data-translate-key="literal.etc.acronym">ETC</p>
               <h2 id="ofertaEtcModalTitle" data-translate-key="literal.etc.step_title">Paso 2: completar ETC</h2>
-              <p class="form-help" data-translate-key="literal.etc.saved_header_help">La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.</p>
+              <p id="ofertaEtcModalHelp" class="form-help" data-translate-key="literal.etc.saved_header_help">La cabecera de la oferta ya está guardada. Completa ahora los datos ETC para finalizar el proceso.</p>
             </div>
             <button class="oferta-modal__close" type="button" data-close-oferta-etc-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
           </div>
@@ -150,7 +153,7 @@
 
               <div class="form-field">
                 <label for="ofertaEtcIncoterm" data-translate-key="literal.etc.incoterm">Incoterm</label>
-                <input id="ofertaEtcIncoterm" name="incoterm" type="text" maxlength="10" required />
+                <input id="ofertaEtcIncoterm" name="incoterm" type="text" maxlength="50" value="EXW Ostrava" readonly />
               </div>
 
               <div class="form-field form-field--span-2">
@@ -163,10 +166,10 @@
               <div class="form-field">
                 <label for="ofertaEtcPrioridad" data-translate-key="literal.etc.priority">Prioridad</label>
                 <select id="ofertaEtcPrioridad" name="prioridad">
-                  <option value="NORMAL">NORMAL</option>
-                  <option value="BAJA">BAJA</option>
-                  <option value="ALTA">ALTA</option>
-                  <option value="CRITICA">CRITICA</option>
+                  <option value="NORMAL" data-translate-key="literal.etc.priority_normal">NORMAL</option>
+                  <option value="BAJA" data-translate-key="literal.etc.priority_low">BAJA</option>
+                  <option value="ALTA" data-translate-key="literal.etc.priority_high">ALTA</option>
+                  <option value="CRITICA" data-translate-key="literal.etc.priority_critical">CRITICA</option>
                 </select>
               </div>
 
@@ -178,12 +181,12 @@
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcCodigoInterno" data-translate-key="literal.etc.internal_code">Código interno</label>
+                <label for="ofertaEtcCodigoInterno" data-translate-key="literal.etc.internal_code">Material number</label>
                 <input id="ofertaEtcCodigoInterno" name="codigo_interno_oferta" type="text" maxlength="100" />
               </div>
 
               <div class="form-field">
-                <label for="ofertaEtcNumeroComision" data-translate-key="literal.etc.commission_number">Número comisión</label>
+                <label for="ofertaEtcNumeroComision" data-translate-key="literal.etc.commission_number">Commision number</label>
                 <input id="ofertaEtcNumeroComision" name="numero_comision" type="text" maxlength="100" />
               </div>
 
@@ -202,6 +205,16 @@
               <div class="form-field">
                 <label for="ofertaEtcPedidoB2b" data-translate-key="literal.etc.b2b_order">Pedido B2B</label>
                 <input id="ofertaEtcPedidoB2b" name="pedido_b2b" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcSalesOrdersSelect" data-translate-key="literal.etc.sales_orders">Sales Orders</label>
+                <input id="ofertaEtcSalesOrdersSelect" name="sales_orders" type="text" maxlength="100" />
+              </div>
+
+              <div class="form-field">
+                <label for="ofertaEtcRequestDeliveryDateInput" data-translate-key="literal.etc.request_delivery_date">Request Delivery Date</label>
+                <input id="ofertaEtcRequestDeliveryDateInput" name="request_delivery_date" type="date" />
               </div>
 
               <div class="form-field">
@@ -241,8 +254,9 @@
             </div>
 
             <div class="form-actions">
-              <button class="btn-primary" type="submit" data-translate-key="literal.etc.save_and_finish">Guardar ETC y finalizar</button>
-              <button class="btn-secondary" type="button" data-close-oferta-etc-modal="true" data-translate-key="common.cancel">Cancelar</button>
+              <button id="ofertaEtcEditButton" class="btn-secondary" type="button" hidden>Modificar</button>
+              <button id="ofertaEtcSubmitButton" class="btn-primary" type="submit" data-translate-key="literal.etc.save_and_finish">Guardar ETC y finalizar</button>
+              <button id="ofertaEtcCancelButton" class="btn-secondary" type="button" data-close-oferta-etc-modal="true" data-translate-key="common.cancel">Cancelar</button>
             </div>
           </form>
 
@@ -388,6 +402,25 @@
           </div>
         </div>
 
+        <div id="ofertaEtcUnsavedPrompt" class="top-confirm" aria-hidden="true">
+          <div class="top-confirm__backdrop" data-close-oferta-etc-unsaved-prompt="true"></div>
+          <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="ofertaEtcUnsavedPromptTitle" aria-describedby="ofertaEtcUnsavedPromptMessage">
+            <div class="top-confirm__header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="literal.etc.acronym">ETC</p>
+                <h2 id="ofertaEtcUnsavedPromptTitle" data-translate-key="literal.etc.unsaved_changes_title">Cambios sin guardar</h2>
+              </div>
+              <button class="top-confirm__close" type="button" data-close-oferta-etc-unsaved-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+            <p id="ofertaEtcUnsavedPromptMessage" class="top-confirm__message" data-translate-key="literal.etc.unsaved_changes_confirm">Has realizado cambios en el formulario ETC y no se han guardado. Si continúas, se perderán. ¿Quieres cerrar igualmente?</p>
+            <p class="top-confirm__hint" data-translate-key="literal.etc.unsaved_changes_hint">Pulsa aceptar para descartar los cambios o cancelar para seguir editando.</p>
+            <div class="top-confirm__actions">
+              <button id="ofertaEtcUnsavedPromptConfirm" class="btn-inline btn-inline--save" type="button" data-confirm-oferta-etc-unsaved-prompt="true" data-translate-key="common.confirm">Aceptar</button>
+              <button class="btn-inline btn-inline--cancel" type="button" data-close-oferta-etc-unsaved-prompt="true" data-translate-key="common.cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
         <div id="ofertaEditModal" class="oferta-modal" aria-hidden="true">
           <div class="oferta-modal__backdrop" data-close-oferta-modal="true"></div>
           <div class="oferta-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="ofertaEditModalTitle">
@@ -429,6 +462,12 @@
                   <select id="ofertaEditCliente" name="id_cliente"></select>
                 </div>
 
+                <div class="form-field">
+                  <span data-translate-key="literal.bom.acronym">BOM</span>
+                  <button id="ofertaEditBomButton" class="btn-secondary" type="button" data-bom-oferta="" data-translate-key="literal.bom.manage_offer_materials">Gestionar materiales BOM</button>
+                  <p id="ofertaEditBomSummary" class="form-help">Todavia no hay BOM seleccionados para esta oferta.</p>
+                </div>
+
                 <div class="form-field form-field--span-2">
                   <label for="ofertaEditEmisor" data-translate-key="offer.fields.sender">QUIÉN LO ENVÍA</label>
                   <input id="ofertaEditEmisor" name="emisor" type="text" maxlength="500" placeholder="Nombre <correo@empresa.com>" data-translate-key-placeholder="offer.sender_placeholder" />
@@ -462,14 +501,17 @@
             </div>
 
             <div id="offerCenterRoot" class="offer-center">
-              <div class="offer-center__content">
+              <div id="offerCenterMainView" class="offer-center__content">
                 <section class="offer-center__hero" aria-labelledby="offerCenterHeroTitle">
                   <div class="offer-center__hero-main">
                     <p class="page-eyebrow" data-translate-key="offer.offer_label">Oferta</p>
                     <div id="offerCenterHeroMeta" class="offer-center__meta"></div>
                     <h3 id="offerCenterHeroTitle" class="offer-center__number">-</h3>
                   </div>
-                  <div id="offerCenterHeroBadges" class="offer-center__badges"></div>
+                  <div class="offer-center__hero-side">
+                    <div id="offerCenterHeroActions" class="offer-center__hero-actions"></div>
+                    <div id="offerCenterHeroBadges" class="offer-center__badges"></div>
+                  </div>
                 </section>
 
                 <section class="offer-center__section" aria-labelledby="offerCenterEmailTitle">
@@ -478,37 +520,31 @@
                   </div>
                   <div id="offerCenterEmailGrid" class="offer-center__email-grid"></div>
                 </section>
+
               </div>
 
-              <aside id="offerCenterChatPanel" class="offer-center__chat" aria-hidden="true">
-                <div class="offer-center__chat-header">
-                  <div>
-                    <h3 id="offerCenterChatTitle" data-translate-key="offer.chat_title">Chat · Oferta</h3>
+              <div id="offerCenterEtcView" class="offer-center__content" hidden>
+                <section class="offer-center__section" aria-labelledby="offerCenterEtcTitle">
+                  <div class="offer-center__section-header">
+                    <div>
+                      <p class="page-eyebrow" data-translate-key="literal.etc.acronym">ETC</p>
+                      <h3 id="offerCenterEtcTitle" data-translate-key="literal.etc.info_title">Informacion ETC</h3>
+                    </div>
+                    <div class="offer-center__section-actions">
+                      <button class="btn-inline btn-inline--edit btn-inline--compact" type="button" data-offer-center-action="edit-etc" data-translate-key="common.edit">Editar</button>
+                      <button class="btn-inline btn-inline--compact" type="button" data-close-offer-center-etc-view="true" data-translate-key="common.back">Volver</button>
+                    </div>
                   </div>
-                  <button class="oferta-modal__close offer-center__chat-close" type="button" data-close-offer-chat-panel="true" aria-label="Cerrar chat" data-translate-key-aria-label="offer.close_chat">×</button>
-                </div>
+                  <div id="offerCenterEtcContent" class="offer-center__etc-grid"></div>
+                  <div id="offerCenterEtcEditorHost" class="offer-center__etc-editor-host" hidden></div>
+                </section>
+              </div>
 
-                <div id="offerCenterChatMessages" class="offer-center__chat-messages">
-                  <p class="offer-center__chat-empty" data-translate-key="offer.chat_empty">Todavia no hay mensajes en este chat.</p>
-                </div>
-
-                <form id="offerCenterChatForm" class="offer-center__chat-form" autocomplete="off">
-                  <label class="offer-center__chat-field" for="offerCenterChatInput">
-                    <textarea id="offerCenterChatInput" rows="1" maxlength="2000" placeholder="Escribe un mensaje..." data-translate-key-placeholder="offer.chat_placeholder"></textarea>
-                  </label>
-                  <div class="offer-center__chat-actions">
-                    <button id="offerCenterChatSubmit" class="offer-center__chat-submit" type="submit" aria-label="Enviar mensaje" data-translate-key-aria-label="offer.chat_send">
-                      <svg viewBox="0 0 24 24" width="18" height="18" focusable="false" aria-hidden="true">
-                        <path d="M3 20 21 12 3 4l3.8 6.4L14 12l-7.2 1.6L3 20Z" fill="currentColor"></path>
-                      </svg>
-                    </button>
-                  </div>
-                </form>
-              </aside>
+              <!-- Chat interno desactivado temporalmente. -->
             </div>
 
             <div id="offerCenterFeedback" class="form-feedback" aria-live="polite"></div>
-            <input id="offerCenterAttachmentInput" type="file" multiple hidden accept=".pdf,.csv,.xls,.xlsx,.xlsm,.ods,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip,.7z,.rar,.eml,.msg" />
+            <input id="offerCenterAttachmentInput" type="file" multiple hidden accept=".pdf,.csv,.xls,.xlsx,.xlsm,.ods,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip,.7z,.rar,.eml" />
           </div>
         </div>
 
@@ -636,6 +672,36 @@
 
         <div id="bomModal" class="oferta-modal" aria-hidden="true">
           <div class="oferta-modal__backdrop" data-close-bom-modal="true"></div>
+          <div id="bomCatalogPicker" class="oferta-modal__dialog oferta-modal__dialog--bom-picker bom-modal__picker" role="dialog" aria-modal="false" aria-labelledby="bomCatalogPickerTitle" hidden>
+            <div class="bom-modal__picker-header">
+              <div>
+                <p class="page-eyebrow" data-translate-key="literal.bom.acronym">BOM</p>
+                <h3 id="bomCatalogPickerTitle" data-translate-key="literal.bom.catalog_title">Catalogo de materiales</h3>
+              </div>
+              <button class="oferta-modal__close oferta-modal__close--inline" type="button" data-close-bom-picker="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+            </div>
+            <label class="bom-modal__search" for="bomSearchInput">
+              <span data-translate-key="literal.bom.search_material">Buscar material</span>
+              <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
+            </label>
+            <div class="clientes-table-wrap bom-modal__table-wrap bom-modal__table-wrap--picker">
+              <table class="clientes-table bom-table bom-table--picker">
+                <thead>
+                  <tr>
+                    <th data-translate-key="literal.bom.material">Material</th>
+                    <th data-translate-key="literal.bom.current_price">Precio actual</th>
+                    <th data-translate-key="table.actions">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="bomCatalogBody">
+                  <tr>
+                    <td colspan="3" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           <div class="oferta-modal__dialog oferta-modal__dialog--bom" role="dialog" aria-modal="true" aria-labelledby="bomModalTitle">
             <div class="oferta-modal__header">
               <div>
@@ -647,12 +713,8 @@
             </div>
 
             <div class="bom-modal__toolbar">
-              <label class="bom-modal__search" for="bomSearchInput">
-                <span data-translate-key="literal.bom.search_material">Buscar material</span>
-                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
-              </label>
+              <button id="bomOpenPickerButton" class="btn-primary" type="button" data-translate-key="literal.bom.add_materials_to_offer">Anadir materiales</button>
             </div>
-
             <section id="bomListView" class="bom-modal__view">
               <div class="clientes-table-wrap bom-modal__table-wrap">
                 <table class="clientes-table bom-table">
@@ -661,13 +723,12 @@
                       <th data-translate-key="literal.bom.material">Material</th>
                       <th data-translate-key="literal.bom.current_price">Precio actual</th>
                       <th data-translate-key="literal.bom.updated">Actualizado</th>
-                      <th data-translate-key="literal.bom.difference">Diferencia</th>
                       <th data-translate-key="table.actions">Acciones</th>
                     </tr>
                   </thead>
                   <tbody id="bomListBody">
                     <tr>
-                      <td colspan="5" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
+                      <td colspan="4" class="clientes-table__empty" data-translate-key="literal.bom.none_selected_for_offer">Todavia no hay BOM seleccionados para esta oferta.</td>
                     </tr>
                   </tbody>
                 </table>
@@ -697,12 +758,13 @@
                   <div class="form-field form-field--span-2">
                     <label for="bomEditNewPrice" data-translate-key="literal.bom.new_price">Nuevo precio</label>
                     <input id="bomEditNewPrice" name="precio" type="number" step="0.01" min="0" required />
-                    <p class="form-help" data-translate-key="literal.bom.insert_history_help">Se insertará un nuevo registro para mantener el histórico del material.</p>
+                    <p id="bomEditModeHelp" class="form-help" data-translate-key="literal.bom.insert_history_help">Se insertará un nuevo registro para mantener el histórico del material.</p>
                   </div>
                 </div>
 
                 <div class="form-actions">
                   <button class="btn-primary" type="submit" data-translate-key="literal.bom.save_new_price">Guardar nuevo precio</button>
+                  <button id="bomEditResetOverrideButton" class="btn-secondary" type="button" hidden data-translate-key="literal.bom.use_catalog_price">Usar precio catalogo</button>
                   <button class="btn-secondary" type="button" data-back-to-bom-list="true" data-translate-key="literal.bom.back_to_list">Volver al listado</button>
                 </div>
               </form>
@@ -729,6 +791,11 @@
           <span class="emesa-config-card__icon" aria-hidden="true">📌</span>
           <span class="emesa-config-card__title" data-translate-key="config.states">Estados</span>
         </button>
+
+        <button class="emesa-config-card" type="button" data-config-target="departamentos">
+          <span class="emesa-config-card__icon" aria-hidden="true">🏷️</span>
+          <span class="emesa-config-card__title" data-translate-key="literal.users.departments">Departamentos</span>
+        </button>
         <!--
         <button class="emesa-config-card" type="button" data-config-target="interacciones">
           <span class="emesa-config-card__icon" aria-hidden="true">🗂️</span>
@@ -743,6 +810,11 @@
         <button class="emesa-config-card" type="button" data-config-target="proyectos">
           <span class="emesa-config-card__icon" aria-hidden="true">🏗️</span>
           <span class="emesa-config-card__title" data-translate-key="literal.projects.title">Proyectos</span>
+        </button>
+
+        <button class="emesa-config-card" type="button" data-config-target="boms">
+          <span class="emesa-config-card__icon" aria-hidden="true">📦</span>
+          <span class="emesa-config-card__title" data-translate-key="config.boms">BOM</span>
         </button>
       </div>
     </div>
@@ -999,6 +1071,68 @@
   </main>
 </section>
 
+<section class="view-panel emesa-config-menu-view" data-view-panel="departamentos">
+  <main class="content-area content-area--config">
+    <section class="page-card page-card--clientes">
+      <div class="page-card__header">
+        <div>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1 data-translate-key="literal.users.departments">Departamentos</h1>
+          <p data-translate-key="literal.users.departments_description">Alta y mantenimiento de departamentos disponibles para usuarios y estados.</p>
+        </div>
+      </div>
+
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de departamentos" data-translate-key-aria-label="literal.users.departments_management">
+        <button class="clientes-toggle__button active" type="button" data-departamentos-mode="crear" aria-selected="true" data-translate-key="literal.users.department_prompt_title">Crear departamento</button>
+        <button class="clientes-toggle__button" type="button" data-departamentos-mode="ver" aria-selected="false" data-translate-key="literal.users.view_departments">Ver departamentos</button>
+      </div>
+
+      <section class="clientes-mode-panel active" data-departamentos-mode-panel="crear">
+        <form id="departamentoCreateForm" class="cliente-form" autocomplete="off">
+          <div class="form-field form-field--span-2">
+            <label for="departamento_nombre" data-translate-key="literal.users.department_prompt_label">Nombre del departamento</label>
+            <input id="departamento_nombre" name="nombre_departamento" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el nombre del departamento" data-translate-key-placeholder="literal.users.department_prompt_placeholder" required />
+          </div>
+
+          <div class="form-field form-field--span-2">
+            <label for="departamento_descripcion" data-translate-key="table.description">Descripción</label>
+            <textarea id="departamento_descripcion" name="descripcion" rows="3" maxlength="500" placeholder="Añade una descripción opcional" data-translate-key-placeholder="literal.users.department_description_placeholder"></textarea>
+          </div>
+
+          <div class="form-actions form-actions--start">
+            <button class="btn-primary" type="submit" data-translate-key="common.save">Guardar</button>
+          </div>
+        </form>
+
+        <div id="departamentoCreateFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="clientes-mode-panel" data-departamentos-mode-panel="ver">
+        <div class="clientes-table-wrap">
+          <table class="clientes-table">
+            <thead>
+              <tr>
+                <th data-translate-key="literal.table.id">ID</th>
+                <th data-translate-key="table.department">Departamento</th>
+                <th data-translate-key="table.description">Descripción</th>
+                <th data-translate-key="literal.states.active">Activo</th>
+                <th data-translate-key="table.actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="departamentosTableBody">
+              <tr>
+                <td colspan="5" class="clientes-table__empty">No hay departamentos creados todavía.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="departamentosTableFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+</section>
+
 <section class="view-panel emesa-config-menu-view" data-view-panel="usuarios">
   <main class="content-area content-area--config">
     <section class="page-card page-card--clientes">
@@ -1044,12 +1178,9 @@
 
             <div class="form-field form-field--span-2">
               <label for="user_departamentos" data-translate-key="literal.users.departments">Departamento</label>
-              <div class="form-actions form-actions--start">
-                <select id="user_departamentos" name="id_departamento">
-                  <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
-                </select>
-                <button id="addDepartmentButton" class="btn-secondary" type="button" data-translate-key="literal.users.add_department">+ Departamento</button>
-              </div>
+              <select id="user_departamentos" name="id_departamento">
+                <option value="" data-translate-key="literal.etc.no_department">Sin departamento</option>
+              </select>
             </div>
           </div>
 
@@ -1059,29 +1190,6 @@
         </form>
 
         <div id="userCreateFeedback" class="form-feedback" aria-live="polite"></div>
-
-        <div id="departmentCreatePrompt" class="top-confirm" aria-hidden="true">
-          <div class="top-confirm__backdrop" data-close-create-department-prompt="true"></div>
-          <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="departmentCreatePromptTitle" aria-describedby="departmentCreatePromptMessage">
-            <div class="top-confirm__header">
-              <div>
-                <p class="page-eyebrow" data-translate-key="literal.users.add_department">+ Departamento</p>
-                <h2 id="departmentCreatePromptTitle" data-translate-key="literal.users.department_prompt_title">Crear departamento</h2>
-              </div>
-              <button class="top-confirm__close" type="button" data-close-create-department-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
-            </div>
-            <p id="departmentCreatePromptMessage" class="top-confirm__message" data-translate-key="literal.users.department_prompt_description">Indica el nombre del nuevo departamento.</p>
-            <div class="top-confirm__field">
-              <label for="departmentCreatePromptInput" data-translate-key="literal.users.department_prompt_label">Nombre del departamento</label>
-              <input id="departmentCreatePromptInput" class="top-confirm__input" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el nombre del departamento" data-translate-key-placeholder="literal.users.department_prompt_placeholder" />
-            </div>
-            <div id="departmentCreatePromptFeedback" class="form-feedback" aria-live="polite"></div>
-            <div class="top-confirm__actions">
-              <button id="departmentCreatePromptConfirm" class="btn-inline btn-inline--save" type="button" data-confirm-create-department-prompt="true" data-translate-key="common.save">Guardar</button>
-              <button class="btn-inline btn-inline--cancel" type="button" data-close-create-department-prompt="true" data-translate-key="common.cancel">Cancelar</button>
-            </div>
-          </div>
-        </div>
       </section>
 
       <section class="clientes-mode-panel" data-usuarios-mode-panel="ver">
@@ -1161,6 +1269,68 @@
         </div>
 
         <div id="proyectosTableFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+    </section>
+  </main>
+</section>
+
+<section class="view-panel emesa-config-menu-view" data-view-panel="boms">
+  <main class="content-area content-area--config">
+    <section class="page-card page-card--clientes">
+      <div class="page-card__header">
+        <div>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1 data-translate-key="config.boms">BOM</h1>
+          <p data-translate-key="config.boms_description">Alta y mantenimiento del catálogo BOM disponible para enlazarlo a las ofertas.</p>
+        </div>
+      </div>
+
+      <div class="clientes-toggle" role="tablist" aria-label="Gestión de BOM" data-translate-key-aria-label="config.boms_management">
+        <button class="clientes-toggle__button active" type="button" data-boms-mode="crear" aria-selected="true" data-translate-key="config.create_bom">Crear BOM</button>
+        <button class="clientes-toggle__button" type="button" data-boms-mode="ver" aria-selected="false" data-translate-key="config.view_boms">Ver BOM</button>
+      </div>
+
+      <section class="clientes-mode-panel active" data-boms-mode-panel="crear">
+        <form id="bomCreateForm" class="cliente-form" autocomplete="off">
+          <div class="form-field form-field--span-2">
+            <label for="bom_material" data-translate-key="literal.bom.material">Material</label>
+            <input id="bom_material" name="material" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el material BOM" data-translate-key-placeholder="config.bom_material_placeholder" required />
+          </div>
+
+          <div class="form-field">
+            <label for="bom_precio" data-translate-key="literal.bom.current_price">Precio actual</label>
+            <input id="bom_precio" name="precio" type="number" min="0" step="0.01" placeholder="0.00" required />
+          </div>
+
+          <div class="form-actions form-actions--start">
+            <button class="btn-primary" type="submit" data-translate-key="common.save">Guardar</button>
+          </div>
+        </form>
+
+        <div id="bomCreateFeedback" class="form-feedback" aria-live="polite"></div>
+      </section>
+
+      <section class="clientes-mode-panel" data-boms-mode-panel="ver">
+        <div class="clientes-table-wrap">
+          <table class="clientes-table">
+            <thead>
+              <tr>
+                <th data-translate-key="literal.table.id">ID</th>
+                <th data-translate-key="literal.bom.material">Material</th>
+                <th data-translate-key="literal.bom.current_price">Precio actual</th>
+                <th data-translate-key="literal.bom.updated">Actualizado</th>
+                <th data-translate-key="table.actions">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="bomsTableBody">
+              <tr>
+                <td colspan="5" class="clientes-table__empty" data-translate-key="config.boms_empty">No hay BOM creados todavía.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="bomsTableFeedback" class="form-feedback" aria-live="polite"></div>
       </section>
     </section>
   </main>

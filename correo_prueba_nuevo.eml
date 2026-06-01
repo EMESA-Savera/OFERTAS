@@ -1,0 +1,46 @@
+From: "Cliente Prueba" <cliente.prueba@example.com>
+To: "Ofertas" <ofertas@example.com>
+Subject: Solicitud de oferta - prueba drag and drop
+Date: Thu, 28 May 2026 10:30:00 +0200
+Message-ID: <correo-prueba-20260528-103000@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="boundary_prueba_001"
+
+--boundary_prueba_001
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+Hola,
+
+Necesitamos una oferta para el proyecto de prueba.
+
+Datos:
+- Cliente: Cliente Prueba S.L.
+- Referencia: TEST-OFERTA-001
+- Fecha limite: 05/06/2026
+
+Gracias.
+
+Un saludo,
+Cliente Prueba
+
+--boundary_prueba_001
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: 8bit
+
+<html>
+  <body>
+    <p>Hola,</p>
+    <p>Necesitamos una oferta para el proyecto de prueba.</p>
+    <p><strong>Datos:</strong></p>
+    <ul>
+      <li>Cliente: Cliente Prueba S.L.</li>
+      <li>Referencia: TEST-OFERTA-001</li>
+      <li>Fecha limite: 05/06/2026</li>
+    </ul>
+    <p>Gracias.</p>
+    <p>Un saludo,<br>Cliente Prueba</p>
+  </body>
+</html>
+
+--boundary_prueba_001--

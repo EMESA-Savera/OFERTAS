@@ -22,9 +22,8 @@ def collect_tree(source, target):
 
 
 datas = []
-datas += collect_tree("templates", "templates")
-datas += collect_tree("static", "static")
-datas += collect_tree("sql", "sql")
+for source_dir in ("templates", "static", "sql", "docs", "skills", "tools", "certificados_ofertas", "Instalaccion_Manual_CA_Windows"):
+    datas += collect_tree(source_dir, source_dir)
 
 for single_file in ("requirements.txt", ".env.production", ".env.example", "README.md"):
     file_path = project_root / single_file
@@ -66,7 +65,7 @@ exe = EXE(
     a.datas,
     [],
     exclude_binaries=False,
-    name="ofertassavera_v1",
+    name="ofertassaverav1.03",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

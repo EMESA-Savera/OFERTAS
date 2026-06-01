@@ -1,10 +1,6 @@
 import os
 import ssl
-import subprocess
-import threading
-import time
-from pathlib import Path
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 
 try:
@@ -37,10 +33,6 @@ APP_ONLY_SCOPE = ["https://graph.microsoft.com/.default"]
 _APP_ONLY_TOKEN_CACHE = {}
 RESERVED_DELEGATED_SCOPES = {"openid", "profile", "offline_access"}
 SYSTEM_TRUST_ENV_VARS = ("REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "SSL_CERT_FILE", "SSL_CERT_DIR")
-WINDOWS_CA_STORES = ("ROOT", "CA")
-FLOW_CACHE_TTL_SECONDS = 15 * 60
-_FLOW_STATE_CACHE = {}
-_FLOW_STATE_LOCK = threading.Lock()
 
 
 class _SSLContextAdapter(HTTPAdapter):
@@ -94,40 +86,6 @@ class OutlookGraphService:
             return "delegated"
         return None
 
-    @staticmethod
-    def _cache_auth_flow(flow_state, flow):
-        if not flow_state or not isinstance(flow, dict):
-            return
-
-        now = time.time()
-        with _FLOW_STATE_LOCK:
-            _FLOW_STATE_CACHE[flow_state] = {
-                "created_at": now,
-                "flow": flow,
-            }
-            expired_states = [
-                state
-                for state, entry in _FLOW_STATE_CACHE.items()
-                if now - entry.get("created_at", now) > FLOW_CACHE_TTL_SECONDS
-            ]
-            for state in expired_states:
-                _FLOW_STATE_CACHE.pop(state, None)
-
-    @staticmethod
-    def _pop_cached_auth_flow(flow_state):
-        if not flow_state:
-            return None
-
-        now = time.time()
-        with _FLOW_STATE_LOCK:
-            entry = _FLOW_STATE_CACHE.pop(flow_state, None)
-        if not entry:
-            return None
-        if now - entry.get("created_at", now) > FLOW_CACHE_TTL_SECONDS:
-            return None
-        flow = entry.get("flow")
-        return flow if isinstance(flow, dict) else None
-
     @classmethod
     def get_config(cls):
         redirect_uri = cls._getenv("OAUTH_REDIRECT_URI", "AZURE_REDIRECT_URI", "MICROSOFT_REDIRECT_URI", "OUTLOOK_REDIRECT_URI")
@@ -161,194 +119,14 @@ class OutlookGraphService:
     @classmethod
     def _get_transport_config(cls):
         ca_bundle = cls._getenv("OAUTH_CA_BUNDLE", "AZURE_CA_BUNDLE", "MICROSOFT_CA_BUNDLE")
-        auto_generate_ca_bundle = str(
-            cls._getenv("OAUTH_AUTO_GENERATE_CA_BUNDLE", "AZURE_AUTO_GENERATE_CA_BUNDLE", "MICROSOFT_AUTO_GENERATE_CA_BUNDLE")
-            or "1"
-        ).strip().lower() not in {"0", "false", "no", "off"}
         use_system_trust_store = str(
             cls._getenv("OAUTH_USE_SYSTEM_TRUST_STORE", "AZURE_USE_SYSTEM_TRUST_STORE", "MICROSOFT_USE_SYSTEM_TRUST_STORE")
             or ""
         ).strip().lower() in {"1", "true", "yes", "on"}
         return {
             "ca_bundle": ca_bundle,
-            "auto_generate_ca_bundle": auto_generate_ca_bundle,
             "use_system_trust_store": use_system_trust_store,
         }
-
-    @classmethod
-    def _read_certifi_bundle_text(cls):
-        try:
-            import certifi
-
-            bundle_path = Path(certifi.where()).resolve()
-            if bundle_path.exists() and bundle_path.is_file():
-                return bundle_path.read_text(encoding="utf-8", errors="ignore").strip()
-        except Exception:
-            return ""
-
-        return ""
-
-    @classmethod
-    def _try_export_windows_ca_bundle_via_powershell(cls, bundle_path):
-        if os.name != "nt":
-            return False
-
-        bundle_path = Path(bundle_path).expanduser().resolve()
-        bundle_path.parent.mkdir(parents=True, exist_ok=True)
-        powershell_exe = Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
-        executable = str(powershell_exe) if powershell_exe.exists() else "powershell.exe"
-        script = r"""
-$ErrorActionPreference = 'SilentlyContinue'
-$outputPath = $env:OFERTAS_CA_BUNDLE_OUT
-$outputDirectory = [System.IO.Path]::GetDirectoryName($outputPath)
-if ($outputDirectory) {
-    [System.IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
-}
-
-$lines = New-Object System.Collections.Generic.List[string]
-$seen  = New-Object 'System.Collections.Generic.HashSet[string]'
-$stores = @(
-    'Cert:\LocalMachine\Root',
-    'Cert:\LocalMachine\CA',
-    'Cert:\LocalMachine\AuthRoot',
-    'Cert:\CurrentUser\Root',
-    'Cert:\CurrentUser\CA',
-    'Cert:\CurrentUser\AuthRoot'
-)
-
-foreach ($store in $stores) {
-    if (-not (Test-Path $store)) { continue }
-    Get-ChildItem -Path $store -ErrorAction SilentlyContinue | ForEach-Object {
-        $tp = $_.Thumbprint
-        if (-not $tp -or -not $seen.Add($tp)) { return }
-        $b64 = [System.Convert]::ToBase64String($_.RawData, [System.Base64FormattingOptions]::InsertLineBreaks)
-        $lines.Add('-----BEGIN CERTIFICATE-----')
-        foreach ($l in ($b64 -split "`r?`n")) { if ($l) { $lines.Add($l) } }
-        $lines.Add('-----END CERTIFICATE-----')
-        $lines.Add('')
-    }
-}
-
-$script:liveCerts = New-Object System.Collections.Generic.List[System.Security.Cryptography.X509Certificates.X509Certificate2]
-try {
-    $prevCb = [System.Net.ServicePointManager]::ServerCertificateValidationCallback
-    [System.Net.ServicePointManager]::SecurityProtocol = `
-        [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls13
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = `
-        [System.Net.Security.RemoteCertificateValidationCallback]{
-            param($sender, $certificate, $chain, $sslPolicyErrors)
-            if ($chain -ne $null -and $chain.ChainElements.Count -gt 1) {
-                for ($i = 1; $i -lt $chain.ChainElements.Count; $i++) {
-                    $script:liveCerts.Add($chain.ChainElements[$i].Certificate)
-                }
-            }
-            return $true
-        }
-    $msftHosts = @('login.microsoftonline.com', 'graph.microsoft.com', 'login.microsoft.com')
-    foreach ($h in $msftHosts) {
-        try {
-            $req = [System.Net.WebRequest]::Create("https://$h")
-            $req.Method  = 'HEAD'
-            $req.Timeout = 8000
-            try { $resp = $req.GetResponse(); if ($resp) { $resp.Close() } } catch [System.Net.WebException] {}
-        } catch {}
-    }
-    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = $prevCb
-
-    foreach ($cert in $script:liveCerts) {
-        $tp = $cert.Thumbprint
-        if (-not $tp -or -not $seen.Add($tp)) { continue }
-        $b64 = [System.Convert]::ToBase64String($cert.RawData, [System.Base64FormattingOptions]::InsertLineBreaks)
-        $lines.Add('-----BEGIN CERTIFICATE-----')
-        foreach ($l in ($b64 -split "`r?`n")) { if ($l) { $lines.Add($l) } }
-        $lines.Add('-----END CERTIFICATE-----')
-        $lines.Add('')
-    }
-} catch {}
-
-[System.IO.File]::WriteAllLines($outputPath, $lines, [System.Text.UTF8Encoding]::new($false))
-Write-Output ('CERT_COUNT=' + $seen.Count)
-"""
-        try:
-            env = os.environ.copy()
-            env["OFERTAS_CA_BUNDLE_OUT"] = str(bundle_path)
-            result = subprocess.run(
-                [
-                    executable,
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-Command",
-                    script,
-                ],
-                capture_output=True,
-                text=True,
-                timeout=120,
-                check=False,
-                env=env,
-            )
-        except Exception:
-            return False
-
-        return result.returncode == 0 and bundle_path.exists() and bundle_path.stat().st_size > 0
-
-    @classmethod
-    def _try_build_windows_ca_bundle(cls, bundle_path):
-        if os.name != "nt":
-            return False
-
-        bundle_path = Path(bundle_path).expanduser().resolve()
-        bundle_path.parent.mkdir(parents=True, exist_ok=True)
-        certifi_text = cls._read_certifi_bundle_text()
-
-        if cls._try_export_windows_ca_bundle_via_powershell(bundle_path):
-            windows_text = bundle_path.read_text(encoding="utf-8", errors="ignore").strip()
-            merged = [part for part in (certifi_text, windows_text) if part]
-            if not merged:
-                return False
-            bundle_path.write_text("\n\n".join(merged).rstrip() + "\n", encoding="utf-8")
-            return True
-
-        pem_blocks = []
-        if certifi_text:
-            pem_blocks.append(certifi_text.rstrip() + "\n")
-
-        seen_blocks = set()
-        for store_name in WINDOWS_CA_STORES:
-            try:
-                for cert_bytes, encoding_type, _trust in ssl.enum_certificates(store_name):
-                    if encoding_type != "x509_asn":
-                        continue
-                    pem_block = ssl.DER_cert_to_PEM_cert(cert_bytes)
-                    if pem_block in seen_blocks:
-                        continue
-                    seen_blocks.add(pem_block)
-                    pem_blocks.append(pem_block.rstrip() + "\n")
-            except Exception:
-                continue
-
-        if not pem_blocks:
-            return False
-
-        bundle_path.write_text("\n".join(block.rstrip() for block in pem_blocks) + "\n", encoding="utf-8")
-        return True
-
-    @classmethod
-    def _resolve_ca_bundle_path(cls, ca_bundle, auto_generate):
-        if not ca_bundle:
-            return None
-
-        bundle_path = Path(ca_bundle).expanduser()
-        if bundle_path.exists() and bundle_path.is_file():
-            return str(bundle_path.resolve())
-
-        if auto_generate and cls._try_build_windows_ca_bundle(bundle_path):
-            regenerated = Path(ca_bundle).expanduser()
-            if regenerated.exists() and regenerated.is_file():
-                return str(regenerated.resolve())
-
-        raise OutlookGraphError(f"No se encuentra el bundle TLS de Microsoft: {ca_bundle}")
 
     @classmethod
     def _clear_inherited_ca_env_vars(cls):
@@ -363,15 +141,15 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
         transport = cls._get_transport_config()
         use_system_trust_store = transport["use_system_trust_store"]
         ca_bundle = transport["ca_bundle"]
-        auto_generate_ca_bundle = transport["auto_generate_ca_bundle"]
 
         if HTTPAdapter is None:
             raise OutlookGraphError("No se pudo inicializar el adaptador HTTPS para Microsoft Graph")
 
         try:
             if ca_bundle:
-                resolved_bundle = cls._resolve_ca_bundle_path(ca_bundle, auto_generate_ca_bundle)
-                ssl_context = ssl.create_default_context(cafile=resolved_bundle)
+                if not os.path.exists(ca_bundle):
+                    raise OutlookGraphError(f"No se encuentra el bundle TLS de Microsoft: {ca_bundle}")
+                ssl_context = ssl.create_default_context(cafile=ca_bundle)
             elif use_system_trust_store:
                 cls._clear_inherited_ca_env_vars()
                 if truststore is None:
@@ -547,7 +325,6 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
         cls._persist_token_cache(session_store, cache)
         flow_state = str(flow.get("state") or "").strip()
         if flow_state:
-            cls._cache_auth_flow(flow_state, flow)
             stored_flows = session_store.get(SESSION_FLOWS_KEY)
             if not isinstance(stored_flows, dict):
                 stored_flows = {}
@@ -578,8 +355,6 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
 
         if flow is None:
             flow = session_store.pop(SESSION_FLOW_KEY, None)
-        if flow is None:
-            flow = cls._pop_cached_auth_flow(request_state)
         if not flow:
             raise OutlookGraphError("La sesión de autenticación de Outlook ha caducado. Vuelve a intentarlo.")
 
@@ -697,6 +472,76 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
         return OutlookGraphService.FOLDER_MAP.get(normalized, normalized or "inbox")
 
     @staticmethod
+    def _encode_graph_path_segment(value):
+        raw_value = str(value or "").strip()
+        if not raw_value:
+            return ""
+        # Normalize already-encoded inputs (e.g. %2F) to avoid double encoding.
+        return quote(unquote(raw_value), safe="")
+
+    @staticmethod
+    def _looks_like_message_not_found(error_message):
+        normalized = str(error_message or "").strip().lower()
+        return (
+            "resource not found for the segment" in normalized
+            or "erroritemnotfound" in normalized
+            or "item not found" in normalized
+        )
+
+    @classmethod
+    def _translate_exchange_message_ids(cls, session_store, raw_message_id, config):
+        raw_id = str(raw_message_id or "").strip()
+        if not raw_id:
+            return []
+
+        mailbox = quote(str(config.get("mailbox") or ""), safe="")
+        endpoint = "/me/translateExchangeIds"
+        if config["auth_mode"] == "app-only":
+            endpoint = f"/users/{mailbox}/translateExchangeIds"
+
+        source_id_candidates = [raw_id]
+        decoded_raw_id = unquote(raw_id)
+        if decoded_raw_id and decoded_raw_id not in source_id_candidates:
+            source_id_candidates.append(decoded_raw_id)
+
+        source_types = ["restId", "restImmutableEntryId", "ewsId", "entryId", "immutableEntryId"]
+        target_types = ["restId", "restImmutableEntryId"]
+        translated_ids = []
+        seen_ids = set()
+
+        for source_id in source_id_candidates:
+            for source_type in source_types:
+                for target_type in target_types:
+                    if source_type == target_type:
+                        continue
+
+                    payload = {
+                        "inputIds": [source_id],
+                        "sourceIdType": source_type,
+                        "targetIdType": target_type,
+                    }
+                    try:
+                        translate_result = cls._request(
+                            session_store,
+                            "POST",
+                            endpoint,
+                            json_payload=payload,
+                        )
+                    except OutlookGraphError:
+                        continue
+
+                    for item in (translate_result or {}).get("value", []):
+                        target_id = str((item or {}).get("targetId") or "").strip()
+                        if not target_id:
+                            continue
+                        if target_id in seen_ids:
+                            continue
+                        seen_ids.add(target_id)
+                        translated_ids.append(target_id)
+
+        return translated_ids
+
+    @staticmethod
     def _serialize_recipient(recipient):
         email_address = ((recipient or {}).get("emailAddress") or {})
         address = (email_address.get("address") or "").strip()
@@ -749,7 +594,6 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
             "sender_email": sender.get("address"),
             "is_read": bool(message.get("isRead")),
             "has_attachments": bool(message.get("hasAttachments")),
-            "conversation_id": message.get("conversationId"),
             "web_link": message.get("webLink"),
         }
 
@@ -772,7 +616,6 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
             "cc_recipients": cc_recipients,
             "is_read": bool(message.get("isRead")),
             "has_attachments": bool(message.get("hasAttachments")),
-            "conversation_id": message.get("conversationId"),
             "internet_message_id": message.get("internetMessageId"),
             "web_link": message.get("webLink"),
         }
@@ -793,7 +636,7 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
             params={
                 "$top": max(1, min(int(top or 20), 50)),
                 "$orderby": "receivedDateTime DESC",
-                "$select": "id,subject,receivedDateTime,bodyPreview,from,isRead,hasAttachments,conversationId,webLink",
+                "$select": "id,subject,receivedDateTime,bodyPreview,from,isRead,hasAttachments,webLink",
             },
         )
         account = cls.get_connected_account(session_store)
@@ -807,47 +650,49 @@ Write-Output ('CERT_COUNT=' + $seen.Count)
     def get_message(cls, session_store, message_id):
         config = cls.get_config()
         mailbox = quote(str(config.get("mailbox") or ""), safe="")
-        endpoint = f"/me/messages/{quote(str(message_id), safe='')}"
-        if config["auth_mode"] == "app-only":
-            endpoint = f"/users/{mailbox}/messages/{quote(str(message_id), safe='')}"
+        message_id_candidates = []
 
-        payload = cls._request(
-            session_store,
-            "GET",
-            endpoint,
-            params={
-                "$select": "id,subject,receivedDateTime,bodyPreview,body,from,toRecipients,ccRecipients,isRead,hasAttachments,conversationId,internetMessageId,webLink",
-            },
-        )
-        detail = cls._serialize_message_detail(payload)
-        detail["account"] = cls.get_connected_account(session_store)
-        return detail
+        primary_message_id = str(message_id or "").strip()
+        if primary_message_id:
+            message_id_candidates.append(primary_message_id)
 
-    @classmethod
-    def list_messages_by_conversation(cls, session_store, conversation_id, top=100):
-        conversation_key = str(conversation_id or "").strip()
-        if not conversation_key:
-            return []
+        decoded_message_id = unquote(primary_message_id)
+        if decoded_message_id and decoded_message_id not in message_id_candidates:
+            message_id_candidates.append(decoded_message_id)
 
-        config = cls.get_config()
-        mailbox = quote(str(config.get("mailbox") or ""), safe="")
-        endpoint = "/me/messages"
-        if config["auth_mode"] == "app-only":
-            endpoint = f"/users/{mailbox}/messages"
+        translated_message_ids = cls._translate_exchange_message_ids(session_store, primary_message_id, config)
+        for translated_message_id in translated_message_ids:
+            if translated_message_id not in message_id_candidates:
+                message_id_candidates.append(translated_message_id)
 
-        escaped_conversation = conversation_key.replace("'", "''")
-        payload = cls._request(
-            session_store,
-            "GET",
-            endpoint,
-            params={
-                "$top": max(1, min(int(top or 100), 200)),
-                "$orderby": "receivedDateTime ASC",
-                "$filter": f"conversationId eq '{escaped_conversation}'",
-                "$select": "id,subject,receivedDateTime,bodyPreview,body,from,toRecipients,ccRecipients,isRead,hasAttachments,conversationId,internetMessageId,webLink",
-            },
-        )
-        return [cls._serialize_message_detail(item) for item in payload.get("value", [])]
+        last_not_found_error = None
+        for candidate_id in message_id_candidates:
+            encoded_message_id = cls._encode_graph_path_segment(candidate_id)
+            endpoint = f"/me/messages/{encoded_message_id}"
+            if config["auth_mode"] == "app-only":
+                endpoint = f"/users/{mailbox}/messages/{encoded_message_id}"
+
+            try:
+                payload = cls._request(
+                    session_store,
+                    "GET",
+                    endpoint,
+                    params={
+                        "$select": "id,subject,receivedDateTime,bodyPreview,body,from,toRecipients,ccRecipients,isRead,hasAttachments,internetMessageId,webLink",
+                    },
+                )
+                detail = cls._serialize_message_detail(payload)
+                detail["account"] = cls.get_connected_account(session_store)
+                return detail
+            except OutlookGraphError as exc:
+                if cls._looks_like_message_not_found(exc):
+                    last_not_found_error = exc
+                    continue
+                raise
+
+        if last_not_found_error is not None:
+            raise last_not_found_error
+        raise OutlookGraphError("No se pudo resolver el identificador del correo en Microsoft Graph")
 
     @staticmethod
     def _normalize_recipients(value, field_name):
