@@ -4907,9 +4907,9 @@ def list_ofertas():
                     oetc.po_original,
                     oetc.sales_orders,
                     oetc.request_delivery_date,
-                    STRING_AGG(ISNULL(vw.tipo_interaccion, ''), ' | ') AS tipos_interaccion,
-                    STRING_AGG(CONVERT(VARCHAR(19), vw.fecha_interaccion, 120), ' | ') AS fechas_interaccion,
-                    STRING_AGG(ISNULL(vw.observaciones_interaccion, ''), ' | ') AS observaciones_interaccion,
+                    STRING_AGG(CAST(ISNULL(vw.tipo_interaccion, '') AS NVARCHAR(MAX)), ' | ') AS tipos_interaccion,
+                    STRING_AGG(CAST(CONVERT(VARCHAR(19), vw.fecha_interaccion, 120) AS NVARCHAR(MAX)), ' | ') AS fechas_interaccion,
+                    STRING_AGG(CAST(ISNULL(vw.observaciones_interaccion, '') AS NVARCHAR(MAX)), ' | ') AS observaciones_interaccion,
                     vw.estado
                 FROM ofertas.vw_listado_ofertas_interacciones vw
                 INNER JOIN ofertas.listado_ofertas lo
