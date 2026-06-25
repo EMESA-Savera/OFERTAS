@@ -162,6 +162,7 @@ ALLOWED_OFFER_ATTACHMENT_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
     ".zip", ".7z", ".rar",
     ".eml", ".msg",
+    ".dwg", ".dxf",
 }
 os.makedirs(OFFER_ATTACHMENTS_DIR, exist_ok=True)
 os.makedirs(IMPORTED_EMAIL_ATTACHMENTS_DIR, exist_ok=True)
