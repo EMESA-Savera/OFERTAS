@@ -806,6 +806,10 @@ def should_prefer_local_oauth_env():
     if not has_request_context():
         return False
 
+    # En producción no sobrescribir con valores de .env (desarrollo)
+    if app.config.get("APP_ENV") == "production":
+        return False
+
     current_host = (request.host.split(":", 1)[0] or "").strip().lower()
     return is_local_or_private_host(current_host)
 
