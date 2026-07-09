@@ -13,6 +13,8 @@
   <div id="breadcrumbContainer" class="breadcrumb-container"></div>
 </nav>
 
+<div id="sideNotificationContainer" class="side-notification-container"></div>
+
 <section class="view-panel active" data-view-panel="nueva-oferta">
   <div class="app-shell app-layout-monthly">
     <aside class="sidebar" aria-label="Navegación principal" data-translate-key-aria-label="literal.main_navigation">
@@ -1280,45 +1282,53 @@
       <div class="page-card__header">
         <div>
           <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
-          <h1 data-translate-key="config.boms">BOM</h1>
-          <p data-translate-key="config.boms_description">Alta y mantenimiento del catálogo BOM disponible para enlazarlo a las ofertas.</p>
+          <h1 data-translate-key="config.boms">BOM Prices</h1>
         </div>
       </div>
 
       <div class="clientes-toggle" role="tablist" aria-label="Gestión de BOM" data-translate-key-aria-label="config.boms_management">
-        <button class="clientes-toggle__button active" type="button" data-boms-mode="crear" aria-selected="true" data-translate-key="config.create_bom">Crear BOM</button>
-        <button class="clientes-toggle__button" type="button" data-boms-mode="ver" aria-selected="false" data-translate-key="config.view_boms">Ver BOM</button>
+        <button class="clientes-toggle__button active" type="button" data-boms-mode="ver" aria-selected="true" data-translate-key="config.view_boms">Ver BOM</button>
+        <button class="clientes-toggle__button" type="button" data-boms-mode="crear" aria-selected="false" data-translate-key="config.create_bom">Crear BOM</button>
+        <button class="clientes-toggle__button" type="button" data-boms-mode="importar" aria-selected="false" data-translate-key="config.import_export_boms">Importar / Exportar</button>
       </div>
 
-      <section class="clientes-mode-panel active" data-boms-mode-panel="crear">
+      <section class="clientes-mode-panel" data-boms-mode-panel="crear">
         <form id="bomCreateForm" class="cliente-form" autocomplete="off">
-          <div class="form-field form-field--span-2">
-            <label for="bom_material" data-translate-key="literal.bom.material">Material</label>
-            <input id="bom_material" name="material" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el material BOM" data-translate-key-placeholder="config.bom_material_placeholder" required />
+          <div class="form-field">
+            <label for="bom_part_nr" data-translate-key="config.bom_part_nr">Part Nr</label>
+            <input id="bom_part_nr" name="part_nr" type="text" maxlength="255" autocomplete="off" placeholder="Escribe el Part Nr" data-translate-key-placeholder="config.bom_part_nr_placeholder" required />
           </div>
 
           <div class="form-field">
-            <label for="bom_precio" data-translate-key="literal.bom.current_price">Precio actual</label>
-            <input id="bom_precio" name="precio" type="number" min="0" step="0.01" placeholder="0.00" required />
+            <label for="bom_mat_description" data-translate-key="config.bom_mat_description">Mat Description</label>
+            <input id="bom_mat_description" name="mat_description" type="text" maxlength="255" autocomplete="off" placeholder="Escribe la descripción del material" data-translate-key-placeholder="config.bom_mat_description_placeholder" required />
+          </div>
+
+          <div class="form-field">
+            <label for="bom_new_sales_price" data-translate-key="config.bom_new_sales_price">New Sales Price</label>
+            <input id="bom_new_sales_price" name="new_sales_price" type="number" min="0" step="0.01" placeholder="0.00" required />
+          </div>
+
+          <div class="form-field form-field--span-2">
+            <label for="bom_notas">NOTAS</label>
+            <input id="bom_notas" name="notas" type="text" maxlength="500" autocomplete="off" placeholder="Observaciones opcionales" data-translate-key-placeholder="config.bom_notas_placeholder" />
           </div>
 
           <div class="form-actions form-actions--start">
             <button class="btn-primary" type="submit" data-translate-key="common.save">Guardar</button>
           </div>
         </form>
-
-        <div id="bomCreateFeedback" class="form-feedback" aria-live="polite"></div>
       </section>
 
-      <section class="clientes-mode-panel" data-boms-mode-panel="ver">
+      <section class="clientes-mode-panel active" data-boms-mode-panel="ver">
         <div class="clientes-table-wrap">
           <table class="clientes-table">
             <thead>
               <tr>
-                <th data-translate-key="literal.table.id">ID</th>
-                <th data-translate-key="literal.bom.material">Material</th>
-                <th data-translate-key="literal.bom.current_price">Precio actual</th>
-                <th data-translate-key="literal.bom.updated">Actualizado</th>
+                <th data-translate-key="config.bom_part_nr">Part Nr</th>
+                <th data-translate-key="config.bom_mat_description">Mat Description</th>
+                <th data-translate-key="config.bom_new_sales_price">New Sales Price</th>
+                <th>NOTAS</th>
                 <th data-translate-key="table.actions">Acciones</th>
               </tr>
             </thead>
@@ -1330,9 +1340,69 @@
           </table>
         </div>
 
-        <div id="bomsTableFeedback" class="form-feedback" aria-live="polite"></div>
+        <div class="table-pagination-controls">
+          <div class="pagination-left">
+            <label for="bomPageSize">Mostrar:</label>
+            <select id="bomPageSize" class="pagination-select">
+              <option value="15">15</option>
+              <option value="20">20</option>
+              <option value="30">30</option>
+              <option value="40">40</option>
+            </select>
+          </div>
+
+          <div class="pagination-right">
+            <button id="bomPrevPage" class="pagination-btn" type="button">← Anterior</button>
+            <div id="bomPageNumbers" class="pagination-numbers"></div>
+            <button id="bomNextPage" class="pagination-btn" type="button">Siguiente →</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="clientes-mode-panel" data-boms-mode-panel="importar">
+        <form id="bomImportForm" class="cliente-form" autocomplete="off">
+          <div class="form-field form-field--span-2">
+            <label for="bomImportFile" data-translate-key="config.bom_import_file">Archivo CSV o Excel</label>
+            <input id="bomImportFile" name="archivo" type="file" accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsm,application/vnd.ms-excel.sheet.macroEnabled.12" required />
+            <p class="form-help" data-translate-key="config.boms_import_warning">* Reemplaza todo el catálogo.</p>
+          </div>
+
+          <div class="form-actions form-actions--start">
+            <button class="btn-primary" type="submit" data-translate-key="config.import_boms_csv">Importar CSV</button>
+          </div>
+        </form>
+
+        <hr style="margin: 2rem 0; border: none; border-top: 1px solid #ddd;" />
+
+        <div class="form-actions form-actions--start">
+          <button id="bomExportCsvButton" class="btn-secondary" type="button" data-translate-key="config.export_boms_csv">Exportar plantilla CSV</button>
+        </div>
       </section>
     </section>
   </main>
 </section>
+
+<div id="bomDeletePrompt" class="top-confirm" aria-hidden="true">
+  <div class="top-confirm__backdrop" data-close-bom-delete-prompt="true"></div>
+  <div class="top-confirm__panel" role="dialog" aria-modal="true" aria-labelledby="bomDeletePromptTitle" aria-describedby="bomDeletePromptMessage">
+    <div class="top-confirm__header">
+      <div>
+        <p class="page-eyebrow" data-translate-key="common.delete">Eliminar</p>
+        <h2 id="bomDeletePromptTitle" data-translate-key="config.bom_delete_title">Confirmar eliminación BOM</h2>
+      </div>
+      <button class="top-confirm__close" type="button" data-close-bom-delete-prompt="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
+    </div>
+    <p id="bomDeletePromptMessage" class="top-confirm__message"></p>
+    <p class="top-confirm__hint" data-translate-key="config.bom_delete_hint">El BOM se eliminará permanentemente y se quitarán sus referencias en ofertas.</p>
+    <div class="top-confirm__field">
+      <label for="bomDeletePromptPassword" data-translate-key="offer.delete_password_label">Contraseña de confirmación</label>
+      <input id="bomDeletePromptPassword" class="top-confirm__input" type="password" autocomplete="off" inputmode="numeric" placeholder="Introduce la contraseña para eliminar" data-translate-key-placeholder="offer.delete_password_placeholder" />
+    </div>
+    <div id="bomDeletePromptFeedback" class="form-feedback" aria-live="polite"></div>
+    <div class="top-confirm__actions">
+      <button id="bomDeletePromptConfirm" class="btn-inline btn-inline--delete" type="button" data-confirm-bom-delete-prompt="true" data-translate-key="common.delete">Eliminar</button>
+      <button id="bomDeletePromptCancel" class="btn-inline btn-inline--cancel" type="button" data-close-bom-delete-prompt="true" data-translate-key="common.cancel">Cancelar</button>
+    </div>
+  </div>
+</div>
 {% endblock %}

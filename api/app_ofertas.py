@@ -1,6 +1,8 @@
 import base64
+import csv
 import hashlib
 import importlib
+import io
 import json
 import ipaddress
 import mimetypes
@@ -24,7 +26,7 @@ from urllib.parse import urlparse
 
 import pyodbc
 from dotenv import dotenv_values, load_dotenv
-from flask import Flask, has_request_context, jsonify, redirect, render_template, render_template_string, request, send_from_directory, session, url_for
+from flask import Flask, Response, has_request_context, jsonify, redirect, render_template, render_template_string, request, send_from_directory, session, url_for
 from flask_cors import CORS
 from flask_session import Session
 from outlook_service import OutlookGraphError, OutlookGraphService
@@ -1226,8 +1228,8 @@ def build_offer_notification_message(
     if assigned_by_name:
         assigned_by_html = (
             '<tr>'
-            '<td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Priradil</td>'
-            '<td style="padding: 6px 0;">{assigned_by}</td>'
+            '<td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Priradil</td>'
+            '<td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{assigned_by}</td>'
             '</tr>'
         ).format(assigned_by=html_escape(assigned_by_name))
 
@@ -1237,18 +1239,18 @@ def build_offer_notification_message(
         source_label = html_escape(source_department_name or "Bez oddeleni")
         target_label = html_escape(target_department_name or "Bez oddeleni")
         department_intro_html = """
-            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
-                Nabídka byla přesunuta z oddělení <strong>{source_department}</strong> do oddělení <strong>{target_department}</strong>.
+            <p style="margin: 0 0 20px; font-size: 15px; color: #486581; line-height: 1.7;">
+                Nabidka byla presunuta z oddeleni <strong style="color: #1a1a2e;">{source_department}</strong> do oddeleni <strong style="color: #1a1a2e;">{target_department}</strong>.
             </p>
         """.format(
             source_department=source_label,
             target_department=target_label,
         )
     elif detail_department_name:
-        intro_message = department_intro_message or "Tento stav spadá pod oddělení"
+        intro_message = department_intro_message or "Tento stav spada pod oddeleni"
         department_intro_html = """
-            <p style="margin: 0 0 24px; font-size: 15px; color: #334e68;">
-                {intro_message} <strong>{department_name}</strong>.
+            <p style="margin: 0 0 20px; font-size: 15px; color: #486581; line-height: 1.7;">
+                {intro_message} <strong style="color: #1a1a2e;">{department_name}</strong>.
             </p>
         """.format(
             intro_message=html_escape(intro_message),
@@ -1259,12 +1261,12 @@ def build_offer_notification_message(
     if source_department_name or target_department_name:
         department_row_html = """
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení původu</td>
-                <td style="padding: 8px 0;">{source_department}</td>
+                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Oddeleni puvodu</td>
+                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{source_department}</td>
             </tr>
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení cíle</td>
-                <td style="padding: 8px 0;">{target_department}</td>
+                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Oddeleni cile</td>
+                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{target_department}</td>
             </tr>
         """.format(
             source_department=html_escape(source_department_name or "Bez oddeleni"),
@@ -1273,8 +1275,8 @@ def build_offer_notification_message(
     elif detail_department_name:
         department_row_html = """
             <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Oddělení</td>
-                <td style="padding: 8px 0;">{department_name}</td>
+                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Oddeleni</td>
+                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{department_name}</td>
             </tr>
         """.format(department_name=html_escape(detail_department_name))
 
@@ -1285,57 +1287,109 @@ def build_offer_notification_message(
         ).format(src=html_escape(logo_src))
 
     body = """
-<div style="margin: 0; padding: 24px 0; background: #eef2f6; font-family: Segoe UI, Arial, sans-serif; color: #1f2933; line-height: 1.6;">
-    <div style="max-width: 720px; margin: 0 auto; background: #ffffff; border: 1px solid #d9e2ec; border-radius: 18px; overflow: hidden; box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);">
-        <div style="padding: 22px 28px; background: linear-gradient(135deg, #8b1e2d 0%, #c73c4b 100%); color: #ffffff;">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 18px;">
-                <div>
-                    <div style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.88; margin-bottom: 6px;">Automaticke oznameni</div>
-                    <div style="font-size: 24px; font-weight: 700;">OFERTAS</div>
-                </div>
-                <div style="text-align: right;">{logo_html}</div>
-            </div>
-        </div>
-        <div style="padding: 28px;">
-            <p style="margin: 0 0 16px; font-size: 16px; color: #102a43;"><strong>Dobrý den,</strong></p>
-            <p style="margin: 0 0 14px; font-size: 15px;">
-                potvrzujeme, že nabídka <strong>{oferta}</strong> byla převedena do stavu
-                <strong>„{estado}“</strong>.
-            </p>
-            {department_intro_html}
-            <div style="background: #f8fafc; border: 1px solid #d9e2ec; border-radius: 12px; padding: 18px 20px;">
-                <h3 style="margin: 0 0 14px; font-size: 17px; color: #102a43;">Přehled nabídky</h3>
-        <table style="width: 100%; border-collapse: collapse;">
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; width: 190px; vertical-align: top; color: #102a43;">Nabídka</td>
-                <td style="padding: 8px 0;">{oferta}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Stav</td>
-                <td style="padding: 8px 0;">{estado}</td>
-            </tr>
-            {department_row_html}
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Zákazník</td>
-                <td style="padding: 8px 0;">{cliente}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Reference / předmět e-mailu</td>
-                <td style="padding: 8px 0;">{referencia}</td>
-            </tr>
-            <tr>
-                <td style="padding: 8px 0; font-weight: 600; vertical-align: top; color: #102a43;">Odesílatel</td>
-                <td style="padding: 8px 0;">{emisor}</td>
-            </tr>
-            {assigned_by_html}
-        </table>
-            </div>
-            <p style="margin: 22px 0 0; font-size: 13px; color: #52606d;">
-                Toto je automatické upozornění ze systému OFERTAS. V případě dotazů kontaktujte prosím příslušné oddělení.
-            </p>
-        </div>
-    </div>
-</div>""".format(
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1a1a2e; line-height: 1.6; -webkit-font-smoothing: antialiased;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f5f7; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 620px; background-color: #ffffff; border-radius: 12px; overflow: hidden;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="padding: 32px 36px 28px 36px; background: linear-gradient(135deg, #8b1e2d 0%, #b33545 100%);">
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                                <tr>
+                                    <td style="vertical-align: middle;">
+                                        <p style="margin: 0 0 4px 0; font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.72);">Automaticke oznameni</p>
+                                        <p style="margin: 0; font-size: 26px; font-weight: 700; color: #ffffff; letter-spacing: -0.01em;">OFERTAS</p>
+                                    </td>
+                                    <td align="right" style="vertical-align: middle;">
+                                        {logo_html}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding: 36px 36px 12px 36px;">
+
+                            <!-- Greeting -->
+                            <p style="margin: 0 0 20px 0; font-size: 16px; color: #1a1a2e;">
+                                <strong>Dobry den,</strong>
+                            </p>
+
+                            <!-- Main message -->
+                            <p style="margin: 0 0 8px 0; font-size: 15px; color: #334e68; line-height: 1.7;">
+                                potvrzujeme, ze nabidka <strong style="color: #1a1a2e;">{oferta}</strong> byla prevedena do stavu
+                                <strong style="color: #1a1a2e;">&bdquo;{estado}&rdquo;</strong>.
+                            </p>
+
+                            {department_intro_html}
+
+                            <!-- Info card -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8fafc; border-radius: 10px; margin-top: 24px;">
+                                <tr>
+                                    <td style="padding: 24px 28px;">
+                                        <p style="margin: 0 0 18px 0; font-size: 14px; font-weight: 600; color: #627d98; letter-spacing: 0.04em; text-transform: uppercase;">Prehled nabidky</p>
+
+                                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                                            <tr>
+                                                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; width: 170px; vertical-align: top;">Nabidka</td>
+                                                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{oferta}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Stav</td>
+                                                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{estado}</td>
+                                            </tr>
+                                            {department_row_html}
+                                            <tr>
+                                                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Zakaznik</td>
+                                                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{cliente}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Reference / predmet e-mailu</td>
+                                                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e; word-break: break-word;">{referencia}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 7px 0; font-size: 13px; font-weight: 600; color: #627d98; vertical-align: top;">Odesilatel</td>
+                                                <td style="padding: 7px 0; font-size: 14px; color: #1a1a2e;">{emisor}</td>
+                                            </tr>
+                                            {assigned_by_html}
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Footer -->
+                            <p style="margin: 28px 0 0 0; font-size: 12px; color: #9fb3c8; line-height: 1.7;">
+                                Toto je automaticke upozorneni ze systemu OFERTAS. V pripade dotazu kontaktujte prosim prislusne oddeleni.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Bottom spacer -->
+                    <tr>
+                        <td style="padding: 0 36px 36px 36px;">
+                            <hr style="border: none; border-top: 1px solid #e4e7eb; margin: 24px 0 0 0;">
+                            <p style="margin: 16px 0 0 0; font-size: 11px; color: #bcccdc; text-align: center;">
+                                &copy; EMESA &middot; OFERTAS
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>""".format(
         oferta=html_escape(oferta_label),
         estado=html_escape(estado_nombre),
         department_intro_html=department_intro_html,
@@ -1519,6 +1573,110 @@ def build_estado_manager_notification(
         "body": message_payload["body"],
         "estado": estado_nombre,
         "departamento": display_target_department_name,
+    }
+
+
+def build_new_offer_notification(cursor, oferta_id, estado_id):
+    """Construye la notificación para una oferta recién creada (no un cambio de estado)."""
+    cursor.execute(
+        """
+        SELECT
+            e.descripcion_estado,
+            e.id_departamento,
+            d.nombre_departamento
+        FROM ofertas.estados e
+        LEFT JOIN ofertas.departamentos d
+            ON d.id_departamento = e.id_departamento
+        WHERE e.id_estado = ?
+        """,
+        (estado_id,),
+    )
+    estado_row = cursor.fetchone()
+
+    if not estado_row:
+        return {"skipped": True, "message": "Estado no encontrado"}
+
+    estado_nombre = normalize_optional_text(estado_row[0], 255) or f"#{estado_id}"
+    id_departamento = estado_row[1]
+    departamento_nombre = normalize_optional_text(estado_row[2], 255)
+
+    if id_departamento is None:
+        return {
+            "skipped": True,
+            "message": "El estado no tiene un departamento asociado",
+            "estado": estado_nombre,
+        }
+
+    recipients = get_manager_notification_recipients(cursor, id_departamento)
+
+    if not recipients:
+        fallback_department = resolve_notification_department_fallback(
+            cursor,
+            estado_nombre,
+            current_department_id=id_departamento,
+        )
+        if fallback_department is not None:
+            fallback_recipients = get_manager_notification_recipients(cursor, fallback_department["id_departamento"])
+            if fallback_recipients:
+                recipients = fallback_recipients
+
+    if not recipients:
+        return {
+            "skipped": True,
+            "message": "No hay managers con email configurado en el departamento del estado",
+            "estado": estado_nombre,
+            "departamento": departamento_nombre,
+        }
+
+    cursor.execute(
+        """
+        SELECT
+            lo.numero_oferta,
+            lo.ref_cliente_asunto_email,
+            c.descripcion_cliente,
+            lo.nombre_emisor,
+            lo.email_emisor
+        FROM ofertas.listado_ofertas lo
+        LEFT JOIN ofertas.clientes c
+            ON c.id_cliente = lo.id_cliente
+        WHERE lo.id_oferta = ?
+        """,
+        (oferta_id,),
+    )
+    oferta_row = cursor.fetchone()
+
+    numero_oferta = normalize_optional_text(oferta_row[0], 100) if oferta_row else None
+    referencia = normalize_optional_text(oferta_row[1], 500) if oferta_row else None
+    cliente = normalize_optional_text(oferta_row[2], 255) if oferta_row else None
+    emisor = format_sender_display(oferta_row[3], oferta_row[4]) if oferta_row else None
+
+    oferta_label = numero_oferta or f"ID {oferta_id}"
+
+    # Asunto específico para oferta nueva (distinto al de cambio de estado)
+    estado_nombre_i18n = translate_notification_state_name(estado_nombre) or "Bez stavu"
+    departamento_nombre_i18n = translate_notification_department_name(departamento_nombre)
+    subject = f"OFERTAS | Nova nabidka {oferta_label} ve stavu {estado_nombre_i18n}"
+
+    message_payload = build_offer_notification_message(
+        oferta_label=oferta_label,
+        estado_nombre=estado_nombre,
+        departamento_nombre=departamento_nombre,
+        cliente=cliente,
+        referencia=referencia,
+        emisor=emisor,
+        detail_department_name=departamento_nombre_i18n,
+        department_intro_message="Tato nabidka spada pod oddeleni",
+    )
+    message_payload["subject"] = subject
+
+    return {
+        "skipped": False,
+        "oferta_id": oferta_id,
+        "to_recipients": recipients,
+        "subject": message_payload["subject"],
+        "body": message_payload["body"],
+        "estado": estado_nombre,
+        "departamento": departamento_nombre,
     }
 
 
@@ -3723,6 +3881,428 @@ def oferta_has_bom_column(cursor):
     return cursor.fetchone() is not None
 
 
+BOM_CATALOG_COLUMN_DEFINITIONS = (
+    {"key": "part_nr", "header": "Part Nr", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "mat_description", "header": "Mat Description", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "new_sales_price", "header": "New Sales Price", "sql_type": "DECIMAL(18, 2)", "max_length": None},
+    {"key": "notas", "header": "NOTAS", "sql_type": "NVARCHAR(500)", "max_length": 500},
+    {"key": "nuevos_cp357", "header": "NUEVOS CP357", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "nuevos_cp361", "header": "NUEVOS CP361", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "nuevos_cp365", "header": "NUEVOS CP365", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "anulados_cp365", "header": "ANULADOS CP365", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "nuevos_cp369", "header": "NUEVOS CP369", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "anulados_cp369", "header": "ANULADOS CP369", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "nuevos_cp373", "header": "NUEVOS CP373", "sql_type": "NVARCHAR(255)", "max_length": 255},
+    {"key": "anulados_cp373", "header": "ANULADOS CP373", "sql_type": "NVARCHAR(255)", "max_length": 255},
+)
+
+BOM_CATALOG_COLUMNS_BY_KEY = {column["key"]: column for column in BOM_CATALOG_COLUMN_DEFINITIONS}
+BOM_CATALOG_COLUMNS_BY_HEADER = {
+    re.sub(r"\s+", " ", str(column["header"]).strip()).lower(): column
+    for column in BOM_CATALOG_COLUMN_DEFINITIONS
+}
+BOM_REQUIRED_IMPORT_KEYS = ("part_nr", "mat_description", "new_sales_price")
+
+
+def materiales_precio_has_column(cursor, column_name):
+    cursor.execute(
+        f"SELECT 1 WHERE COL_LENGTH('ofertas.materiales_precio', '{column_name}') IS NOT NULL"
+    )
+    return cursor.fetchone() is not None
+
+
+def ensure_materiales_precio_catalog_columns(cursor):
+    for column in BOM_CATALOG_COLUMN_DEFINITIONS:
+        if not materiales_precio_has_column(cursor, column["key"]):
+            cursor.execute(
+                f"ALTER TABLE ofertas.materiales_precio ADD {column['key']} {column['sql_type']} NULL"
+            )
+
+
+def normalize_bom_identifier(value):
+    normalized = normalize_optional_text(value, 255)
+    return normalized.lower() if normalized else None
+
+
+def build_bom_catalog_record(row):
+    record = {
+        "id_bom": row[0],
+        "id_material_precio": row[0],
+        "material": row[1],
+        "precio": serialize_decimal(row[2]),
+        "fecha_creacion": serialize_date(row[3]),
+        "part_nr": row[4],
+        "mat_description": row[5],
+        "new_sales_price": serialize_decimal(row[6]),
+        "notas": row[7],
+        "nuevos_cp357": row[8],
+        "nuevos_cp361": row[9],
+        "nuevos_cp365": row[10],
+        "anulados_cp365": row[11],
+        "nuevos_cp369": row[12],
+        "anulados_cp369": row[13],
+        "nuevos_cp373": row[14],
+        "anulados_cp373": row[15],
+        "precio_anterior": None,
+        "diferencia_precio": None,
+    }
+    return record
+
+
+def build_bom_payload(data):
+    part_nr = normalize_required_text(data.get("part_nr"), "Part Nr", 255)
+    mat_description = normalize_required_text(data.get("mat_description"), "Mat Description", 255)
+    new_sales_price = normalize_optional_decimal(data.get("new_sales_price"), "New Sales Price")
+    if new_sales_price is None:
+        raise ValueError("El campo New Sales Price es obligatorio")
+    if new_sales_price < 0:
+        raise ValueError("El campo New Sales Price no puede ser negativo")
+
+    return {
+        "part_nr": part_nr,
+        "mat_description": mat_description,
+        "new_sales_price": new_sales_price.quantize(Decimal("0.01")),
+        "notas": normalize_optional_text(data.get("notas"), 500),
+        "material": mat_description,
+        "precio": new_sales_price.quantize(Decimal("0.01")),
+        "nuevos_cp357": None,
+        "nuevos_cp361": None,
+        "nuevos_cp365": None,
+        "anulados_cp365": None,
+        "nuevos_cp369": None,
+        "anulados_cp369": None,
+        "nuevos_cp373": None,
+        "anulados_cp373": None,
+    }
+
+
+def normalize_bom_csv_header(value):
+    return re.sub(r"\s+", " ", str(value or "").strip()).lower()
+
+
+def decode_uploaded_csv(uploaded_file):
+    file_bytes = uploaded_file.read()
+    if not file_bytes:
+        raise ValueError("El archivo CSV está vacío")
+
+    for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return file_bytes.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+
+    raise ValueError("No se pudo leer el archivo CSV con una codificación compatible")
+
+
+def parse_bom_catalog_rows(rows, source_label="archivo"):
+    if not rows:
+        raise ValueError(f"El {source_label} no contiene datos")
+
+    raw_headers = rows[0]
+    header_index_map = {}
+    for index, raw_header in enumerate(raw_headers):
+        normalized_header = normalize_bom_csv_header(raw_header)
+        column = BOM_CATALOG_COLUMNS_BY_HEADER.get(normalized_header)
+        if column and column["key"] not in header_index_map:
+            header_index_map[column["key"]] = index
+
+    missing_keys = [key for key in BOM_REQUIRED_IMPORT_KEYS if key not in header_index_map]
+    if missing_keys:
+        missing_headers = ", ".join(BOM_CATALOG_COLUMNS_BY_KEY[key]["header"] for key in missing_keys)
+        raise ValueError(f"El {source_label} no contiene las columnas obligatorias: {missing_headers}")
+
+    imported_rows = []
+    seen_identifiers = set()
+    for row_number, row in enumerate(rows[1:], start=2):
+        raw_part_nr = row[header_index_map["part_nr"]] if header_index_map["part_nr"] < len(row) else ""
+        raw_mat_description = row[header_index_map["mat_description"]] if header_index_map["mat_description"] < len(row) else ""
+        raw_new_sales_price = row[header_index_map["new_sales_price"]] if header_index_map["new_sales_price"] < len(row) else ""
+
+        # Some Excel exports include section rows with only a title in the first column.
+        # They are not BOM materials and should be ignored during import.
+        if normalize_optional_text(raw_part_nr, 255) and not normalize_optional_text(raw_mat_description, 255) and not normalize_optional_text(raw_new_sales_price):
+            continue
+
+        row_values = {}
+        for column in BOM_CATALOG_COLUMN_DEFINITIONS:
+            raw_value = row[header_index_map[column["key"]]] if column["key"] in header_index_map and header_index_map[column["key"]] < len(row) else ""
+            if column["key"] == "new_sales_price":
+                decimal_value = normalize_optional_decimal(raw_value, column["header"])
+                if decimal_value is None:
+                    raise ValueError(f"La columna {column['header']} es obligatoria en la fila {row_number}")
+                if decimal_value < 0:
+                    raise ValueError(f"La columna {column['header']} no puede ser negativa en la fila {row_number}")
+                row_values[column["key"]] = decimal_value.quantize(Decimal("0.01"))
+            else:
+                row_values[column["key"]] = normalize_optional_text(raw_value, column["max_length"])
+
+        if not any(value not in (None, "") for value in row_values.values()):
+            continue
+
+        if row_values["part_nr"] is None:
+            raise ValueError(f"La columna Part Nr es obligatoria en la fila {row_number}")
+        if row_values["mat_description"] is None:
+            raise ValueError(f"La columna Mat Description es obligatoria en la fila {row_number}")
+
+        identifier = normalize_bom_identifier(row_values["part_nr"])
+        if identifier in seen_identifiers:
+            raise ValueError(f"El CSV contiene un Part Nr repetido: {row_values['part_nr']}")
+        seen_identifiers.add(identifier)
+
+        row_values["material"] = row_values["mat_description"]
+        row_values["precio"] = row_values["new_sales_price"]
+        imported_rows.append(row_values)
+
+    if not imported_rows:
+        raise ValueError(f"El {source_label} no contiene filas válidas para importar")
+
+    return imported_rows
+
+
+def parse_bom_catalog_csv(uploaded_file):
+    csv_text = decode_uploaded_csv(uploaded_file)
+    lines = csv_text.splitlines()
+    if not lines:
+        raise ValueError("El archivo CSV no contiene datos")
+
+    header_line = lines[0]
+    if ';' in header_line:
+        delimiter = ';'
+    elif '\t' in header_line:
+        delimiter = '\t'
+    else:
+        delimiter = ','
+
+    reader = csv.reader(io.StringIO(csv_text), delimiter=delimiter)
+    rows = list(reader)
+    return parse_bom_catalog_rows(rows, source_label="archivo CSV")
+
+
+def parse_bom_catalog_excel(uploaded_file):
+    file_bytes = uploaded_file.read()
+    if not file_bytes:
+        raise ValueError("El archivo Excel está vacío")
+
+    try:
+        from openpyxl import load_workbook
+    except ImportError as exc:
+        raise ValueError("No está disponible el soporte para importar archivos Excel (.xlsx/.xlsm)") from exc
+
+    try:
+        workbook = load_workbook(filename=io.BytesIO(file_bytes), read_only=True, data_only=True)
+    except Exception as exc:
+        raise ValueError(f"No se pudo leer el archivo Excel: {str(exc)}") from exc
+
+    for worksheet in workbook.worksheets:
+        rows = []
+        for row in worksheet.iter_rows(values_only=True):
+            normalized_row = []
+            for value in row:
+                if value is None:
+                    normalized_row.append("")
+                else:
+                    normalized_row.append(str(value).strip())
+            if any(cell != "" for cell in normalized_row):
+                rows.append(normalized_row)
+
+        if not rows:
+            continue
+
+        try:
+            return parse_bom_catalog_rows(rows, source_label=f"hoja '{worksheet.title}'")
+        except ValueError as exc:
+            if "no contiene las columnas obligatorias" in str(exc):
+                continue
+            raise
+
+    raise ValueError("El archivo Excel no contiene ninguna hoja con las columnas BOM esperadas")
+
+
+def upsert_bom_catalog_row(cursor, payload, bom_id=None):
+    values = [
+        payload["material"],
+        payload["precio"],
+        payload["part_nr"],
+        payload["mat_description"],
+        payload["new_sales_price"],
+        payload.get("notas"),
+        payload.get("nuevos_cp357"),
+        payload.get("nuevos_cp361"),
+        payload.get("nuevos_cp365"),
+        payload.get("anulados_cp365"),
+        payload.get("nuevos_cp369"),
+        payload.get("anulados_cp369"),
+        payload.get("nuevos_cp373"),
+        payload.get("anulados_cp373"),
+    ]
+
+    if bom_id is None:
+        cursor.execute(
+            """
+            INSERT INTO ofertas.materiales_precio (
+                material,
+                precio,
+                part_nr,
+                mat_description,
+                new_sales_price,
+                notas,
+                nuevos_cp357,
+                nuevos_cp361,
+                nuevos_cp365,
+                anulados_cp365,
+                nuevos_cp369,
+                anulados_cp369,
+                nuevos_cp373,
+                anulados_cp373
+            )
+            OUTPUT INSERTED.id_material_precio
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            tuple(values),
+        )
+        inserted_row = cursor.fetchone()
+        return inserted_row[0] if inserted_row else None
+
+    cursor.execute(
+        """
+        UPDATE ofertas.materiales_precio
+        SET material = ?,
+            precio = ?,
+            part_nr = ?,
+            mat_description = ?,
+            new_sales_price = ?,
+            notas = ?,
+            nuevos_cp357 = ?,
+            nuevos_cp361 = ?,
+            nuevos_cp365 = ?,
+            anulados_cp365 = ?,
+            nuevos_cp369 = ?,
+            anulados_cp369 = ?,
+            nuevos_cp373 = ?,
+            anulados_cp373 = ?
+        WHERE id_material_precio = ?
+        """,
+        tuple(values + [bom_id]),
+    )
+    return bom_id
+
+
+def find_conflicting_bom(cursor, payload, exclude_bom_id=None):
+    conditions = [
+        "(part_nr IS NOT NULL AND LTRIM(RTRIM(part_nr)) <> '' AND LOWER(LTRIM(RTRIM(part_nr))) = LOWER(LTRIM(RTRIM(?))))",
+        "(material IS NOT NULL AND LTRIM(RTRIM(material)) <> '' AND LOWER(LTRIM(RTRIM(material))) = LOWER(LTRIM(RTRIM(?))))",
+    ]
+    params = [payload["part_nr"], payload["material"]]
+    where_clause = " OR ".join(conditions)
+    query = f"SELECT TOP 1 id_material_precio, material, part_nr FROM ofertas.materiales_precio WHERE ({where_clause})"
+    if exclude_bom_id is not None:
+        query += " AND id_material_precio <> ?"
+        params.append(exclude_bom_id)
+
+    cursor.execute(query, tuple(params))
+    return cursor.fetchone()
+
+
+def replace_bom_catalog_from_rows(cursor, imported_rows):
+    ensure_offer_bom_price_override_schema(cursor)
+
+    cursor.execute(
+        """
+        SELECT
+            id_material_precio,
+            material,
+            part_nr,
+            mat_description
+        FROM ofertas.materiales_precio
+        """
+    )
+    existing_rows = cursor.fetchall()
+
+    existing_by_part_nr = {}
+    existing_by_material = {}
+    for row in existing_rows:
+        bom_id = int(row[0])
+        part_nr_key = normalize_bom_identifier(row[2])
+        material_key = normalize_bom_identifier(row[1] or row[3])
+        if part_nr_key:
+            existing_by_part_nr[part_nr_key] = bom_id
+        if material_key:
+            existing_by_material[material_key] = bom_id
+
+    matched_ids = set()
+    inserted_count = 0
+    updated_count = 0
+    deleted_count = 0
+    detached_links = 0
+    deleted_override_count = 0
+    affected_offer_count = 0
+
+    for payload in imported_rows:
+        part_nr_key = normalize_bom_identifier(payload.get("part_nr"))
+        material_key = normalize_bom_identifier(payload.get("material"))
+        matched_bom_id = None
+        if part_nr_key and part_nr_key in existing_by_part_nr:
+            matched_bom_id = existing_by_part_nr[part_nr_key]
+        elif material_key and material_key in existing_by_material:
+            matched_bom_id = existing_by_material[material_key]
+
+        if matched_bom_id is not None:
+            upsert_bom_catalog_row(cursor, payload, bom_id=matched_bom_id)
+            matched_ids.add(matched_bom_id)
+            updated_count += 1
+        else:
+            inserted_bom_id = upsert_bom_catalog_row(cursor, payload, bom_id=None)
+            if inserted_bom_id is not None:
+                matched_ids.add(int(inserted_bom_id))
+            inserted_count += 1
+
+    obsolete_bom_ids = [int(row[0]) for row in existing_rows if int(row[0]) not in matched_ids]
+    for obsolete_bom_id in obsolete_bom_ids:
+        delete_result = delete_bom_catalog_material(cursor, obsolete_bom_id)
+        deleted_count += 1
+        detached_links += int(delete_result.get("detached_links", 0) or 0)
+        deleted_override_count += int(delete_result.get("deleted_override_count", 0) or 0)
+        affected_offer_count += int(delete_result.get("affected_offer_count", 0) or 0)
+
+    return {
+        "inserted_count": inserted_count,
+        "updated_count": updated_count,
+        "deleted_count": deleted_count,
+        "detached_links": detached_links,
+        "deleted_override_count": deleted_override_count,
+        "affected_offer_count": affected_offer_count,
+    }
+
+
+def format_bom_csv_decimal(value):
+    serialized = serialize_decimal(value)
+    if serialized is None:
+        return ""
+    return str(serialized).replace(".", ",")
+
+
+def build_bom_catalog_csv_content(rows):
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, delimiter=';')
+    writer.writerow([column["header"] for column in BOM_CATALOG_COLUMN_DEFINITIONS])
+    for row in rows:
+        writer.writerow([
+            row.get("part_nr") or "",
+            row.get("mat_description") or row.get("material") or "",
+            format_bom_csv_decimal(row.get("new_sales_price") if row.get("new_sales_price") is not None else row.get("precio")),
+            row.get("notas") or "",
+            row.get("nuevos_cp357") or "",
+            row.get("nuevos_cp361") or "",
+            row.get("nuevos_cp365") or "",
+            row.get("anulados_cp365") or "",
+            row.get("nuevos_cp369") or "",
+            row.get("anulados_cp369") or "",
+            row.get("nuevos_cp373") or "",
+            row.get("anulados_cp373") or "",
+        ])
+    return buffer.getvalue()
+
+
 def ensure_bom_catalog_schema(cursor):
     if not materiales_precio_table_exists(cursor):
         raise ValueError("La tabla ofertas.materiales_precio no existe todavía")
@@ -3731,6 +4311,8 @@ def ensure_bom_catalog_schema(cursor):
         raise ValueError(
             "La tabla ofertas.materiales_precio debe incluir la columna fecha_creacion antes de usar BOM en ofertas"
         )
+
+    ensure_materiales_precio_catalog_columns(cursor)
 
     if not oferta_has_bom_column(cursor):
         cursor.execute("ALTER TABLE ofertas.listado_ofertas ADD id_bom INT NULL")
@@ -4218,43 +4800,51 @@ def attach_offer_bom_materials(cursor, offers):
 
 
 def build_bom_payload(data):
-    precio = normalize_optional_decimal(data.get("precio"), "precio")
-    if precio is None:
-        raise ValueError("El campo precio es obligatorio")
-    if precio < 0:
-        raise ValueError("El campo precio no puede ser negativo")
-
     return {
-        "material": normalize_required_text(data.get("material"), "Material", 255),
-        "precio": precio.quantize(Decimal("0.01")),
+        "part_nr": normalize_required_text(data.get("part_nr"), "Part Nr", 255),
+        "mat_description": normalize_required_text(data.get("mat_description"), "Mat Description", 255),
+        "new_sales_price": normalize_optional_decimal(data.get("new_sales_price"), "New Sales Price"),
+        "notas": normalize_optional_text(data.get("notas"), 500),
     }
+
+
+def build_bom_mutation_payload(data):
+    payload = build_bom_payload(data)
+    price = payload.get("new_sales_price")
+    if price is None:
+        raise ValueError("El campo New Sales Price es obligatorio")
+    if price < 0:
+        raise ValueError("El campo New Sales Price no puede ser negativo")
+
+    payload["new_sales_price"] = price.quantize(Decimal("0.01"))
+    payload["material"] = payload["mat_description"]
+    payload["precio"] = payload["new_sales_price"]
+    payload["nuevos_cp357"] = None
+    payload["nuevos_cp361"] = None
+    payload["nuevos_cp365"] = None
+    payload["anulados_cp365"] = None
+    payload["nuevos_cp369"] = None
+    payload["anulados_cp369"] = None
+    payload["nuevos_cp373"] = None
+    payload["anulados_cp373"] = None
+    return payload
 
 
 def list_boms_catalog(cursor, only_active=False):
     materiales = list_materiales_precio_snapshot(cursor)
-    return [
-        {
-            "id_bom": row["id_material_precio"],
-            "material": row["material"],
-            "precio": row["precio"],
-            "fecha_creacion": row["fecha_creacion"],
-        }
-        for row in materiales
-    ]
+    return materiales
 
 
 def build_material_precio_payload(data):
-    material = normalize_required_text(data.get("material"), "material", 255)
-    precio = normalize_optional_decimal(data.get("precio"), "precio")
-    if precio is None:
-        raise ValueError("El campo precio es obligatorio")
-    if precio < 0:
-        raise ValueError("El campo precio no puede ser negativo")
-
-    return {
-        "material": material,
-        "precio": precio.quantize(Decimal("0.01")),
-    }
+    payload = build_bom_mutation_payload(
+        {
+            "part_nr": data.get("part_nr") or data.get("material"),
+            "mat_description": data.get("mat_description") or data.get("material"),
+            "new_sales_price": data.get("new_sales_price") or data.get("precio"),
+            "notas": data.get("notas"),
+        }
+    )
+    return payload
 
 
 def list_materiales_precio_snapshot(cursor):
@@ -4264,26 +4854,29 @@ def list_materiales_precio_snapshot(cursor):
             mp.id_material_precio,
             mp.material,
             mp.precio,
-            mp.fecha_creacion
+            mp.fecha_creacion,
+            mp.part_nr,
+            mp.mat_description,
+            mp.new_sales_price,
+            mp.notas,
+            mp.nuevos_cp357,
+            mp.nuevos_cp361,
+            mp.nuevos_cp365,
+            mp.anulados_cp365,
+            mp.nuevos_cp369,
+            mp.anulados_cp369,
+            mp.nuevos_cp373,
+            mp.anulados_cp373
         FROM ofertas.materiales_precio mp
         WHERE mp.material IS NOT NULL
           AND LTRIM(RTRIM(mp.material)) <> ''
-        ORDER BY mp.material ASC, mp.id_material_precio ASC
+        ORDER BY COALESCE(mp.part_nr, mp.material) ASC, mp.id_material_precio ASC
         """
     )
 
     materiales = []
     for row in cursor.fetchall():
-        materiales.append(
-            {
-                "id_material_precio": row[0],
-                "material": row[1],
-                "precio": serialize_decimal(row[2]),
-                "fecha_creacion": serialize_date(row[3]),
-                "precio_anterior": None,
-                "diferencia_precio": None,
-            }
-        )
+        materiales.append(build_bom_catalog_record(row))
 
     return materiales
 
@@ -6859,18 +7452,7 @@ def list_materiales_precio():
     try:
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
-
-            if not materiales_precio_table_exists(cursor):
-                return jsonify({"success": False, "message": "La tabla ofertas.materiales_precio no existe."}), 409
-
-            if not materiales_precio_has_fecha_creacion(cursor):
-                return jsonify(
-                    {
-                        "success": False,
-                        "message": "La tabla ofertas.materiales_precio debe incluir la columna fecha_creacion. Ejecuta antes el ALTER correspondiente.",
-                    }
-                ), 409
-
+            ensure_bom_catalog_schema(cursor)
             materiales = list_materiales_precio_snapshot(cursor)
 
         return jsonify({"success": True, "materiales": materiales})
@@ -6898,27 +7480,31 @@ def create_material_precio():
     try:
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
-
-            if not materiales_precio_table_exists(cursor):
-                conn.rollback()
-                return jsonify({"success": False, "message": "La tabla ofertas.materiales_precio no existe."}), 409
-
-            if not materiales_precio_has_fecha_creacion(cursor):
-                conn.rollback()
-                return jsonify(
-                    {
-                        "success": False,
-                        "message": "La tabla ofertas.materiales_precio debe incluir la columna fecha_creacion. Ejecuta antes el ALTER correspondiente.",
-                    }
-                ), 409
-
+            ensure_bom_catalog_schema(cursor)
+            inserted_bom_id = upsert_bom_catalog_row(cursor, payload, bom_id=None)
             cursor.execute(
                 """
-                INSERT INTO ofertas.materiales_precio (material, precio)
-                OUTPUT INSERTED.id_material_precio, INSERTED.material, INSERTED.precio, INSERTED.fecha_creacion
-                VALUES (?, ?)
+                SELECT
+                    mp.id_material_precio,
+                    mp.material,
+                    mp.precio,
+                    mp.fecha_creacion,
+                    mp.part_nr,
+                    mp.mat_description,
+                    mp.new_sales_price,
+                    mp.notas,
+                    mp.nuevos_cp357,
+                    mp.nuevos_cp361,
+                    mp.nuevos_cp365,
+                    mp.anulados_cp365,
+                    mp.nuevos_cp369,
+                    mp.anulados_cp369,
+                    mp.nuevos_cp373,
+                    mp.anulados_cp373
+                FROM ofertas.materiales_precio mp
+                WHERE mp.id_material_precio = ?
                 """,
-                (payload["material"], payload["precio"]),
+                (inserted_bom_id,),
             )
             inserted = cursor.fetchone()
             conn.commit()
@@ -6927,12 +7513,7 @@ def create_material_precio():
             {
                 "success": True,
                 "message": "Precio BOM guardado correctamente. Se ha creado un nuevo registro para conservar el histórico.",
-                "material": {
-                    "id_material_precio": inserted[0] if inserted else None,
-                    "material": inserted[1] if inserted else payload["material"],
-                    "precio": serialize_decimal(inserted[2]) if inserted else serialize_decimal(payload["precio"]),
-                    "fecha_creacion": serialize_date(inserted[3]) if inserted else None,
-                },
+                "material": build_bom_catalog_record(inserted) if inserted else None,
             }
         )
     except RuntimeError as exc:
@@ -6975,7 +7556,7 @@ def create_bom():
     data = request.get_json(silent=True) or {}
 
     try:
-        payload = build_bom_payload(data)
+        payload = build_bom_mutation_payload(data)
     except ValueError as exc:
         return jsonify({"success": False, "message": str(exc)}), 400
 
@@ -6984,27 +7565,34 @@ def create_bom():
             cursor = conn.cursor()
             ensure_bom_catalog_schema(cursor)
 
-            cursor.execute(
-                """
-                SELECT 1
-                                FROM ofertas.materiales_precio
-                                WHERE material IS NOT NULL
-                                    AND LTRIM(RTRIM(material)) <> ''
-                                    AND LOWER(LTRIM(RTRIM(material))) = LOWER(LTRIM(RTRIM(?)))
-                """,
-                (payload["material"],),
-            )
-            if cursor.fetchone() is not None:
+            if find_conflicting_bom(cursor, payload) is not None:
                 conn.rollback()
-                return jsonify({"success": False, "message": "Ya existe un BOM con ese material"}), 409
+                return jsonify({"success": False, "message": "Ya existe un BOM con ese Part Nr o material"}), 409
 
+            inserted_bom_id = upsert_bom_catalog_row(cursor, payload, bom_id=None)
             cursor.execute(
                 """
-                INSERT INTO ofertas.materiales_precio (material, precio)
-                OUTPUT INSERTED.id_material_precio, INSERTED.fecha_creacion
-                VALUES (?, ?)
+                SELECT
+                    mp.id_material_precio,
+                    mp.material,
+                    mp.precio,
+                    mp.fecha_creacion,
+                    mp.part_nr,
+                    mp.mat_description,
+                    mp.new_sales_price,
+                    mp.notas,
+                    mp.nuevos_cp357,
+                    mp.nuevos_cp361,
+                    mp.nuevos_cp365,
+                    mp.anulados_cp365,
+                    mp.nuevos_cp369,
+                    mp.anulados_cp369,
+                    mp.nuevos_cp373,
+                    mp.anulados_cp373
+                FROM ofertas.materiales_precio mp
+                WHERE mp.id_material_precio = ?
                 """,
-                (payload["material"], payload["precio"]),
+                (inserted_bom_id,),
             )
             inserted = cursor.fetchone()
             conn.commit()
@@ -7013,12 +7601,7 @@ def create_bom():
             {
                 "success": True,
                 "message": "BOM creado correctamente",
-                "bom": {
-                    "id_bom": inserted[0] if inserted else None,
-                    "material": payload["material"],
-                    "precio": serialize_decimal(payload["precio"]),
-                    "fecha_creacion": serialize_date(inserted[1]) if inserted else None,
-                },
+                "bom": build_bom_catalog_record(inserted) if inserted else None,
             }
         )
     except RuntimeError as exc:
@@ -7040,7 +7623,7 @@ def update_bom(bom_id):
     data = request.get_json(silent=True) or {}
 
     try:
-        payload = build_bom_payload(data)
+        payload = build_bom_mutation_payload(data)
     except ValueError as exc:
         return jsonify({"success": False, "message": str(exc)}), 400
 
@@ -7049,30 +7632,11 @@ def update_bom(bom_id):
             cursor = conn.cursor()
             ensure_bom_catalog_schema(cursor)
 
-            cursor.execute(
-                """
-                SELECT 1
-                                FROM ofertas.materiales_precio
-                                WHERE material IS NOT NULL
-                                    AND LTRIM(RTRIM(material)) <> ''
-                                    AND LOWER(LTRIM(RTRIM(material))) = LOWER(LTRIM(RTRIM(?)))
-                  AND id_material_precio <> ?
-                """,
-                (payload["material"], bom_id),
-            )
-            if cursor.fetchone() is not None:
+            if find_conflicting_bom(cursor, payload, exclude_bom_id=bom_id) is not None:
                 conn.rollback()
-                return jsonify({"success": False, "message": "Ya existe otro BOM con ese material"}), 409
+                return jsonify({"success": False, "message": "Ya existe otro BOM con ese Part Nr o material"}), 409
 
-            cursor.execute(
-                """
-                UPDATE ofertas.materiales_precio
-                SET material = ?, precio = ?
-                WHERE id_material_precio = ?
-                """,
-                (payload["material"], payload["precio"], bom_id),
-            )
-
+            upsert_bom_catalog_row(cursor, payload, bom_id=bom_id)
             if cursor.rowcount == 0:
                 conn.rollback()
                 return jsonify({"success": False, "message": "BOM no encontrado"}), 404
@@ -7085,6 +7649,10 @@ def update_bom(bom_id):
                 "message": "BOM actualizado correctamente",
                 "bom": {
                     "id_bom": bom_id,
+                    "part_nr": payload["part_nr"],
+                    "mat_description": payload["mat_description"],
+                    "new_sales_price": serialize_decimal(payload["new_sales_price"]),
+                    "notas": payload.get("notas"),
                     "material": payload["material"],
                     "precio": serialize_decimal(payload["precio"]),
                 },
@@ -7138,6 +7706,82 @@ def delete_bom(bom_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo eliminar el BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms/export", methods=["GET"])
+def export_boms_csv():
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para exportar los BOM"}), 401
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            ensure_bom_catalog_schema(cursor)
+            boms = list_boms_catalog(cursor)
+
+        csv_content = build_bom_catalog_csv_content(boms)
+        filename = f"bom_catalog_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        return Response(
+            csv_content.encode("utf-8-sig"),
+            mimetype="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudieron exportar los BOM: {str(exc)}"}), 500
+
+
+@app.route("/api/boms/import", methods=["POST"])
+def import_boms_csv():
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para importar BOM"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response()
+
+    uploaded_file = request.files.get("archivo")
+    if uploaded_file is None or not getattr(uploaded_file, "filename", ""):
+        return jsonify({"success": False, "message": "Debes seleccionar un archivo CSV o Excel"}), 400
+
+    _, extension = os.path.splitext(uploaded_file.filename or "")
+    normalized_extension = extension.lower()
+    if normalized_extension not in {".csv", ".xlsx", ".xlsm"}:
+        return jsonify({"success": False, "message": "Solo se admite importación CSV o Excel (.xlsx/.xlsm) en este menú BOM"}), 400
+
+    try:
+        if normalized_extension == ".csv":
+            imported_rows = parse_bom_catalog_csv(uploaded_file)
+        else:
+            imported_rows = parse_bom_catalog_excel(uploaded_file)
+    except ValueError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            result = replace_bom_catalog_from_rows(cursor, imported_rows)
+            conn.commit()
+
+        summary = (
+            f"Importación BOM completada: {result['updated_count']} actualizados, "
+            f"{result['inserted_count']} insertados y {result['deleted_count']} eliminados."
+        )
+        return jsonify(
+            {
+                "success": True,
+                "message": "Importación BOM completada correctamente",
+                "summary": summary,
+                "result": result,
+            }
+        )
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": "No se pudo importar el catálogo BOM"}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": "No se pudo importar el catálogo BOM"}), 500
 
 
 @app.route("/api/estados", methods=["GET"])
@@ -8779,16 +9423,41 @@ def create_oferta_completa():
                     numero_oferta=numero_oferta,
                 )
             conn.commit()
-        return jsonify(
-            {
-                "success": True,
-                "message": "Oferta y ETC guardados correctamente",
-                "id_oferta": inserted_id,
-                "numero_oferta": numero_oferta,
-                "id_oferta_etc": inserted_etc_id,
-                "adjuntos": staged_attachment_payloads,
-            }
-        )
+
+            # --- Notificar a los managers del departamento del estado de la oferta ---
+            notification_result = None
+            try:
+                with db_connection(autocommit=True) as notify_conn:
+                    notify_cursor = notify_conn.cursor()
+                    notify_cursor.execute(
+                        "SELECT id_estado FROM ofertas.listado_ofertas WHERE id_oferta = ?",
+                        (inserted_id,),
+                    )
+                    estado_row = notify_cursor.fetchone()
+                    if estado_row and estado_row[0] is not None:
+                        notification_payload = build_new_offer_notification(
+                            notify_cursor,
+                            inserted_id,
+                            estado_row[0],
+                        )
+                        notification_result = send_estado_manager_notification(notification_payload)
+            except Exception:
+                app.logger.exception(
+                    "No se pudo enviar la notificacion de nueva oferta para id_oferta=%s",
+                    inserted_id,
+                )
+
+            return jsonify(
+                {
+                    "success": True,
+                    "message": "Oferta y ETC guardados correctamente",
+                    "id_oferta": inserted_id,
+                    "numero_oferta": numero_oferta,
+                    "id_oferta_etc": inserted_etc_id,
+                    "adjuntos": staged_attachment_payloads,
+                    "notification": notification_result,
+                }
+            )
     except DuplicateOfertaError as exc:
         return jsonify({"success": False, "message": str(exc)}), 409
     except ValueError as exc:
