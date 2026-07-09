@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bomCreateFeedback = document.getElementById('bomCreateFeedback');
   const bomsTableFeedback = document.getElementById('bomsTableFeedback');
   const bomsTableBody = document.getElementById('bomsTableBody');
+  const bomImportForm = document.getElementById('bomImportForm');
+  const bomImportFile = document.getElementById('bomImportFile');
+  const bomImportFeedback = document.getElementById('bomImportFeedback');
+  const bomExportCsvButton = document.getElementById('bomExportCsvButton');
   const bomsModeButtons = document.querySelectorAll('[data-boms-mode]');
   const bomsModePanels = document.querySelectorAll('[data-boms-mode-panel]');
   const departamentoCreateForm = document.getElementById('departamentoCreateForm');
@@ -109,6 +113,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offerDeletePromptPassword = document.getElementById('offerDeletePromptPassword');
   const offerDeletePromptFeedback = document.getElementById('offerDeletePromptFeedback');
   const offerDeletePromptConfirm = document.getElementById('offerDeletePromptConfirm');
+  const bomDeletePrompt = document.getElementById('bomDeletePrompt');
+  const bomDeletePromptMessage = document.getElementById('bomDeletePromptMessage');
+  const bomDeletePromptPassword = document.getElementById('bomDeletePromptPassword');
+  const bomDeletePromptFeedback = document.getElementById('bomDeletePromptFeedback');
+  const bomDeletePromptConfirm = document.getElementById('bomDeletePromptConfirm');
   const offerReassignPrompt = document.getElementById('offerReassignPrompt');
   const offerReassignPromptMessage = document.getElementById('offerReassignPromptMessage');
   const offerReassignPromptDepartment = document.getElementById('offerReassignPromptDepartment');
@@ -129,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const offerCenterChatForm = document.getElementById('offerCenterChatForm');
   const offerCenterChatInput = document.getElementById('offerCenterChatInput');
 
-  [offerDeletePrompt, offerReassignPrompt, ofertaEtcUnsavedPrompt].forEach((promptElement) => {
+  [offerDeletePrompt, bomDeletePrompt, offerReassignPrompt, ofertaEtcUnsavedPrompt].forEach((promptElement) => {
     if (promptElement && promptElement.parentElement !== document.body) {
       document.body.appendChild(promptElement);
     }
@@ -254,6 +263,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editingBomId = null;
   let editingDepartamentoId = null;
   let editingUsuarioId = null;
+  let bomCurrentPage = 1;
+  let bomPageSize = 20;
   let estadosCache = [];
   let stateEmojiSuggestions = {
     default: '📌',
@@ -270,6 +281,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   let editingConfigId = null;
   let offerDeletePromptResolver = null;
   let offerDeletePromptPreviousFocus = null;
+  let bomDeletePromptResolver = null;
+  let bomDeletePromptPreviousFocus = null;
   let offerReassignPromptResolver = null;
   let offerReassignPromptPreviousFocus = null;
   let ofertaEtcUnsavedPromptResolver = null;
@@ -384,10 +397,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     boms: {
       tableElement: () => bomsTableBody?.closest('table'),
       getColumns: () => [
-        { key: 'id_bom', label: t('literal.table.id', 'ID'), sortable: true, searchable: true },
-        { key: 'material', label: t('literal.bom.material', 'Material'), sortable: true, searchable: true },
-        { key: 'precio', label: t('literal.bom.current_price', 'Precio actual'), sortable: true, searchable: true },
-        { key: 'fecha_creacion', label: t('literal.bom.updated', 'Actualizado'), sortable: true, searchable: true },
+        { key: 'part_nr', label: t('config.bom_part_nr', 'Part Nr'), sortable: true, searchable: true },
+        { key: 'mat_description', label: t('config.bom_mat_description', 'Mat Description'), sortable: true, searchable: true },
+        { key: 'new_sales_price', label: t('config.bom_new_sales_price', 'New Sales Price'), sortable: true, searchable: true },
+        { key: 'notas', label: 'NOTAS', sortable: true, searchable: true },
         { key: 'acciones', label: t('table.actions', 'Acciones'), sortable: false, searchable: false },
       ],
     },
@@ -1652,6 +1665,38 @@ document.addEventListener('DOMContentLoaded', async () => {
       en: 'File uploaded successfully.',
       cs: 'Soubor byl úspěšně nahrán.',
     },
+    'bom creado correctamente': {
+      en: 'BOM created successfully.',
+      cs: 'BOM byl úspěšně vytvořen.',
+    },
+    'bom actualizado correctamente': {
+      en: 'BOM updated successfully.',
+      cs: 'BOM byl úspěšně aktualizován.',
+    },
+    'bom eliminado correctamente': {
+      en: 'BOM deleted successfully.',
+      cs: 'BOM byl úspěšně odstraněn.',
+    },
+    'importación bom completada correctamente': {
+      en: 'BOM import completed successfully.',
+      cs: 'Import BOM byl úspěšně dokončen.',
+    },
+    'no se pudo crear el bom': {
+      en: 'Could not create the BOM.',
+      cs: 'BOM se nepodařilo vytvořit.',
+    },
+    'no se pudo actualizar el bom': {
+      en: 'Could not update the BOM.',
+      cs: 'BOM se nepodařilo aktualizovat.',
+    },
+    'no se pudo eliminar el bom': {
+      en: 'Could not delete the BOM.',
+      cs: 'BOM se nepodařilo odstranit.',
+    },
+    'no se pudo importar el catálogo bom': {
+      en: 'Could not import the BOM catalog.',
+      cs: 'Katalog BOM se nepodařilo importovat.',
+    },
     'cliente creado correctamente': {
       en: 'Client created successfully.',
       cs: 'Zákazník byl úspěšně vytvořen.',
@@ -1995,6 +2040,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     return translatedMessage || rawMessage;
   };
 
+  const showSideNotification = (message, type = 'success', duration = 4000) => {
+    const container = document.getElementById('sideNotificationContainer');
+    if (!container) {
+      return;
+    }
+
+    const notification = document.createElement('div');
+    notification.className = `side-notification is-${type}`;
+
+    const icon = type === 'success' ? '✓' : '✕';
+    const iconClass = type === 'success' ? 'side-notification-icon' : 'side-notification-icon';
+
+    notification.innerHTML = `
+      <span class="${iconClass}">${icon}</span>
+      <span class="side-notification-message">${escapeHtml(translateUserVisibleMessage(message))}</span>
+      <button class="side-notification-close" type="button" aria-label="Cerrar">✕</button>
+    `;
+
+    const closeBtn = notification.querySelector('.side-notification-close');
+    closeBtn.addEventListener('click', () => {
+      notification.classList.add('is-hiding');
+      setTimeout(() => notification.remove(), 300);
+    });
+
+    container.appendChild(notification);
+
+    if (duration > 0) {
+      setTimeout(() => {
+        if (notification.parentElement) {
+          notification.classList.add('is-hiding');
+          setTimeout(() => notification.remove(), 300);
+        }
+      }, duration);
+    }
+  };
+
   const OFFER_DELETE_CONFIRM_PASSWORD = '12345';
 
   const renderOfferReassignUserOptions = ({ departmentId, selectedNumOperario = '' } = {}) => {
@@ -2101,6 +2182,90 @@ document.addEventListener('DOMContentLoaded', async () => {
           offerDeletePromptPassword.focus();
         } else if (offerDeletePromptConfirm) {
           offerDeletePromptConfirm.focus();
+        }
+      });
+    });
+  };
+
+  const closeBomDeletePrompt = (confirmed = false) => {
+    if (!bomDeletePrompt) {
+      return confirmed;
+    }
+
+    bomDeletePrompt.classList.remove('is-visible');
+    bomDeletePrompt.setAttribute('aria-hidden', 'true');
+    if (bomDeletePromptMessage) {
+      bomDeletePromptMessage.textContent = '';
+    }
+    if (bomDeletePromptPassword) {
+      bomDeletePromptPassword.value = '';
+    }
+    if (bomDeletePromptFeedback) {
+      bomDeletePromptFeedback.textContent = '';
+      bomDeletePromptFeedback.className = 'form-feedback';
+    }
+
+    const resolver = bomDeletePromptResolver;
+    bomDeletePromptResolver = null;
+
+    if (bomDeletePromptPreviousFocus && typeof bomDeletePromptPreviousFocus.focus === 'function') {
+      bomDeletePromptPreviousFocus.focus();
+    }
+    bomDeletePromptPreviousFocus = null;
+
+    if (resolver) {
+      resolver(confirmed);
+    }
+
+    return confirmed;
+  };
+
+  const confirmBomDeletePrompt = () => {
+    if (!bomDeletePromptPassword) {
+      return closeBomDeletePrompt(true);
+    }
+
+    if (bomDeletePromptPassword.value !== OFFER_DELETE_CONFIRM_PASSWORD) {
+      if (bomDeletePromptFeedback) {
+        bomDeletePromptFeedback.textContent = 'La contraseña de confirmación no es correcta.';
+        bomDeletePromptFeedback.className = 'form-feedback is-visible is-error';
+      }
+      bomDeletePromptPassword.focus();
+      bomDeletePromptPassword.select();
+      return false;
+    }
+
+    return closeBomDeletePrompt(true);
+  };
+
+  const openBomDeletePrompt = ({ message = '' } = {}) => {
+    if (!bomDeletePrompt || !bomDeletePromptMessage) {
+      return Promise.resolve(true);
+    }
+
+    if (bomDeletePromptResolver) {
+      closeBomDeletePrompt(false);
+    }
+
+    bomDeletePromptPreviousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    bomDeletePromptMessage.textContent = message;
+    if (bomDeletePromptPassword) {
+      bomDeletePromptPassword.value = '';
+    }
+    if (bomDeletePromptFeedback) {
+      bomDeletePromptFeedback.textContent = '';
+      bomDeletePromptFeedback.className = 'form-feedback';
+    }
+    bomDeletePrompt.classList.add('is-visible');
+    bomDeletePrompt.setAttribute('aria-hidden', 'false');
+
+    return new Promise((resolve) => {
+      bomDeletePromptResolver = resolve;
+      window.requestAnimationFrame(() => {
+        if (bomDeletePromptPassword) {
+          bomDeletePromptPassword.focus();
+        } else if (bomDeletePromptConfirm) {
+          bomDeletePromptConfirm.focus();
         }
       });
     });
@@ -7515,6 +7680,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     enforceManagerOnlyUi(bomsModeButtons, bomsModePanels, mode, 'crear');
     if (!isManagerUser()) {
       clearGenericFeedback(bomCreateFeedback);
+      clearGenericFeedback(bomImportFeedback);
       editingBomId = null;
     }
   };
@@ -7609,30 +7775,44 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td colspan="5" class="clientes-table__empty">${escapeHtml(t('config.boms_empty', 'No hay BOM creados todavía.'))}</td>
         </tr>
       `;
+      renderBomsPaginationControls();
       return;
     }
 
-    bomsTableBody.innerHTML = processedBoms
+    // Calcular paginación
+    const totalPages = Math.ceil(processedBoms.length / bomPageSize);
+    if (bomCurrentPage > totalPages) {
+      bomCurrentPage = Math.max(1, totalPages);
+    }
+    const startIdx = (bomCurrentPage - 1) * bomPageSize;
+    const endIdx = startIdx + bomPageSize;
+    const pagedBoms = processedBoms.slice(startIdx, endIdx);
+
+    bomsTableBody.innerHTML = pagedBoms
       .map((bom) => {
         const isEditing = canManageBoms && editingBomId === bom.id_bom;
+        const priceValue = bom.new_sales_price ?? bom.precio ?? '';
         return `
           <tr data-bom-row="${bom.id_bom}">
-            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'id_bom', value: bom.id_bom })}
             ${isEditing
               ? `
-            <td class="${getColumnCellClass('boms', 'material')}" data-label="${escapeHtml(t('literal.bom.material', 'Material'))}">
-              <input class="clientes-table__edit-input" type="text" value="${escapeHtml(bom.material || '')}" data-edit-bom-material="${bom.id_bom}" maxlength="255" />
+            <td class="${getColumnCellClass('boms', 'part_nr')}" data-label="${escapeHtml(t('config.bom_part_nr', 'Part Nr'))}">
+              <input class="clientes-table__edit-input" type="text" value="${escapeHtml(bom.part_nr || '')}" data-edit-bom-part-nr="${bom.id_bom}" maxlength="255" />
             </td>
-            <td class="${getColumnCellClass('boms', 'precio')}" data-label="${escapeHtml(t('literal.bom.current_price', 'Precio actual'))}">
-              <input class="clientes-table__edit-input" type="number" min="0" step="0.01" value="${escapeHtml(bom.precio || '')}" data-edit-bom-precio="${bom.id_bom}" />
+            <td class="${getColumnCellClass('boms', 'mat_description')}" data-label="${escapeHtml(t('config.bom_mat_description', 'Mat Description'))}">
+              <input class="clientes-table__edit-input" type="text" value="${escapeHtml(bom.mat_description || bom.material || '')}" data-edit-bom-mat-description="${bom.id_bom}" maxlength="255" />
             </td>
-            <td class="${getColumnCellClass('boms', 'fecha_creacion')}" data-label="${escapeHtml(t('literal.bom.updated', 'Actualizado'))}">
-              <span class="table-cell__content table-cell__content--muted">${escapeHtml(formatDisplayDate(bom.fecha_creacion) || '-')}</span>
+            <td class="${getColumnCellClass('boms', 'new_sales_price')}" data-label="${escapeHtml(t('config.bom_new_sales_price', 'New Sales Price'))}">
+              <input class="clientes-table__edit-input" type="number" min="0" step="0.01" value="${escapeHtml(priceValue || '')}" data-edit-bom-new-sales-price="${bom.id_bom}" />
+            </td>
+            <td class="${getColumnCellClass('boms', 'notas')}" data-label="NOTAS">
+              <input class="clientes-table__edit-input" type="text" value="${escapeHtml(bom.notas || '')}" data-edit-bom-notas="${bom.id_bom}" maxlength="500" />
             </td>
               `
-              : `${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'material', value: bom.material, contentClass: 'table-cell__content--strong', title: bom.material })}
-            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'precio', value: bom.precio ?? '-', title: bom.precio ?? '' })}
-            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'fecha_creacion', value: formatDisplayDate(bom.fecha_creacion) || '-', title: formatDisplayDate(bom.fecha_creacion) || '' })}`}
+              : `${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'part_nr', value: bom.part_nr ?? '-', contentClass: 'table-cell__content--strong', title: bom.part_nr ?? '' })}
+            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'mat_description', value: bom.mat_description ?? bom.material ?? '-', contentClass: 'table-cell__content--strong', title: bom.mat_description ?? bom.material ?? '' })}
+            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'new_sales_price', value: priceValue ?? '-', title: priceValue ?? '' })}
+            ${renderStaticTableCell({ tableKey: 'boms', rowId: bom.id_bom, columnKey: 'notas', value: bom.notas ?? '-', contentClass: bom.notas ? '' : 'table-cell__content--muted', title: bom.notas ?? '' })}`}
             <td class="table-cell table-cell--actions ${getColumnCellClass('boms', 'acciones')}" data-label="${escapeHtml(t('table.actions', 'Acciones'))}">
               <div class="clientes-table__actions actions-inline">
                 ${isEditing
@@ -7652,6 +7832,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
       })
       .join('');
+
+    renderBomsPaginationControls();
+  };
+
+  const renderBomsPaginationControls = () => {
+    const processedBoms = getProcessedRows('boms', bomsCache);
+    const totalPages = Math.max(1, Math.ceil(processedBoms.length / bomPageSize));
+    
+    const prevBtn = document.getElementById('bomPrevPage');
+    const nextBtn = document.getElementById('bomNextPage');
+    const pageNumbersDiv = document.getElementById('bomPageNumbers');
+
+    if (prevBtn) prevBtn.disabled = bomCurrentPage === 1;
+    if (nextBtn) nextBtn.disabled = bomCurrentPage === totalPages;
+
+    if (pageNumbersDiv) {
+      let html = '';
+      const maxVisible = 5;
+      const halfVisible = Math.floor(maxVisible / 2);
+      let startPage = Math.max(1, bomCurrentPage - halfVisible);
+      let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+      if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+      }
+
+      if (startPage > 1) {
+        html += `<button class="pagination-number" data-page="1">1</button>`;
+        if (startPage > 2) html += `<span class="pagination-ellipsis">...</span>`;
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === bomCurrentPage ? 'active' : '';
+        html += `<button class="pagination-number ${activeClass}" data-page="${i}">${i}</button>`;
+      }
+
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span class="pagination-ellipsis">...</span>`;
+        html += `<button class="pagination-number" data-page="${totalPages}">${totalPages}</button>`;
+      }
+
+      pageNumbersDiv.innerHTML = html;
+    }
   };
 
   const loadBoms = async ({ silent = false } = {}) => {
@@ -7845,7 +8067,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       resetTableFilters('boms');
       setupTableHeaderControls('boms');
       loadBoms({ silent: false });
-      setBomsMode(isManagerUser() ? 'crear' : 'ver');
+      setBomsMode('ver');
       if (!isManagerUser()) {
         setGenericFeedback(bomsTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
       }
@@ -8005,6 +8227,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       const confirmDeleteOfferPromptButton = event.target.closest('[data-confirm-delete-offer-prompt]');
       if (confirmDeleteOfferPromptButton) {
         confirmOfferDeletePrompt();
+        return;
+      }
+
+      const closeBomDeletePromptButton = event.target.closest('[data-close-bom-delete-prompt]');
+      if (closeBomDeletePromptButton) {
+        closeBomDeletePrompt(false);
+        return;
+      }
+
+      const confirmBomDeletePromptButton = event.target.closest('[data-confirm-bom-delete-prompt]');
+      if (confirmBomDeletePromptButton) {
+        confirmBomDeletePrompt();
         return;
       }
 
@@ -9274,6 +9508,20 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    if (bomDeletePrompt?.classList.contains('is-visible')) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeBomDeletePrompt(false);
+        return;
+      }
+
+      if (event.key === 'Enter' && event.target === bomDeletePromptPassword) {
+        event.preventDefault();
+        confirmBomDeletePrompt();
+      }
+      return;
+    }
+
     if (offerReassignPrompt?.classList.contains('is-visible')) {
       if (event.key === 'Escape') {
         event.preventDefault();
@@ -10044,15 +10292,120 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         bomCreateForm.reset();
-        setGenericFeedback(bomCreateFeedback, result.message || 'BOM creado correctamente.', 'success');
+        showSideNotification(result.message || 'BOM creado correctamente', 'success');
         await loadBoms({ silent: true });
         setBomsMode('ver');
       } catch (error) {
-        setGenericFeedback(bomCreateFeedback, error.message || 'No se pudo crear el BOM.', 'error');
+        showSideNotification(error.message || 'No se pudo crear el BOM', 'error');
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
           submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  if (bomExportCsvButton) {
+    bomExportCsvButton.addEventListener('click', () => {
+      window.location.assign('/api/boms/export');
+    });
+  }
+
+  if (bomImportForm) {
+    bomImportForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      if (!isManagerUser()) {
+        showManagerOnlyFeedback(bomImportFeedback, setBomsMode);
+        return;
+      }
+
+      const submitButton = bomImportForm.querySelector('button[type="submit"]');
+      const originalText = submitButton ? submitButton.textContent : '';
+
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = t('literal.feedback.loading_state', 'Guardando...');
+      }
+
+      clearGenericFeedback(bomImportFeedback);
+
+      try {
+        const uploadData = new FormData(bomImportForm);
+        const response = await fetch('/api/boms/import', {
+          method: 'POST',
+          body: uploadData,
+        });
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo importar el catálogo BOM');
+        }
+
+        bomImportForm.reset();
+        if (bomImportFile) {
+          bomImportFile.value = '';
+        }
+        showSideNotification('Importación BOM completada correctamente', 'success');
+        await loadBoms({ silent: true });
+        setBomsMode('ver');
+      } catch (error) {
+        showSideNotification(error.message || 'No se pudo importar el catálogo BOM', 'error');
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = originalText;
+        }
+      }
+    });
+  }
+
+  // Paginación de BOM
+  const bomPageSizeSelect = document.getElementById('bomPageSize');
+  const bomPrevBtn = document.getElementById('bomPrevPage');
+  const bomNextBtn = document.getElementById('bomNextPage');
+  const bomPageNumbersDiv = document.getElementById('bomPageNumbers');
+
+  if (bomPageSizeSelect) {
+    bomPageSizeSelect.addEventListener('change', (e) => {
+      bomPageSize = parseInt(e.target.value, 10);
+      bomCurrentPage = 1;
+      renderBomsTable();
+    });
+  }
+
+  if (bomPrevBtn) {
+    bomPrevBtn.addEventListener('click', () => {
+      if (bomCurrentPage > 1) {
+        bomCurrentPage--;
+        renderBomsTable();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+
+  if (bomNextBtn) {
+    bomNextBtn.addEventListener('click', () => {
+      const processedBoms = getProcessedRows('boms', bomsCache);
+      const totalPages = Math.ceil(processedBoms.length / bomPageSize);
+      if (bomCurrentPage < totalPages) {
+        bomCurrentPage++;
+        renderBomsTable();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  }
+
+  if (bomPageNumbersDiv) {
+    bomPageNumbersDiv.addEventListener('click', (e) => {
+      const pageBtn = e.target.closest('.pagination-number');
+      if (pageBtn) {
+        const page = parseInt(pageBtn.dataset.page, 10);
+        if (page && page !== bomCurrentPage) {
+          bomCurrentPage = page;
+          renderBomsTable();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
         }
       }
     });
@@ -10545,8 +10898,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (saveButton) {
         const bomId = Number(saveButton.dataset.saveBom);
-        const materialInput = bomsTableBody.querySelector(`[data-edit-bom-material="${bomId}"]`);
-        const precioInput = bomsTableBody.querySelector(`[data-edit-bom-precio="${bomId}"]`);
+        const partNrInput = bomsTableBody.querySelector(`[data-edit-bom-part-nr="${bomId}"]`);
+        const descriptionInput = bomsTableBody.querySelector(`[data-edit-bom-mat-description="${bomId}"]`);
+        const priceInput = bomsTableBody.querySelector(`[data-edit-bom-new-sales-price="${bomId}"]`);
+        const notasInput = bomsTableBody.querySelector(`[data-edit-bom-notas="${bomId}"]`);
 
         try {
           const response = await fetch(`/api/boms/${bomId}`, {
@@ -10555,8 +10910,10 @@ document.addEventListener('DOMContentLoaded', async () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              material: materialInput ? materialInput.value.trim() : '',
-              precio: precioInput ? precioInput.value.trim() : '',
+              part_nr: partNrInput ? partNrInput.value.trim() : '',
+              mat_description: descriptionInput ? descriptionInput.value.trim() : '',
+              new_sales_price: priceInput ? priceInput.value.trim() : '',
+              notas: notasInput ? notasInput.value.trim() : '',
             }),
           });
 
@@ -10566,10 +10923,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           editingBomId = null;
-          setGenericFeedback(bomsTableFeedback, result.message || 'BOM actualizado correctamente.', 'success');
+          showSideNotification(result.message || 'BOM actualizado correctamente', 'success');
           await loadBoms({ silent: true });
         } catch (error) {
-          setGenericFeedback(bomsTableFeedback, error.message || 'No se pudo actualizar el BOM.', 'error');
+          showSideNotification(error.message || 'No se pudo actualizar el BOM', 'error');
         }
         return;
       }
@@ -10578,7 +10935,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const bomId = Number(deleteButton.dataset.deleteBom);
         const bom = bomsCache.find((item) => Number(item.id_bom) === bomId);
         const bomLabel = bom?.material || `#${bomId}`;
-        const confirmed = window.confirm(t('config.bom_delete_confirm', `Se eliminara el BOM ${bomLabel} y se quitaran sus referencias en ofertas. Deseas continuar?`));
+        const confirmed = await openBomDeletePrompt({
+          message: tf('config.bom_delete_confirm_message', `¿Seguro que quieres eliminar el BOM ${bomLabel}? Esta acción no se puede deshacer.`, { label: bomLabel }),
+        });
         if (!confirmed) {
           return;
         }
@@ -10596,10 +10955,10 @@ document.addEventListener('DOMContentLoaded', async () => {
           if (editingBomId === bomId) {
             editingBomId = null;
           }
-          setGenericFeedback(bomsTableFeedback, result.message || 'BOM eliminado correctamente.', 'success');
+          showSideNotification(result.message || 'BOM eliminado correctamente', 'success');
           await loadBoms({ silent: true });
         } catch (error) {
-          setGenericFeedback(bomsTableFeedback, error.message || 'No se pudo eliminar el BOM.', 'error');
+          showSideNotification(error.message || 'No se pudo eliminar el BOM', 'error');
         }
       }
     });

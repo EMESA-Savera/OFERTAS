@@ -1581,11 +1581,14 @@
 
 .clientes-table__edit-input {
   width: 100%;
-  min-width: 260px;
-  padding: 10px 12px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 10px;
   border: 1px solid #cfe0ef;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fbfdff;
+  box-sizing: border-box;
+  font-size: 0.95rem;
 }
 
 .usuarios-table__row--editing {
@@ -4086,7 +4089,202 @@ tr.estado-drag-row.drag-dragging {
   opacity: 0.45;
 }
 
-tr.estado-drag-row.drag-over td {
-  border-top: 2px solid var(--emesa-blue, #1e5087);
-  background: #eef4fb;
+/* ── Side Notification ─────────────────────────────────────────── */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.side-notification-container {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.side-notification {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 12px;
+  pointer-events: auto;
+  animation: slideInRight 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.side-notification.is-success {
+  background: #10b981;
+  color: white;
+  border-left: 4px solid #059669;
+}
+
+.side-notification.is-error {
+  background: #ef4444;
+  color: white;
+  border-left: 4px solid #dc2626;
+}
+
+.side-notification.is-hiding {
+  animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.side-notification-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.side-notification-message {
+  flex: 1;
+}
+
+.side-notification-close {
+  background: none;
+  border: none;
+  color: currentColor;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.side-notification-close:hover {
+  opacity: 1;
+}
+
+/* ── Table Pagination ─────────────────────────────────────────── */
+.table-pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+  padding: 16px 0;
+  border-top: 1px solid #e8eef4;
+}
+
+.pagination-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-left label {
+  font-size: 0.9rem;
+  color: #35516c;
+  font-weight: 500;
+}
+
+.pagination-select {
+  padding: 6px 10px;
+  border: 1px solid #cfe0ef;
+  border-radius: 6px;
+  background: #fbfdff;
+  color: #35516c;
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 70px;
+}
+
+.pagination-select:hover {
+  border-color: #a5b8d1;
+}
+
+.pagination-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-btn {
+  padding: 6px 12px;
+  border: 1px solid #cfe0ef;
+  border-radius: 6px;
+  background: #fbfdff;
+  color: #35516c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: #f1f7fd;
+  border-color: var(--emesa-blue);
+  color: var(--emesa-blue);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-number {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid #cfe0ef;
+  border-radius: 4px;
+  background: #fbfdff;
+  color: #35516c;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.pagination-number:hover {
+  background: #f1f7fd;
+  border-color: var(--emesa-blue);
+  color: var(--emesa-blue);
+}
+
+.pagination-number.active {
+  background: var(--emesa-blue);
+  color: white;
+  border-color: var(--emesa-blue);
+}
+
+.pagination-ellipsis {
+  color: #66798c;
+  font-size: 0.85rem;
+  padding: 0 4px;
 }
