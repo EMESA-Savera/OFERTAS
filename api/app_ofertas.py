@@ -1286,22 +1286,14 @@ def build_offer_notification_message(
             'style="display:block; max-width: 168px; width: 168px; height: auto; border: 0;" />'
         ).format(src=html_escape(logo_src))
 
-    body = """
-<!DOCTYPE html>
-<html lang="cs">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1a1a2e; line-height: 1.6; -webkit-font-smoothing: antialiased;">
-    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f5f7; padding: 40px 20px;">
+    body = """<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f4f5f7; padding: 40px 20px;">
         <tr>
             <td align="center">
                 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width: 620px; background-color: #ffffff; border-radius: 12px; overflow: hidden;">
 
                     <!-- Header -->
                     <tr>
-                        <td style="padding: 32px 36px 28px 36px; background: linear-gradient(135deg, #8b1e2d 0%, #b33545 100%);">
+                        <td style="padding: 32px 36px 28px 36px; background-color: #8b1e2d;">
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                                 <tr>
                                     <td style="vertical-align: middle;">
@@ -1387,9 +1379,7 @@ def build_offer_notification_message(
                 </table>
             </td>
         </tr>
-    </table>
-</body>
-</html>""".format(
+    </table>""".format(
         oferta=html_escape(oferta_label),
         estado=html_escape(estado_nombre),
         department_intro_html=department_intro_html,
