@@ -8974,12 +8974,16 @@ def add_offer_bom(oferta_id):
             result = add_offer_bom_material_link(cursor, oferta_id, material_id)
             selected_boms = list_offer_bom_materials(cursor, oferta_id)
             if result["added"]:
+                actor_name = normalize_optional_text(
+                    user_data.get("nombre") or user_data.get("display_name") or user_data.get("email"),
+                    255,
+                )
                 insert_offer_interaction_entry(
                     cursor,
                     oferta_id,
                     "Edicion oferta",
                     datetime.now(),
-                    observaciones=f"BOM añadido: {result['material']}",
+                    observaciones=f"BOM añadido: {result['material']} (por {actor_name})",
                 )
             conn.commit()
 
@@ -9119,12 +9123,16 @@ def remove_offer_bom(oferta_id, material_id):
             result = remove_offer_bom_material_link(cursor, oferta_id, material_id)
             selected_boms = list_offer_bom_materials(cursor, oferta_id)
             if result["removed"]:
+                actor_name = normalize_optional_text(
+                    user_data.get("nombre") or user_data.get("display_name") or user_data.get("email"),
+                    255,
+                )
                 insert_offer_interaction_entry(
                     cursor,
                     oferta_id,
                     "Edicion oferta",
                     datetime.now(),
-                    observaciones=f"BOM eliminado: {result['material']}",
+                    observaciones=f"BOM eliminado: {result['material']} (por {actor_name})",
                 )
             conn.commit()
 
@@ -9143,6 +9151,91 @@ def remove_offer_bom(oferta_id, material_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo eliminar el BOM de la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/bom-to-etc", methods=["POST"])
+def sync_offer_bom_to_etc(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para guardar BOM en ETC"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+
+            # Obtener materiales BOM de la oferta
+            cursor.execute(
+                """
+                SELECT mp.material, mp.precio
+                FROM ofertas.oferta_bom_materiales obm
+                INNER JOIN ofertas.materiales_precio mp
+                    ON mp.id_material_precio = obm.id_material_precio
+                WHERE obm.id_oferta = ?
+                ORDER BY obm.fecha_asignacion DESC, mp.material ASC
+                """,
+                (oferta_id,),
+            )
+            bom_rows = cursor.fetchall()
+
+            if not bom_rows:
+                return jsonify({"success": False, "message": "La oferta no tiene materiales BOM para guardar"}), 400
+
+            # Construir resumen y total
+            material_summary = "\n".join(
+                f"• {row[0]} — {row[1]:.2f}" if row[1] is not None else f"• {row[0]}"
+                for row in bom_rows
+            )
+            total_material = sum(row[1] for row in bom_rows if row[1] is not None)
+
+            # Comprobar si existe registro ETC
+            cursor.execute(
+                "SELECT 1 FROM ofertas.oferta_etc WHERE id_oferta_etc = ?",
+                (oferta_id,),
+            )
+            etc_exists = cursor.fetchone() is not None
+
+            now = datetime.now()
+
+            if etc_exists:
+                cursor.execute(
+                    """
+                    UPDATE ofertas.oferta_etc
+                    SET resumen_material_solicitado = ?,
+                        total_material_eur = ?,
+                        fecha_actualizacion = ?
+                    WHERE id_oferta_etc = ?
+                    """,
+                    (material_summary, total_material, now, oferta_id),
+                )
+            else:
+                cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc ON")
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO ofertas.oferta_etc (
+                            id_oferta_etc, id_estado, moneda, prioridad, es_urgente,
+                            origen_registro, activo, fecha_creacion, fecha_actualizacion,
+                            resumen_material_solicitado, total_material_eur
+                        ) VALUES (?, 1, 'EUR', 'NORMAL', 0, 'MANUAL', 1, ?, ?, ?, ?)
+                        """,
+                        (oferta_id, now, now, material_summary, total_material),
+                    )
+                finally:
+                    cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc OFF")
+
+            conn.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Materiales BOM volcados a ETC correctamente",
+            "total_material_eur": total_material,
+        })
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudieron guardar los materiales en ETC: {str(exc)}"}), 500
 
 
 def insert_oferta_etc_record(cursor, payload, explicit_id=None):

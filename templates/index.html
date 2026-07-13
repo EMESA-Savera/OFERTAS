@@ -674,49 +674,38 @@
 
         <div id="bomModal" class="oferta-modal" aria-hidden="true">
           <div class="oferta-modal__backdrop" data-close-bom-modal="true"></div>
-          <div id="bomCatalogPicker" class="oferta-modal__dialog oferta-modal__dialog--bom-picker bom-modal__picker" role="dialog" aria-modal="false" aria-labelledby="bomCatalogPickerTitle" hidden>
-            <div class="bom-modal__picker-header">
-              <div>
-                <p class="page-eyebrow" data-translate-key="literal.bom.acronym">BOM</p>
-                <h3 id="bomCatalogPickerTitle" data-translate-key="literal.bom.catalog_title">Catalogo de materiales</h3>
-              </div>
-              <button class="oferta-modal__close oferta-modal__close--inline" type="button" data-close-bom-picker="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
-            </div>
-            <label class="bom-modal__search" for="bomSearchInput">
-              <span data-translate-key="literal.bom.search_material">Buscar material</span>
-              <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
-            </label>
-            <div class="clientes-table-wrap bom-modal__table-wrap bom-modal__table-wrap--picker">
-              <table class="clientes-table bom-table bom-table--picker">
-                <thead>
-                  <tr>
-                    <th data-translate-key="literal.bom.material">Material</th>
-                    <th data-translate-key="literal.bom.current_price">Precio actual</th>
-                    <th data-translate-key="table.actions">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody id="bomCatalogBody">
-                  <tr>
-                    <td colspan="3" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
           <div class="oferta-modal__dialog oferta-modal__dialog--bom" role="dialog" aria-modal="true" aria-labelledby="bomModalTitle">
             <div class="oferta-modal__header">
               <div>
                 <p class="page-eyebrow" data-translate-key="literal.bom.acronym">BOM</p>
                 <h2 id="bomModalTitle" data-translate-key="literal.bom.title">Materiales y precios</h2>
-                <p id="bomModalOffer" class="form-help" data-translate-key="literal.bom.history_help">Consulta y actualiza el histórico de precios de materiales.</p>
+                <p id="bomModalOffer" class="form-help" data-translate-key="literal.bom.history_help">Busca y anade materiales desde el catálogo de abajo.</p>
               </div>
               <button class="oferta-modal__close" type="button" data-close-bom-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
             </div>
 
-            <div class="bom-modal__toolbar">
-              <button id="bomOpenPickerButton" class="btn-primary" type="button" data-translate-key="literal.bom.add_materials_to_offer">Anadir materiales</button>
-            </div>
+            <section id="bomCatalogSection" class="bom-modal__catalog-section">
+              <label class="bom-modal__search" for="bomSearchInput">
+                <span data-translate-key="literal.bom.search_material">Buscar material</span>
+                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
+              </label>
+              <div class="clientes-table-wrap bom-modal__table-wrap">
+                <table class="clientes-table bom-table">
+                  <thead>
+                    <tr>
+                      <th data-translate-key="literal.bom.material">Material</th>
+                      <th data-translate-key="literal.bom.current_price">Precio actual</th>
+                      <th data-translate-key="table.actions">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="bomCatalogBody">
+                    <tr>
+                      <td colspan="3" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
             <section id="bomListView" class="bom-modal__view">
               <div class="clientes-table-wrap bom-modal__table-wrap">
                 <table class="clientes-table bom-table">
@@ -734,6 +723,9 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div class="bom-etc-sync-bar">
+                <button id="bomSyncToEtcButton" class="btn-inline btn-inline--save" type="button" data-translate-key="literal.bom.sync_to_etc">Aceptar</button>
               </div>
             </section>
 

@@ -190,9 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bomModal = document.getElementById('bomModal');
   const bomModalTitle = document.getElementById('bomModalTitle');
   const bomModalOffer = document.getElementById('bomModalOffer');
-  const bomOpenPickerButton = document.getElementById('bomOpenPickerButton');
   const bomOfferSelectionSummary = document.getElementById('bomOfferSelectionSummary');
-  const bomCatalogPicker = document.getElementById('bomCatalogPicker');
   const bomSearchInput = document.getElementById('bomSearchInput');
   const bomListView = document.getElementById('bomListView');
   const bomEditView = document.getElementById('bomEditView');
@@ -207,6 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bomEditModeHelp = document.getElementById('bomEditModeHelp');
   const bomEditResetOverrideButton = document.getElementById('bomEditResetOverrideButton');
   const bomFeedback = document.getElementById('bomFeedback');
+  const bomSyncToEtcButton = document.getElementById('bomSyncToEtcButton');
   const ofertaEtcModal = document.getElementById('ofertaEtcModal');
   const ofertaEtcModalDialog = ofertaEtcModal?.querySelector('.oferta-modal__dialog') || null;
   const ofertaEtcModalOriginalParent = ofertaEtcModal?.parentElement || null;
@@ -3875,33 +3874,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     return bomMaterialesCache.filter((material) => normalizeSearchText(material.material).includes(query));
   };
 
-  const openBomCatalogPicker = () => {
-    if (!bomCatalogPicker) {
-      return;
-    }
-
-    if (!bomModal?.classList.contains('is-visible')) {
-      return;
-    }
-
-    bomCatalogPicker.hidden = false;
-    bomCatalogPicker.classList.add('is-visible');
-    renderBomCatalogTable();
-    bomSearchInput?.focus();
-  };
-
-  const closeBomCatalogPicker = () => {
-    if (!bomCatalogPicker) {
-      return;
-    }
-
-    bomCatalogPicker.classList.remove('is-visible');
-    bomCatalogPicker.hidden = true;
-    if (bomSearchInput) {
-      bomSearchInput.value = '';
-    }
-  };
-
   const hasCurrentBomOfferContext = () => Boolean(currentBomOfertaContext?.id_oferta);
 
   const getCurrentOfferBomMaterial = (materialId) => {
@@ -3952,6 +3924,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const readOnly = isReadOnlyUser();
 
+    const totalPrice = materiales.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+
     bomListBody.innerHTML = materiales.map((material) => `
       <tr>
         <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
@@ -3975,7 +3949,18 @@ document.addEventListener('DOMContentLoaded', async () => {
           >✎</button>
         </td>
       </tr>
-    `).join('');
+    `).join('') + `
+      <tr class="bom-total-row">
+        <td><strong>${escapeHtml(t('literal.bom.total', 'TOTAL'))}</strong></td>
+        <td class="column-bom-price"><strong>${escapeHtml(formatCurrencyAmount(totalPrice))}</strong></td>
+        <td></td>
+        <td></td>
+      </tr>`;
+
+    // Mostrar/ocultar boton sync segun haya materiales
+    if (bomSyncToEtcButton) {
+      bomSyncToEtcButton.hidden = materiales.length === 0;
+    }
   };
 
   const renderBomCatalogTable = ({ loading = false } = {}) => {
@@ -4089,7 +4074,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bomEditResetOverrideButton) {
       bomEditResetOverrideButton.hidden = !(hasCurrentBomOfferContext() && currentBomMaterial.tiene_precio_override);
     }
-    closeBomCatalogPicker();
     if (bomListView) {
       bomListView.hidden = true;
     }
@@ -4103,7 +4087,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     bomModal.classList.remove('is-visible');
     bomModal.setAttribute('aria-hidden', 'true');
-    bomMaterialesCache = [];
     currentBomOfertaContext = null;
     currentBomMaterial = null;
     currentBomOfferMaterials = [];
@@ -4115,7 +4098,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bomEditForm) {
       bomEditForm.reset();
     }
-    closeBomCatalogPicker();
     openBomListView();
     if (reopenOfferCenter) {
       reopenOfferCenterFromReturnContext();
@@ -4176,8 +4158,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    closeBomCatalogPicker();
-
     const oferta = ofertasListadoCache.find((item) => Number(item.id_oferta) === Number(ofertaId)) || null;
     currentBomOfertaContext = oferta || { id_oferta: ofertaId, numero_oferta: ofertaId };
     setCurrentBomOfferMaterials(currentBomOfertaContext?.bom_materiales || []);
@@ -4196,7 +4176,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bomSearchInput) {
       bomSearchInput.value = '';
     }
-    closeBomCatalogPicker();
 
     bomModal.classList.add('is-visible');
     bomModal.setAttribute('aria-hidden', 'false');
@@ -5959,16 +5938,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    targetElement.innerHTML = interacciones.map((interaccion) => `
+    targetElement.innerHTML = interacciones.map((interaccion) => {
+      let observaciones = interaccion.observaciones || '';
+      let usuario = null;
+
+      // Extraer " (por Nombre)" del final de las observaciones
+      const porMatch = observaciones.match(/\s*\(por\s+(.+?)\)\s*$/);
+      if (porMatch) {
+        usuario = porMatch[1].trim();
+        observaciones = observaciones.slice(0, porMatch.index).trim();
+      }
+
+      return `
       <article class="crm-history__item">
         <div class="crm-history__meta">
           <strong>${escapeHtml(translateInteractionSummary(interaccion.tipo_interaccion || t('crm.interaction', 'Interacción')))}</strong>
           <span>${escapeHtml(formatInteractionDateTime(interaccion.fecha_interaccion) || '')}</span>
         </div>
         <p class="crm-history__deadline"><strong>${escapeHtml(t('crm.deadline', 'Fecha límite'))}:</strong> ${escapeHtml(interaccion.fecha_limite ? formatDisplayDate(interaccion.fecha_limite) : t('crm.undefined_deadline', 'Sin definir'))}</p>
-        <p>${escapeHtml(translateHistoryObservationText(interaccion.observaciones || t('crm.no_comments', 'Sin comentarios.')))}</p>
-      </article>
-    `).join('');
+        ${usuario ? `<p><strong>${escapeHtml(t('crm.user', 'Usuario'))}:</strong> ${escapeHtml(usuario)}</p>` : ''}
+        <p>${escapeHtml(translateHistoryObservationText(observaciones || t('crm.no_comments', 'Sin comentarios.')))}</p>
+      </article>`;
+    }).join('');
   };
 
   const renderOfertaEstadoHistorial = (interacciones = []) => {
@@ -6467,7 +6458,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const etcPayload = payload || buildFallbackOfertaEtcPayload();
+    const etcPayload = payload ? { ...payload } : buildFallbackOfertaEtcPayload();
     currentOfferCenterEtcPayload = etcPayload;
 
     const formatEtcValue = (value) => {
@@ -6494,7 +6485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       { label: t('literal.etc.requester_email', 'Email solicitante'), value: etcPayload.email_solicitante },
       { label: t('literal.etc.offer_sent_date', 'Fecha envio oferta'), value: formatDisplayDate(etcPayload.fecha_envio_oferta) || '-' },
       { label: t('literal.etc.priority', 'Prioridad'), value: etcPayload.prioridad },
-      { label: t('literal.etc.total_material_eur', 'Total material EUR'), value: etcPayload.total_material_eur },
+      { label: t('literal.etc.total_material_eur', 'Total material EUR'), html: true, value: etcPayload.total_material_eur != null ? `<strong>${escapeHtml(formatCurrencyAmount(etcPayload.total_material_eur))}</strong>` : '-' },
       { label: t('literal.etc.total_fee_eur', 'Total fee EUR'), value: etcPayload.total_fee_eur },
       { label: t('literal.etc.material_summary', 'Resumen material solicitado'), value: etcPayload.resumen_material_solicitado, wide: true },
       { label: t('literal.etc.client_notes', 'Observaciones cliente'), value: etcPayload.observaciones_cliente, wide: true },
@@ -6503,7 +6494,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     offerCenterEtcContent.innerHTML = items.map((item) => `
       <article class="offer-center__detail-card${item.wide ? ' offer-center__detail-card--wide' : ''}">
         <span>${escapeHtml(item.label)}</span>
-        <p>${escapeHtml(formatEtcValue(item.value))}</p>
+        ${item.html
+          ? `<p class="etc-material-list">${item.value || '-'}</p>`
+          : `<p>${escapeHtml(formatEtcValue(item.value))}</p>`
+        }
       </article>
     `).join('');
 
@@ -8517,15 +8511,45 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      const openBomPickerButton = event.target.closest('#bomOpenPickerButton');
-      if (openBomPickerButton) {
-        openBomCatalogPicker();
-        return;
-      }
+      const bomSyncToEtcClicked = event.target.closest('#bomSyncToEtcButton');
+      if (bomSyncToEtcClicked) {
+        const ofertaId = Number(currentBomOfertaContext?.id_oferta);
+        if (!ofertaId) {
+          setGenericFeedback(bomFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+          return;
+        }
 
-      const closeBomPickerButton = event.target.closest('[data-close-bom-picker]');
-      if (closeBomPickerButton) {
-        closeBomCatalogPicker();
+        if (guardReadOnlyAction(event)) {
+          return;
+        }
+
+        const originalText = bomSyncToEtcButton.textContent;
+        bomSyncToEtcButton.disabled = true;
+        bomSyncToEtcButton.textContent = t('literal.feedback.saving_state', 'Guardando...');
+
+        fetch(`/api/ofertas/${encodeURIComponent(ofertaId)}/bom-to-etc`, { method: 'POST' })
+          .then((response) => {
+            if (response.status === 401) {
+              handleUnauthorized();
+              return null;
+            }
+            return response.json();
+          })
+          .then((result) => {
+            if (!result || result.success === false) {
+              throw new Error(result?.message || t('literal.feedback.bom_save_error', 'No se pudieron volcar los materiales a ETC.'));
+            }
+            setGenericFeedback(bomFeedback, result.message || t('literal.feedback.bom_etc_synced', 'Materiales volcados a ETC correctamente.'), 'success');
+          })
+          .catch((error) => {
+            setGenericFeedback(bomFeedback, error.message || t('literal.feedback.bom_save_error', 'No se pudieron volcar los materiales a ETC.'), 'error');
+          })
+          .finally(() => {
+            if (bomSyncToEtcButton) {
+              bomSyncToEtcButton.disabled = false;
+              bomSyncToEtcButton.textContent = originalText;
+            }
+          });
         return;
       }
 
