@@ -3577,6 +3577,28 @@
   white-space: nowrap;
 }
 
+.bom-qty-input {
+  width: 62px;
+  min-height: 32px;
+  padding: 5px 6px;
+  border: 1px solid #cfe0ef;
+  border-radius: 8px;
+  background: #fbfdff;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.bom-qty-input:focus {
+  outline: none;
+  border-color: var(--emesa-blue);
+  box-shadow: 0 0 0 3px rgba(56, 128, 199, 0.14);
+}
+
+.bom-subtotal-label {
+  color: #6b7f93;
+  font-weight: 600;
+}
+
 .bom-diff {
   display: inline-flex;
   align-items: center;

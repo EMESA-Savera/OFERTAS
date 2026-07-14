@@ -3906,7 +3906,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loading) {
       bomListBody.innerHTML = `
         <tr>
-          <td colspan="4" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
         </tr>
       `;
       return;
@@ -3916,7 +3916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!materiales.length) {
       bomListBody.innerHTML = `
         <tr>
-          <td colspan="4" class="clientes-table__empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</td>
+          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</td>
         </tr>
       `;
       return;
@@ -3924,12 +3924,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const readOnly = isReadOnlyUser();
 
-    const totalPrice = materiales.reduce((sum, m) => sum + (Number(m.precio) || 0), 0);
+    const totalPrice = materiales.reduce((sum, m) => sum + (Number(m.precio) || 0) * (Number(m.cantidad) || 1), 0);
 
-    bomListBody.innerHTML = materiales.map((material) => `
+    bomListBody.innerHTML = materiales.map((material) => {
+      const cantidad = Number(material.cantidad) || 1;
+      const precioUnitario = Number(material.precio) || 0;
+      const subtotal = precioUnitario * cantidad;
+      return `
       <tr>
         <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
-        <td class="column-bom-price">${escapeHtml(formatCurrencyAmount(material.precio))}</td>
+        <td class="column-bom-price">
+          <span>${escapeHtml(formatCurrencyAmount(precioUnitario))}</span>
+          ${cantidad > 1 ? `<br><small class="bom-subtotal-label">x${cantidad} = ${escapeHtml(formatCurrencyAmount(subtotal))}</small>` : ''}
+        </td>
+        <td class="column-bom-qty">
+          <input
+            class="bom-qty-input"
+            type="number"
+            min="1"
+            step="1"
+            value="${cantidad}"
+            data-bom-qty="${escapeHtml(material.id_material_precio)}"
+            ${readOnly ? 'disabled' : ''}
+          />
+        </td>
         <td class="column-bom-date">${escapeHtml(formatDisplayDateTime(material.fecha_creacion) || '—')}</td>
         <td class="column-bom-actions">
           <button
@@ -3948,11 +3966,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             ${readOnly ? 'disabled' : ''}
           >✎</button>
         </td>
-      </tr>
-    `).join('') + `
+      </tr>`;
+    }).join('') + `
       <tr class="bom-total-row">
         <td><strong>${escapeHtml(t('literal.bom.total', 'TOTAL'))}</strong></td>
         <td class="column-bom-price"><strong>${escapeHtml(formatCurrencyAmount(totalPrice))}</strong></td>
+        <td></td>
         <td></td>
         <td></td>
       </tr>`;
@@ -9099,6 +9118,57 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (bomSearchInput) {
     bomSearchInput.addEventListener('input', () => {
       renderBomCatalogTable();
+    });
+  }
+
+  // Delegar cambios de cantidad en la tabla BOM
+  if (bomListBody) {
+    bomListBody.addEventListener('change', async (event) => {
+      const qtyInput = event.target.closest('.bom-qty-input');
+      if (!qtyInput) return;
+
+      const materialId = Number(qtyInput.dataset.bomQty);
+      const nuevoValor = parseInt(qtyInput.value, 10);
+      if (!materialId || isNaN(nuevoValor) || nuevoValor < 1) {
+        qtyInput.value = qtyInput.defaultValue || 1;
+        return;
+      }
+
+      const ofertaId = Number(currentBomOfertaContext?.id_oferta);
+      if (!ofertaId) return;
+
+      const originalValue = qtyInput.defaultValue;
+      qtyInput.disabled = true;
+
+      try {
+        const response = await fetch(
+          `/api/ofertas/${encodeURIComponent(ofertaId)}/boms/${encodeURIComponent(materialId)}/cantidad`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cantidad: nuevoValor }),
+          },
+        );
+        if (response.status === 401) { handleUnauthorized(); return; }
+
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || t('literal.feedback.bom_qty_error', 'No se pudo actualizar la cantidad'));
+        }
+
+        // Actualizar cache local
+        const idx = currentBomOfferMaterials.findIndex((m) => Number(m.id_material_precio) === materialId);
+        if (idx !== -1) {
+          currentBomOfferMaterials[idx].cantidad = nuevoValor;
+        }
+        renderBomMaterialesTable();
+      } catch (error) {
+        qtyInput.value = originalValue;
+        setGenericFeedback(bomFeedback, error.message || t('literal.feedback.bom_qty_error', 'No se pudo actualizar la cantidad'), 'error');
+      } finally {
+        qtyInput.disabled = false;
+        qtyInput.focus();
+      }
     });
   }
 

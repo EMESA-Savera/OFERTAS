@@ -4342,10 +4342,16 @@ def ensure_offer_bom_links_schema(cursor):
                 id_oferta INT NOT NULL,
                 id_material_precio INT NOT NULL,
                 fecha_asignacion DATETIME2(0) NOT NULL CONSTRAINT df_oferta_bom_materiales_fecha_asignacion DEFAULT (SYSDATETIME()),
+                cantidad INT NOT NULL CONSTRAINT df_oferta_bom_materiales_cantidad DEFAULT (1),
                 CONSTRAINT pk_oferta_bom_materiales PRIMARY KEY CLUSTERED (id_oferta ASC, id_material_precio ASC),
                 CONSTRAINT fk_oferta_bom_materiales_oferta FOREIGN KEY (id_oferta) REFERENCES ofertas.listado_ofertas(id_oferta),
                 CONSTRAINT fk_oferta_bom_materiales_material FOREIGN KEY (id_material_precio) REFERENCES ofertas.materiales_precio(id_material_precio)
             )
+        END
+        ELSE IF COL_LENGTH('ofertas.oferta_bom_materiales', 'cantidad') IS NULL
+        BEGIN
+            ALTER TABLE ofertas.oferta_bom_materiales
+            ADD cantidad INT NOT NULL CONSTRAINT df_oferta_bom_materiales_cantidad DEFAULT (1) WITH VALUES
         END
         """
     )
@@ -4577,6 +4583,7 @@ def load_offer_bom_materials_map(cursor, offer_ids):
                 ELSE mp.fecha_creacion
             END AS fecha_creacion,
             obm.fecha_asignacion,
+            obm.cantidad,
             mp.precio AS precio_catalogo,
             mp.fecha_creacion AS fecha_catalogo,
             ao.precio_catalogo_snapshot,
@@ -4607,13 +4614,14 @@ def load_offer_bom_materials_map(cursor, offer_ids):
                 "precio": serialize_decimal(row[3]),
                 "fecha_creacion": serialize_date(row[4]),
                 "fecha_asignacion": serialize_date(row[5]),
-                "precio_catalogo": serialize_decimal(row[6]),
-                "fecha_catalogo": serialize_date(row[7]),
-                "precio_catalogo_snapshot": serialize_decimal(row[8]),
-                "precio_oferta": serialize_decimal(row[9]),
-                "tiene_precio_override": bool(row[10]),
+                "cantidad": row[6] if row[6] is not None else 1,
+                "precio_catalogo": serialize_decimal(row[7]),
+                "fecha_catalogo": serialize_date(row[8]),
+                "precio_catalogo_snapshot": serialize_decimal(row[9]),
+                "precio_oferta": serialize_decimal(row[10]),
+                "tiene_precio_override": bool(row[11]),
                 "precio_anterior": None,
-                "diferencia_precio": serialize_decimal(row[11]),
+                "diferencia_precio": serialize_decimal(row[12]),
             }
         )
 
@@ -4664,7 +4672,7 @@ def add_offer_bom_material_link(cursor, oferta_id, material_id):
 
     if not already_exists:
         cursor.execute(
-            "INSERT INTO ofertas.oferta_bom_materiales (id_oferta, id_material_precio) VALUES (?, ?)",
+            "INSERT INTO ofertas.oferta_bom_materiales (id_oferta, id_material_precio, cantidad) VALUES (?, ?, 1)",
             (oferta_id, material_id),
         )
 
@@ -4672,6 +4680,7 @@ def add_offer_bom_material_link(cursor, oferta_id, material_id):
     return {
         "added": not already_exists,
         "material": material_row[0],
+        "cantidad": 1,
     }
 
 
@@ -9004,6 +9013,41 @@ def add_offer_bom(oferta_id):
         return jsonify({"success": False, "message": f"No se pudo añadir el BOM a la oferta: {str(exc)}"}), 500
 
 
+@app.route("/api/ofertas/<int:oferta_id>/boms/<int:material_id>/cantidad", methods=["PUT"])
+def update_offer_bom_quantity(oferta_id, material_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para modificar la cantidad BOM"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+    try:
+        cantidad = int(data.get("cantidad", 1))
+        if cantidad < 1:
+            return jsonify({"success": False, "message": "La cantidad debe ser al menos 1"}), 400
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "message": "Cantidad inválida"}), 400
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            ensure_offer_bom_links_schema(cursor)
+
+            cursor.execute(
+                "UPDATE ofertas.oferta_bom_materiales SET cantidad = ? WHERE id_oferta = ? AND id_material_precio = ?",
+                (cantidad, oferta_id, material_id),
+            )
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({"success": False, "message": "El BOM no está asociado a la oferta"}), 404
+            conn.commit()
+
+        return jsonify({"success": True, "message": "Cantidad actualizada", "cantidad": cantidad})
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo actualizar la cantidad: {str(exc)}"}), 500
+
+
 @app.route("/api/ofertas/<int:oferta_id>/boms/<int:material_id>/precio-override", methods=["PUT"])
 def set_offer_bom_price_override(oferta_id, material_id):
     user_data = get_logged_user_data()
@@ -9168,7 +9212,7 @@ def sync_offer_bom_to_etc(oferta_id):
             # Obtener materiales BOM de la oferta
             cursor.execute(
                 """
-                SELECT mp.material, mp.precio
+                SELECT mp.material, mp.precio, obm.cantidad
                 FROM ofertas.oferta_bom_materiales obm
                 INNER JOIN ofertas.materiales_precio mp
                     ON mp.id_material_precio = obm.id_material_precio
@@ -9184,10 +9228,10 @@ def sync_offer_bom_to_etc(oferta_id):
 
             # Construir resumen y total
             material_summary = "\n".join(
-                f"• {row[0]} — {row[1]:.2f}" if row[1] is not None else f"• {row[0]}"
+                f"• x{row[2]} {row[0]} — {row[1]:.2f}" if row[1] is not None else f"• x{row[2]} {row[0]}"
                 for row in bom_rows
             )
-            total_material = sum(row[1] for row in bom_rows if row[1] is not None)
+            total_material = sum((row[1] or 0) * (row[2] or 1) for row in bom_rows)
 
             # Comprobar si existe registro ETC
             cursor.execute(
