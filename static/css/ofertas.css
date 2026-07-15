@@ -4191,6 +4191,12 @@ tr.estado-drag-row.drag-dragging {
   border-left: 4px solid #dc2626;
 }
 
+.side-notification.is-info {
+  background: #3b82f6;
+  color: white;
+  border-left: 4px solid #2563eb;
+}
+
 .side-notification.is-hiding {
   animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

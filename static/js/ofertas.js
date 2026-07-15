@@ -1692,6 +1692,30 @@ document.addEventListener('DOMContentLoaded', async () => {
       en: 'Could not delete the BOM.',
       cs: 'BOM se nepodařilo odstranit.',
     },
+    'exportando catálogo bom': {
+      en: 'Exporting BOM catalog...',
+      cs: 'Exportuji katalog BOM...',
+    },
+    'exportación completada': {
+      en: 'Export completed.',
+      cs: 'Export dokončen.',
+    },
+    'error al exportar el catálogo bom': {
+      en: 'Error exporting the BOM catalog.',
+      cs: 'Chyba při exportu katalogu BOM.',
+    },
+    'importando catálogo bom': {
+      en: 'Importing BOM catalog...',
+      cs: 'Importuji katalog BOM...',
+    },
+    'importación bom completada': {
+      en: 'BOM import completed.',
+      cs: 'Import katalogu BOM dokončen.',
+    },
+    'error al importar el catálogo bom': {
+      en: 'Error importing the BOM catalog.',
+      cs: 'Chyba při importu katalogu BOM.',
+    },
     'no se pudo importar el catálogo bom': {
       en: 'Could not import the BOM catalog.',
       cs: 'Katalog BOM se nepodařilo importovat.',
@@ -2042,17 +2066,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   const showSideNotification = (message, type = 'success', duration = 4000) => {
     const container = document.getElementById('sideNotificationContainer');
     if (!container) {
-      return;
+      return null;
     }
 
     const notification = document.createElement('div');
     notification.className = `side-notification is-${type}`;
 
-    const icon = type === 'success' ? '✓' : '✕';
-    const iconClass = type === 'success' ? 'side-notification-icon' : 'side-notification-icon';
+    const iconMap = { success: '✓', error: '✕', info: '⟳' };
+    const icon = iconMap[type] || '✓';
 
     notification.innerHTML = `
-      <span class="${iconClass}">${icon}</span>
+      <span class="side-notification-icon">${icon}</span>
       <span class="side-notification-message">${escapeHtml(translateUserVisibleMessage(message))}</span>
       <button class="side-notification-close" type="button" aria-label="Cerrar">✕</button>
     `;
@@ -2073,6 +2097,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       }, duration);
     }
+
+    return notification;
   };
 
   const OFFER_DELETE_CONFIRM_PASSWORD = '12345';
@@ -10404,8 +10430,53 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (bomExportCsvButton) {
-    bomExportCsvButton.addEventListener('click', () => {
-      window.location.assign('/api/boms/export');
+    bomExportCsvButton.addEventListener('click', async () => {
+      const notification = showSideNotification(t('literal.bom.exporting', 'Exportando catálogo BOM...'), 'info', 0);
+
+      try {
+        const response = await fetch('/api/boms/export');
+        if (!response.ok) {
+          throw new Error(t('literal.bom.export_error', 'Error al exportar el catálogo BOM'));
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `boms_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        document.body.removeChild(anchor);
+        URL.revokeObjectURL(url);
+
+        if (notification && notification.parentElement) {
+          const messageEl = notification.querySelector('.side-notification-message');
+          const iconEl = notification.querySelector('.side-notification-icon');
+          if (messageEl) messageEl.textContent = translateUserVisibleMessage(t('literal.bom.export_complete', 'Exportación completada'));
+          if (iconEl) iconEl.textContent = '✓';
+          notification.className = notification.className.replace(/is-\w+/, 'is-success');
+          setTimeout(() => {
+            if (notification.parentElement) {
+              notification.classList.add('is-hiding');
+              setTimeout(() => notification.remove(), 300);
+            }
+          }, 3000);
+        }
+      } catch (error) {
+        if (notification && notification.parentElement) {
+          const messageEl = notification.querySelector('.side-notification-message');
+          const iconEl = notification.querySelector('.side-notification-icon');
+          if (messageEl) messageEl.textContent = translateUserVisibleMessage(error.message || t('literal.bom.export_error', 'Error al exportar el catálogo BOM'));
+          if (iconEl) iconEl.textContent = '✕';
+          notification.className = notification.className.replace(/is-\w+/, 'is-error');
+          setTimeout(() => {
+            if (notification.parentElement) {
+              notification.classList.add('is-hiding');
+              setTimeout(() => notification.remove(), 300);
+            }
+          }, 5000);
+        }
+      }
     });
   }
 
@@ -10427,6 +10498,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       clearGenericFeedback(bomImportFeedback);
+      const notification = showSideNotification(t('literal.bom.importing_catalog', 'Importando catálogo BOM...'), 'info', 0);
 
       try {
         const uploadData = new FormData(bomImportForm);
@@ -10444,11 +10516,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bomImportFile) {
           bomImportFile.value = '';
         }
-        showSideNotification('Importación BOM completada correctamente', 'success');
+
+        if (notification && notification.parentElement) {
+          const messageEl = notification.querySelector('.side-notification-message');
+          const iconEl = notification.querySelector('.side-notification-icon');
+          if (messageEl) messageEl.textContent = translateUserVisibleMessage(t('literal.bom.import_complete', 'Importación BOM completada'));
+          if (iconEl) iconEl.textContent = '✓';
+          notification.className = notification.className.replace(/is-\w+/, 'is-success');
+          setTimeout(() => {
+            if (notification.parentElement) {
+              notification.classList.add('is-hiding');
+              setTimeout(() => notification.remove(), 300);
+            }
+          }, 3000);
+        }
+
         await loadBoms({ silent: true });
         setBomsMode('ver');
       } catch (error) {
-        showSideNotification(error.message || 'No se pudo importar el catálogo BOM', 'error');
+        if (notification && notification.parentElement) {
+          const messageEl = notification.querySelector('.side-notification-message');
+          const iconEl = notification.querySelector('.side-notification-icon');
+          if (messageEl) messageEl.textContent = translateUserVisibleMessage(error.message || t('literal.bom.import_error', 'Error al importar el catálogo BOM'));
+          if (iconEl) iconEl.textContent = '✕';
+          notification.className = notification.className.replace(/is-\w+/, 'is-error');
+          setTimeout(() => {
+            if (notification.parentElement) {
+              notification.classList.add('is-hiding');
+              setTimeout(() => notification.remove(), 300);
+            }
+          }, 5000);
+        }
       } finally {
         if (submitButton) {
           submitButton.disabled = false;
