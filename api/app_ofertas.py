@@ -4577,6 +4577,7 @@ def load_offer_bom_materials_map(cursor, offer_ids):
             obm.id_oferta,
             obm.id_material_precio,
             mp.material,
+            mp.part_nr,
             COALESCE(ao.precio_oferta, mp.precio) AS precio,
             CASE
                 WHEN ao.id_material_precio IS NOT NULL THEN ao.fecha_actualizacion
@@ -4611,17 +4612,18 @@ def load_offer_bom_materials_map(cursor, offer_ids):
             {
                 "id_material_precio": row[1],
                 "material": row[2],
-                "precio": serialize_decimal(row[3]),
-                "fecha_creacion": serialize_date(row[4]),
-                "fecha_asignacion": serialize_date(row[5]),
-                "cantidad": row[6] if row[6] is not None else 1,
-                "precio_catalogo": serialize_decimal(row[7]),
-                "fecha_catalogo": serialize_date(row[8]),
-                "precio_catalogo_snapshot": serialize_decimal(row[9]),
-                "precio_oferta": serialize_decimal(row[10]),
-                "tiene_precio_override": bool(row[11]),
+                "part_nr": row[3],
+                "precio": serialize_decimal(row[4]),
+                "fecha_creacion": serialize_date(row[5]),
+                "fecha_asignacion": serialize_date(row[6]),
+                "cantidad": row[7] if row[7] is not None else 1,
+                "precio_catalogo": serialize_decimal(row[8]),
+                "fecha_catalogo": serialize_date(row[9]),
+                "precio_catalogo_snapshot": serialize_decimal(row[10]),
+                "precio_oferta": serialize_decimal(row[11]),
+                "tiene_precio_override": bool(row[12]),
                 "precio_anterior": None,
-                "diferencia_precio": serialize_decimal(row[12]),
+                "diferencia_precio": serialize_decimal(row[13]),
             }
         )
 
@@ -4652,12 +4654,13 @@ def sync_offer_primary_bom(cursor, oferta_id):
 
 def add_offer_bom_material_link(cursor, oferta_id, material_id):
     ensure_offer_bom_links_schema(cursor)
+    ensure_offer_bom_price_override_schema(cursor)
 
     if not ensure_offer_exists(cursor, oferta_id):
         raise ValueError("Oferta no encontrada")
 
     cursor.execute(
-        "SELECT material FROM ofertas.materiales_precio WHERE id_material_precio = ?",
+        "SELECT material, precio FROM ofertas.materiales_precio WHERE id_material_precio = ?",
         (material_id,),
     )
     material_row = cursor.fetchone()
@@ -4671,9 +4674,26 @@ def add_offer_bom_material_link(cursor, oferta_id, material_id):
     already_exists = cursor.fetchone() is not None
 
     if not already_exists:
+        precio_catalogo = material_row[1]
+
         cursor.execute(
             "INSERT INTO ofertas.oferta_bom_materiales (id_oferta, id_material_precio, cantidad) VALUES (?, ?, 1)",
             (oferta_id, material_id),
+        )
+
+        # Crear override automático para congelar el precio en el momento de la vinculación.
+        # Así, si el precio del catálogo cambia después, esta oferta conserva el precio original.
+        cursor.execute(
+            """
+            INSERT INTO ofertas.oferta_bom_precio_override (
+                id_oferta, id_material_precio,
+                precio_catalogo_snapshot, precio_oferta,
+                num_operario, comentario, activo,
+                fecha_actualizacion
+            )
+            VALUES (?, ?, ?, ?, NULL, N'Precio inicial al vincular BOM', 1, SYSDATETIME())
+            """,
+            (oferta_id, material_id, precio_catalogo, precio_catalogo),
         )
 
     sync_offer_primary_bom(cursor, oferta_id)
@@ -9209,13 +9229,20 @@ def sync_offer_bom_to_etc(oferta_id):
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
 
-            # Obtener materiales BOM de la oferta
+            # Obtener materiales BOM de la oferta respetando overrides de precio por oferta
             cursor.execute(
                 """
-                SELECT mp.material, mp.precio, obm.cantidad
+                SELECT mp.material,
+                       mp.part_nr,
+                       COALESCE(ao.precio_oferta, mp.precio) AS precio,
+                       obm.cantidad
                 FROM ofertas.oferta_bom_materiales obm
                 INNER JOIN ofertas.materiales_precio mp
                     ON mp.id_material_precio = obm.id_material_precio
+                LEFT JOIN ofertas.oferta_bom_precio_override ao
+                    ON ao.id_oferta = obm.id_oferta
+                   AND ao.id_material_precio = obm.id_material_precio
+                   AND ao.activo = 1
                 WHERE obm.id_oferta = ?
                 ORDER BY obm.fecha_asignacion DESC, mp.material ASC
                 """,
@@ -9228,10 +9255,10 @@ def sync_offer_bom_to_etc(oferta_id):
 
             # Construir resumen y total
             material_summary = "\n".join(
-                f"• x{row[2]} {row[0]} — {row[1]:.2f}" if row[1] is not None else f"• x{row[2]} {row[0]}"
+                f"• x{row[3]} [{row[1]}] {row[0]} — {row[2]:.2f}" if row[2] is not None else f"• x{row[3]} [{row[1]}] {row[0]}"
                 for row in bom_rows
             )
-            total_material = sum((row[1] or 0) * (row[2] or 1) for row in bom_rows)
+            total_material = sum((row[2] or 0) * (row[3] or 1) for row in bom_rows)
 
             # Comprobar si existe registro ETC
             cursor.execute(

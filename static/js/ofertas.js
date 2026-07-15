@@ -3906,7 +3906,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loading) {
       bomListBody.innerHTML = `
         <tr>
-          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
+          <td colspan="6" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
         </tr>
       `;
       return;
@@ -3916,7 +3916,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!materiales.length) {
       bomListBody.innerHTML = `
         <tr>
-          <td colspan="5" class="clientes-table__empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</td>
+          <td colspan="6" class="clientes-table__empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</td>
         </tr>
       `;
       return;
@@ -3932,6 +3932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const subtotal = precioUnitario * cantidad;
       return `
       <tr>
+        <td class="column-bom-part-nr"><span class="bom-part-nr">${escapeHtml(material.part_nr || '—')}</span></td>
         <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
         <td class="column-bom-price">
           <span>${escapeHtml(formatCurrencyAmount(precioUnitario))}</span>
@@ -3970,6 +3971,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }).join('') + `
       <tr class="bom-total-row">
         <td><strong>${escapeHtml(t('literal.bom.total', 'TOTAL'))}</strong></td>
+        <td></td>
         <td class="column-bom-price"><strong>${escapeHtml(formatCurrencyAmount(totalPrice))}</strong></td>
         <td></td>
         <td></td>
@@ -3990,7 +3992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loading) {
       bomCatalogBody.innerHTML = `
         <tr>
-          <td colspan="3" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
+          <td colspan="4" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
         </tr>
       `;
       return;
@@ -4003,7 +4005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         : t('literal.bom.no_materials', 'No hay materiales registrados todavia.');
       bomCatalogBody.innerHTML = `
         <tr>
-          <td colspan="3" class="clientes-table__empty">${escapeHtml(emptyMessage)}</td>
+          <td colspan="4" class="clientes-table__empty">${escapeHtml(emptyMessage)}</td>
         </tr>
       `;
       return;
@@ -4014,6 +4016,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isSelected = currentBomOfferMaterialIds.has(Number(material.id_material_precio));
       return `
         <tr>
+          <td class="column-bom-part-nr"><span class="bom-part-nr">${escapeHtml(material.part_nr || '—')}</span></td>
           <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
           <td class="column-bom-price">${escapeHtml(formatCurrencyAmount(material.precio))}</td>
           <td class="column-bom-actions">
