@@ -729,6 +729,7 @@
               </div>
               <div class="bom-etc-sync-bar">
                 <button id="bomSyncToEtcButton" class="btn-inline btn-inline--save" type="button" data-translate-key="literal.bom.sync_to_etc">Aceptar</button>
+                <small class="bom-etc-sync-bar__hint">Pokud změny nepotvrdíte, neuloží se.</small>
               </div>
             </section>
 
@@ -1355,6 +1356,12 @@
       </section>
 
       <section class="clientes-mode-panel" data-boms-mode-panel="importar">
+        <div id="bomLastImportInfo" class="bom-last-import" hidden>
+          <p class="bom-last-import__label" data-translate-key="config.bom_last_import">Última importación</p>
+          <p class="bom-last-import__file" id="bomLastImportFile"></p>
+          <p class="bom-last-import__date" id="bomLastImportDate"></p>
+        </div>
+
         <form id="bomImportForm" class="cliente-form" autocomplete="off">
           <div class="form-field form-field--span-2">
             <label for="bomImportFile" data-translate-key="config.bom_import_file">Archivo CSV o Excel</label>

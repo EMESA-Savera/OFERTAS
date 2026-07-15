@@ -1414,6 +1414,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       'observaciones internas': t('crm.history_field_internal_notes', 'Observaciones internas'),
       'origen registro': t('crm.history_field_source', 'Origen registro'),
       activo: t('crm.history_field_active', 'Activo'),
+      'bom anadido': t('crm.history_field_bom_added', 'BOM añadido'),
+      'bom añadido': t('crm.history_field_bom_added', 'BOM añadido'),
+      'bom eliminado': t('crm.history_field_bom_removed', 'BOM eliminado'),
     };
 
     return fieldMap[normalized] || label;
@@ -3897,7 +3900,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       return bomMaterialesCache;
     }
 
-    return bomMaterialesCache.filter((material) => normalizeSearchText(material.material).includes(query));
+    return bomMaterialesCache.filter((material) =>
+      normalizeSearchText(material.material).includes(query)
+      || normalizeSearchText(material.part_nr).includes(query)
+    );
   };
 
   const hasCurrentBomOfferContext = () => Boolean(currentBomOfertaContext?.id_oferta);
@@ -3922,6 +3928,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     bomOfferSelectionSummary.hidden = true;
     bomOfferSelectionSummary.innerHTML = '';
+  };
+
+  const actualizarTotalBomEnTiempoReal = () => {
+    if (!bomListBody) return;
+    const totalRow = bomListBody.querySelector('.bom-total-row .column-bom-price strong');
+    if (!totalRow) return;
+    const totalPrice = currentBomOfferMaterials.reduce(
+      (sum, m) => sum + (Number(m.precio) || 0) * (Number(m.cantidad) || 1),
+      0
+    );
+    totalRow.textContent = formatCurrencyAmount(totalPrice);
+  };
+
+  const mostrarUltimaImportacionBom = async () => {
+    const infoEl = document.getElementById('bomLastImportInfo');
+    const fileEl = document.getElementById('bomLastImportFile');
+    const dateEl = document.getElementById('bomLastImportDate');
+    if (!infoEl || !fileEl || !dateEl) return;
+
+    try {
+      const response = await fetch('/api/boms/last-import');
+      const result = await response.json();
+      if (!result.success || !result.file_name) {
+        infoEl.hidden = true;
+        return;
+      }
+
+      fileEl.textContent = result.file_name;
+      dateEl.textContent = result.imported_at
+        ? formatDisplayDateTime(new Date(result.imported_at))
+        : '';
+      infoEl.hidden = false;
+    } catch {
+      infoEl.hidden = true;
+    }
   };
 
   const renderBomMaterialesTable = ({ loading = false } = {}) => {
@@ -4133,6 +4174,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    renderOfertasListado(ofertasListadoCache);
     bomModal.classList.remove('is-visible');
     bomModal.setAttribute('aria-hidden', 'true');
     currentBomOfertaContext = null;
@@ -4469,6 +4511,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         fecha_alta_oferta: t('table.filter_date', 'Filtrar fecha'),
         fecha_email: t('table.filter_date', 'Filtrar fecha'),
         fecha_limite: t('table.filter_date', 'Filtrar fecha'),
+        fecha_interaccion: t('table.filter_interaction_dates', 'Filtrar fechas interacción'),
         ref_cliente_asunto_email: t('table.filter_subject', 'Filtrar asunto'),
         cliente: t('table.filter_client', 'Filtrar cliente'),
         emisor: t('table.filter_sender', 'Filtrar emisor'),
@@ -8552,6 +8595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           renderBomOfferSelectionSummary();
           renderBomMaterialesTable();
           renderBomCatalogTable();
+          renderOfertasListado(ofertasListadoCache);
           setGenericFeedback(bomFeedback, result.message || t('literal.feedback.bom_saved', 'BOM actualizado correctamente.'), 'success');
         } catch (error) {
           setGenericFeedback(bomFeedback, error.message || t('literal.feedback.bom_save_error', 'No se pudo guardar la selección BOM.'), 'error');
@@ -9150,8 +9194,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // Delegar cambios de cantidad en la tabla BOM
+  // ── BOM cantidad: input en tiempo real (solo UI, sin API) ──────
   if (bomListBody) {
+    bomListBody.addEventListener('input', (event) => {
+      const qtyInput = event.target.closest('.bom-qty-input');
+      if (!qtyInput) return;
+
+      const materialId = Number(qtyInput.dataset.bomQty);
+      if (!materialId) return;
+
+      const nuevoValor = parseInt(qtyInput.value, 10);
+      const idx = currentBomOfferMaterials.findIndex((m) => Number(m.id_material_precio) === materialId);
+      if (idx === -1) return;
+
+      currentBomOfferMaterials[idx].cantidad = nuevoValor > 0 ? nuevoValor : 1;
+      actualizarTotalBomEnTiempoReal();
+    });
+
     bomListBody.addEventListener('change', async (event) => {
       const qtyInput = event.target.closest('.bom-qty-input');
       if (!qtyInput) return;
@@ -10516,6 +10575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (bomImportFile) {
           bomImportFile.value = '';
         }
+        mostrarUltimaImportacionBom();
 
         if (notification && notification.parentElement) {
           const messageEl = notification.querySelector('.side-notification-message');
@@ -11437,6 +11497,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ofertasActionColumnVisibility = loadActionColumnVisibility();
     updateOfertaEtcStandbyUi();
     setupAllTableHeaderControls();
+    mostrarUltimaImportacionBom();
     await loadStateEmojiSuggestions();
     populateStateEmojiSelect(estadoEmojiSidebar, estadoEmojiSidebarPicker, estadoEmojiSidebar?.value || getSuggestedStateEmoji(estadoCreateDescripcion?.value || ''));
     populateStateEmojiSelect(estadoEditEmojiSidebar, estadoEditEmojiSidebarPicker, estadoEditEmojiSidebar?.value || getSuggestedStateEmoji(estadoEditDescripcion?.value || ''));

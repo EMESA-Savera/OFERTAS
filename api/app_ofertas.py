@@ -7789,6 +7789,22 @@ def import_boms_csv():
             f"Importación BOM completada: {result['updated_count']} actualizados, "
             f"{result['inserted_count']} insertados y {result['deleted_count']} eliminados."
         )
+
+        # Persistir última importación en archivo JSON (visible para todos los usuarios)
+        try:
+            last_import_path = os.path.join(RUNTIME_DATA_DIR, "last_bom_import.json")
+            os.makedirs(RUNTIME_DATA_DIR, exist_ok=True)
+            with open(last_import_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "file_name": uploaded_file.filename,
+                    "imported_at": datetime.now().isoformat(),
+                    "updated_count": result["updated_count"],
+                    "inserted_count": result["inserted_count"],
+                    "deleted_count": result["deleted_count"],
+                }, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
         return jsonify(
             {
                 "success": True,
@@ -7801,6 +7817,20 @@ def import_boms_csv():
         return jsonify({"success": False, "message": "No se pudo importar el catálogo BOM"}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": "No se pudo importar el catálogo BOM"}), 500
+
+
+@app.route("/api/boms/last-import", methods=["GET"])
+def get_last_bom_import():
+    """Devuelve la información de la última importación del catálogo BOM."""
+    last_import_path = os.path.join(RUNTIME_DATA_DIR, "last_bom_import.json")
+    try:
+        if os.path.isfile(last_import_path):
+            with open(last_import_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return jsonify({"success": True, **data})
+        return jsonify({"success": True, "file_name": None, "imported_at": None})
+    except Exception:
+        return jsonify({"success": True, "file_name": None, "imported_at": None})
 
 
 @app.route("/api/estados", methods=["GET"])
@@ -9250,15 +9280,18 @@ def sync_offer_bom_to_etc(oferta_id):
             )
             bom_rows = cursor.fetchall()
 
-            if not bom_rows:
-                return jsonify({"success": False, "message": "La oferta no tiene materiales BOM para guardar"}), 400
+            now = datetime.now()
 
-            # Construir resumen y total
-            material_summary = "\n".join(
-                f"• x{row[3]} [{row[1]}] {row[0]} — {row[2]:.2f}" if row[2] is not None else f"• x{row[3]} [{row[1]}] {row[0]}"
-                for row in bom_rows
-            )
-            total_material = sum((row[2] or 0) * (row[3] or 1) for row in bom_rows)
+            if bom_rows:
+                # Construir resumen y total
+                material_summary = "\n".join(
+                    f"• x{row[3]} [{row[1]}] {row[0]} — {row[2]:.2f}" if row[2] is not None else f"• x{row[3]} [{row[1]}] {row[0]}"
+                    for row in bom_rows
+                )
+                total_material = sum((row[2] or 0) * (row[3] or 1) for row in bom_rows)
+            else:
+                material_summary = ""
+                total_material = 0
 
             # Comprobar si existe registro ETC
             cursor.execute(
@@ -9266,8 +9299,6 @@ def sync_offer_bom_to_etc(oferta_id):
                 (oferta_id,),
             )
             etc_exists = cursor.fetchone() is not None
-
-            now = datetime.now()
 
             if etc_exists:
                 cursor.execute(
@@ -9278,7 +9309,7 @@ def sync_offer_bom_to_etc(oferta_id):
                         fecha_actualizacion = ?
                     WHERE id_oferta_etc = ?
                     """,
-                    (material_summary, total_material, now, oferta_id),
+                    (material_summary or None, total_material or None, now, oferta_id),
                 )
             else:
                 cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc ON")
@@ -9291,7 +9322,7 @@ def sync_offer_bom_to_etc(oferta_id):
                             resumen_material_solicitado, total_material_eur
                         ) VALUES (?, 1, 'EUR', 'NORMAL', 0, 'MANUAL', 1, ?, ?, ?, ?)
                         """,
-                        (oferta_id, now, now, material_summary, total_material),
+                        (oferta_id, now, now, material_summary or None, total_material or None),
                     )
                 finally:
                     cursor.execute("SET IDENTITY_INSERT ofertas.oferta_etc OFF")
