@@ -4967,6 +4967,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     openOfferCenterModal(oferta);
+    refreshOfferCenterOferta(oferta.id_oferta).catch(() => {});
     return true;
   };
 
@@ -5342,6 +5343,66 @@ document.addEventListener('DOMContentLoaded', async () => {
       );
     } catch (error) {
       setGenericFeedback(offerCenterFeedback, error.message || t('offer.import_mail_into_offer_error', 'No se pudo insertar el correo en la oferta.'), 'error');
+    }
+  };
+
+  const flashOfferCenterFastNotesButton = (state) => {
+    const saveButton = offerCenterEmailGrid?.querySelector('[data-offer-center-action="save-fast-notes"]');
+    if (!saveButton) {
+      return;
+    }
+
+    saveButton.classList.remove('is-success', 'is-error');
+    void saveButton.offsetWidth; // reinicia la transición si ya tenía la clase
+    saveButton.classList.add(state === 'success' ? 'is-success' : 'is-error');
+
+    window.clearTimeout(Number(saveButton.dataset.flashTimer) || 0);
+    saveButton.dataset.flashTimer = String(window.setTimeout(() => {
+      saveButton.classList.remove('is-success', 'is-error');
+    }, 1000));
+  };
+
+  const saveOfferCenterFastNotes = async () => {
+    const ofertaId = Number(currentOfferCenterOferta?.id_oferta);
+    if (!ofertaId) {
+      setGenericFeedback(offerCenterFeedback, t('offer.current_offer_error', 'No se pudo recuperar la oferta actual.'), 'error');
+      return;
+    }
+
+    const fastNotesInput = offerCenterEmailGrid?.querySelector('[data-fast-notes-input="true"]');
+    const fastNotes = fastNotesInput ? fastNotesInput.value.trim() : '';
+
+    try {
+      const response = await fetch(`/api/ofertas/${ofertaId}/fast-notes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fast_notes: fastNotes }),
+      });
+
+      if (response.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+
+      const result = await response.json();
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || t('offer.fast_notes_error', 'No se pudo guardar la nota.'));
+      }
+
+      currentOfferCenterOferta = {
+        ...currentOfferCenterOferta,
+        fast_notes: fastNotes,
+      };
+      if (ofertasListadoCache) {
+        ofertasListadoCache = ofertasListadoCache.map((item) => Number(item.id_oferta) === ofertaId
+          ? { ...item, fast_notes: fastNotes }
+          : item);
+      }
+      setGenericFeedback(offerCenterFeedback, result.message || t('offer.fast_notes_saved', 'Nota guardada.'), 'success');
+      flashOfferCenterFastNotesButton('success');
+    } catch (error) {
+      setGenericFeedback(offerCenterFeedback, error.message || t('offer.fast_notes_error', 'No se pudo guardar la nota.'), 'error');
+      flashOfferCenterFastNotesButton('error');
     }
   };
 
@@ -6479,6 +6540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sender = oferta.emisor || t('common.not_available', 'No disponible');
     const subject = oferta.ref_cliente_asunto_email || t('common.not_available', 'No disponible');
     const notes = oferta.observaciones || t('crm.no_comments', 'Sin comentarios.');
+    const isReadOnlyUserRole = isReadOnlyUser();
     const chatUnreadBadge = INTERNAL_CHAT_ENABLED
       ? renderUnreadBadge(oferta?.chat_unread_count, 'chat-unread-badge--inline')
       : '';
@@ -6488,14 +6550,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     offerCenterEmailGrid.innerHTML = `
       <section class="offer-center__mail-panel">
-        <article class="offer-center__mail-meta-item">
-          <span>${escapeHtml(t('offer.fields.sender', 'QUIÉN LO ENVÍA'))}</span>
-          <strong>${escapeHtml(sender)}</strong>
-        </article>
-        <div class="offer-center__mail-row">
-          <article class="offer-center__mail-meta-item offer-center__mail-meta-item--subject">
-            <span>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}</span>
-            <strong>${escapeHtml(subject)}</strong>
+        <div class="offer-center__mail-top">
+          <article class="offer-center__mail-meta-item">
+            <span>${escapeHtml(t('offer.fields.sender', 'QUIÉN LO ENVÍA'))}</span>
+            <strong>${escapeHtml(sender)}</strong>
           </article>
           <aside class="offer-center__actions offer-center__actions--inline offer-center__actions--hero" aria-label="${escapeHtml(t('table.actions', 'Acciones'))}">
             <button class="btn-inline btn-inline--edit btn-inline--compact" type="button" data-edit-oferta="${escapeHtml(oferta.id_oferta)}" aria-label="${escapeHtml(tf('offer.edit_aria', 'Editar oferta {number}', { number: offerNumber }))}">${escapeHtml(t('common.edit', 'Editar'))}</button>
@@ -6504,6 +6562,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             <button class="btn-inline btn-inline--compact" type="button" data-offer-center-action="history">${escapeHtml(t('common.history', 'Histórico'))}</button>
             ${chatActionButton}
           </aside>
+        </div>
+        <div class="offer-center__mail-row">
+          <article class="offer-center__mail-meta-item offer-center__mail-meta-item--subject">
+            <span>${escapeHtml(t('offer.fields.client_ref_subject', 'REF. CLIENTE / ASUNTO E-MAIL'))}</span>
+            <strong>${escapeHtml(subject)}</strong>
+          </article>
+          <section class="offer-center__fast-notes" aria-labelledby="offerCenterFastNotesTitle">
+            <div class="offer-center__fast-notes-header">
+              <span id="offerCenterFastNotesTitle" class="offer-center__fast-notes-label">${escapeHtml(t('offer.fast_notes', 'Fast notes'))}</span>
+              <button class="btn-inline btn-inline--compact btn-inline--save" type="button" data-offer-center-action="save-fast-notes"${isReadOnlyUserRole ? ' disabled' : ''}>${escapeHtml(t('offer.save_fast_notes', 'Guardar'))}</button>
+            </div>
+            <textarea class="offer-center__fast-notes-input" data-fast-notes-input="true" rows="3" maxlength="2000" placeholder="${escapeHtml(t('offer.fast_notes_placeholder', 'Escribe una nota rápida...'))}" aria-label="${escapeHtml(t('offer.fast_notes', 'Fast notes'))}"${isReadOnlyUserRole ? ' disabled' : ''}></textarea>
+          </section>
         </div>
         <div class="offer-center__mail-dropzone-wrap">
           <div class="mail-dropzone offer-center__mail-dropzone" data-offer-center-mail-dropzone="true" aria-label="${escapeHtml(t('offer.offer_center_mail_drop_aria', 'Insertar correo en esta oferta arrastrando un archivo .eml'))}">
@@ -6524,6 +6595,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         </article>
       </section>
     `;
+
+    const fastNotesInput = offerCenterEmailGrid.querySelector('[data-fast-notes-input="true"]');
+    if (fastNotesInput) {
+      fastNotesInput.value = oferta.fast_notes || '';
+    }
 
     initOfferCenterMailDropzone();
   };
@@ -8813,6 +8889,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           }
 
           openOfferChatPanel();
+          return;
+        }
+
+        if (action === 'save-fast-notes') {
+          if (guardReadOnlyAction(event)) {
+            return;
+          }
+          saveOfferCenterFastNotes();
           return;
         }
       }

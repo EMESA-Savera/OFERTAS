@@ -3331,6 +3331,7 @@ def build_oferta_payload(data):
         "id_cliente": normalize_required_int(data.get("id_cliente") if data.get("id_cliente") is not None else data.get("cliente"), "Cliente"),
         "id_bom": normalize_optional_int(data.get("id_bom"), "BOM"),
         "observaciones": normalize_optional_text(data.get("observaciones")),
+        "fast_notes": normalize_optional_text(data.get("fast_notes")),
         "nombre_emisor": sender_identity["sender_name"],
         "email_emisor": sender_identity["sender_email"],
         "emisor": sender_display,
@@ -4405,6 +4406,19 @@ def ensure_offer_bom_price_override_schema(cursor):
             CREATE UNIQUE INDEX ux_oferta_bom_precio_override_activo
             ON ofertas.oferta_bom_precio_override (id_oferta, id_material_precio)
             WHERE activo = 1
+        END
+        """
+    )
+
+
+def ensure_oferta_fast_notes_schema(cursor):
+    """Asegura que la tabla de ofertas tenga la columna fast_notes (notas rápidas)."""
+    cursor.execute(
+        """
+        IF COL_LENGTH('ofertas.listado_ofertas', 'fast_notes') IS NULL
+        BEGIN
+            ALTER TABLE ofertas.listado_ofertas
+            ADD fast_notes NVARCHAR(MAX) NULL
         END
         """
     )
@@ -6382,6 +6396,7 @@ def get_oferta(oferta_id):
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
             ensure_offer_bom_links_schema(cursor)
+            ensure_oferta_fast_notes_schema(cursor)
             cursor.execute(
                 """
                 SELECT
@@ -6396,6 +6411,7 @@ def get_oferta(oferta_id):
                     lo.id_bom,
                     b.material,
                     lo.observaciones,
+                    lo.fast_notes,
                     lo.nombre_emisor,
                     lo.email_emisor
                 FROM ofertas.listado_ofertas lo
@@ -6424,9 +6440,10 @@ def get_oferta(oferta_id):
                 "id_bom": row[8],
                 "nombre_bom": row[9],
                 "observaciones": row[10],
-                "nombre_emisor": row[11],
-                "email_emisor": row[12],
-                "emisor": format_sender_display(row[11], row[12]),
+                "fast_notes": row[11],
+                "nombre_emisor": row[12],
+                "email_emisor": row[13],
+                "emisor": format_sender_display(row[12], row[13]),
                 "interacciones": [],
                 "adjuntos": list_offer_attachments(row[0], numero_oferta=row[1]),
             }
@@ -6649,6 +6666,7 @@ def update_oferta(oferta_id):
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
             ensure_offer_bom_links_schema(cursor)
+            ensure_oferta_fast_notes_schema(cursor)
             actor_label = get_history_actor_label(user_data)
             current_snapshot = get_offer_audit_snapshot(cursor, oferta_id)
             if current_snapshot is None:
@@ -6693,6 +6711,7 @@ def update_oferta(oferta_id):
                 "cliente": client_label,
                 "bom": bom_label,
                 "observaciones": payload["observaciones"],
+                "fast_notes": payload["fast_notes"],
                 "emisor": payload["emisor"],
             }
 
@@ -6715,6 +6734,7 @@ def update_oferta(oferta_id):
                     id_cliente = ?,
                     id_bom = ?,
                     observaciones = ?,
+                    fast_notes = ?,
                     nombre_emisor = ?,
                     email_emisor = ?
                 WHERE id_oferta = ?
@@ -6727,6 +6747,7 @@ def update_oferta(oferta_id):
                     payload["id_cliente"],
                     payload["id_bom"],
                     payload["observaciones"],
+                    payload["fast_notes"],
                     payload["nombre_emisor"],
                     payload["email_emisor"],
                     oferta_id,
@@ -6754,6 +6775,7 @@ def update_oferta(oferta_id):
                     ("cliente", "Cliente"),
                     ("bom", "BOM"),
                     ("observaciones", "Observaciones"),
+                    ("fast_notes", "Fast notes"),
                     ("emisor", "Emisor"),
                 ],
                 actor_label=actor_label,
@@ -6768,6 +6790,48 @@ def update_oferta(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo actualizar la oferta: {str(exc)}"}), 500
+
+
+@app.route("/api/ofertas/<int:oferta_id>/fast-notes", methods=["PUT"])
+def update_oferta_fast_notes(oferta_id):
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para guardar las notas rápidas de la oferta"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+
+    data = request.get_json(silent=True) or {}
+    fast_notes = normalize_optional_text(data.get("fast_notes"))
+
+    try:
+        with db_connection(autocommit=False) as conn:
+            cursor = conn.cursor()
+            ensure_oferta_fast_notes_schema(cursor)
+
+            if not ensure_offer_exists(cursor, oferta_id):
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            cursor.execute(
+                """
+                UPDATE ofertas.listado_ofertas
+                SET fast_notes = ?
+                WHERE id_oferta = ?
+                """,
+                (fast_notes, oferta_id),
+            )
+
+            if cursor.rowcount == 0:
+                conn.rollback()
+                return jsonify({"success": False, "message": "Oferta no encontrada"}), 404
+
+            conn.commit()
+
+        return jsonify({"success": True, "message": "Nota rápida guardada correctamente", "fast_notes": fast_notes})
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo guardar la nota rápida: {str(exc)}"}), 500
 
 
 @app.route("/api/ofertas/<int:oferta_id>", methods=["DELETE"])
@@ -8900,6 +8964,7 @@ def create_oferta():
         with db_connection(autocommit=False) as conn:
             cursor = conn.cursor()
             ensure_offer_bom_links_schema(cursor)
+            ensure_oferta_fast_notes_schema(cursor)
 
             if payload["id_bom"] is not None:
                 cursor.execute(
@@ -8951,11 +9016,12 @@ def insert_oferta_record(cursor, payload):
             id_cliente,
             id_bom,
             observaciones,
+            fast_notes,
             nombre_emisor,
             email_emisor
         )
         OUTPUT INSERTED.id_oferta INTO #inserted_oferta
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             payload["fecha_email"],
@@ -8964,6 +9030,7 @@ def insert_oferta_record(cursor, payload):
             payload["id_cliente"],
             payload["id_bom"],
             payload["observaciones"],
+            payload["fast_notes"],
             payload["nombre_emisor"],
             payload["email_emisor"],
         ),
