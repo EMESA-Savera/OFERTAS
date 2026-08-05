@@ -4808,6 +4808,9 @@ def remove_offer_bom_material_link(cursor, oferta_id, material_id):
             (oferta_id, material_id),
         )
     sync_offer_primary_bom(cursor, oferta_id)
+    # Al quitar un material, recalcular los comentarios y el precio total del ETC
+    # para que el material retirado deje de aparecer en ellos.
+    sync_offer_bom_to_etc_summary(cursor, oferta_id)
     return {
         "removed": removed,
         "material": material_row[0],
@@ -4856,6 +4859,9 @@ def delete_bom_catalog_material(cursor, bom_id):
 
     for offer_id in affected_offer_ids:
         sync_offer_primary_bom(cursor, offer_id)
+        # Recalcular resumen y total del ETC para que el material eliminado
+        # desaparezca de los comentarios y del precio total de las ofertas afectadas.
+        sync_offer_bom_to_etc_summary(cursor, offer_id)
 
     cursor.execute(
         "DELETE FROM ofertas.materiales_precio WHERE id_material_precio = ?",
@@ -4870,6 +4876,72 @@ def delete_bom_catalog_material(cursor, bom_id):
         "detached_links": detached_links,
         "deleted_override_count": override_count,
     }
+
+
+def compute_offer_bom_etc_values(cursor, oferta_id):
+    """Devuelve (resumen_material_solicitado, total_material_eur) calculados a partir
+    de los BOM actualmente vinculados a la oferta, respetando overrides de precio.
+    Si la oferta no tiene BOM, devuelve ("", 0)."""
+    cursor.execute(
+        """
+        SELECT mp.material,
+               mp.part_nr,
+               COALESCE(ao.precio_oferta, mp.precio) AS precio,
+               obm.cantidad
+        FROM ofertas.oferta_bom_materiales obm
+        INNER JOIN ofertas.materiales_precio mp
+            ON mp.id_material_precio = obm.id_material_precio
+        LEFT JOIN ofertas.oferta_bom_precio_override ao
+            ON ao.id_oferta = obm.id_oferta
+           AND ao.id_material_precio = obm.id_material_precio
+           AND ao.activo = 1
+        WHERE obm.id_oferta = ?
+        ORDER BY obm.fecha_asignacion DESC, mp.material ASC
+        """,
+        (oferta_id,),
+    )
+    bom_rows = cursor.fetchall()
+
+    if bom_rows:
+        material_summary = "\n".join(
+            f"• x{row[3]} [{row[1]}] {row[0]} — {row[2]:.2f}" if row[2] is not None else f"• x{row[3]} [{row[1]}] {row[0]}"
+            for row in bom_rows
+        )
+        total_material = sum((row[2] or 0) * (row[3] or 1) for row in bom_rows)
+    else:
+        material_summary = ""
+        total_material = 0
+
+    return material_summary, total_material
+
+
+def sync_offer_bom_to_etc_summary(cursor, oferta_id):
+    """Recalcula resumen_material_solicitado y total_material_eur del registro ETC
+    existente de la oferta a partir de sus BOM actuales. No crea el registro ETC si
+    no existe todavía."""
+    if not oferta_etc_table_exists(cursor):
+        return None
+
+    material_summary, total_material = compute_offer_bom_etc_values(cursor, oferta_id)
+
+    cursor.execute(
+        "SELECT 1 FROM ofertas.oferta_etc WHERE id_oferta_etc = ?",
+        (oferta_id,),
+    )
+    if cursor.fetchone() is None:
+        return None
+
+    cursor.execute(
+        """
+        UPDATE ofertas.oferta_etc
+        SET resumen_material_solicitado = ?,
+            total_material_eur = ?,
+            fecha_actualizacion = ?
+        WHERE id_oferta_etc = ?
+        """,
+        (material_summary or None, total_material or None, datetime.now(), oferta_id),
+    )
+    return total_material
 
 
 def attach_offer_bom_materials(cursor, offers):
@@ -9388,38 +9460,8 @@ def sync_offer_bom_to_etc(oferta_id):
             cursor = conn.cursor()
 
             # Obtener materiales BOM de la oferta respetando overrides de precio por oferta
-            cursor.execute(
-                """
-                SELECT mp.material,
-                       mp.part_nr,
-                       COALESCE(ao.precio_oferta, mp.precio) AS precio,
-                       obm.cantidad
-                FROM ofertas.oferta_bom_materiales obm
-                INNER JOIN ofertas.materiales_precio mp
-                    ON mp.id_material_precio = obm.id_material_precio
-                LEFT JOIN ofertas.oferta_bom_precio_override ao
-                    ON ao.id_oferta = obm.id_oferta
-                   AND ao.id_material_precio = obm.id_material_precio
-                   AND ao.activo = 1
-                WHERE obm.id_oferta = ?
-                ORDER BY obm.fecha_asignacion DESC, mp.material ASC
-                """,
-                (oferta_id,),
-            )
-            bom_rows = cursor.fetchall()
-
+            material_summary, total_material = compute_offer_bom_etc_values(cursor, oferta_id)
             now = datetime.now()
-
-            if bom_rows:
-                # Construir resumen y total
-                material_summary = "\n".join(
-                    f"• x{row[3]} [{row[1]}] {row[0]} — {row[2]:.2f}" if row[2] is not None else f"• x{row[3]} [{row[1]}] {row[0]}"
-                    for row in bom_rows
-                )
-                total_material = sum((row[2] or 0) * (row[3] or 1) for row in bom_rows)
-            else:
-                material_summary = ""
-                total_material = 0
 
             # Comprobar si existe registro ETC
             cursor.execute(

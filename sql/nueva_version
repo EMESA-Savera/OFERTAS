@@ -1,0 +1,303 @@
+USE [DataLakCCZ]
+GO
+
+-- =========================================================================
+-- 1. TABLAS MAESTRAS (Sin dependencias)
+-- =========================================================================
+
+CREATE TABLE [ofertas].[departamentos](
+	[id_departamento] [int] IDENTITY(1,1) NOT NULL,
+	[nombre_departamento] [varchar](255) NOT NULL,
+	[estado] [bit] NOT NULL CONSTRAINT [df_departamentos_estado_activo] DEFAULT ((1)),
+ CONSTRAINT [pk_departamentos] PRIMARY KEY CLUSTERED ([id_departamento] ASC),
+ CONSTRAINT [uq_departamentos_nombre] UNIQUE ([nombre_departamento] ASC)
+);
+GO
+
+CREATE TABLE [ofertas].[clientes](
+	[id_cliente] [int] IDENTITY(1,1) NOT NULL,
+	[nombre_cliente] [varchar](255) NOT NULL,
+	[dominio] [nvarchar](255) NULL,
+ CONSTRAINT [pk_clientes] PRIMARY KEY CLUSTERED ([id_cliente] ASC)
+);
+GO
+
+CREATE TABLE [ofertas].[proyectos](
+	[id_proyecto] [int] IDENTITY(1,1) NOT NULL,
+	[nombre_proyecto] [nvarchar](255) NOT NULL,
+ CONSTRAINT [pk_proyectos] PRIMARY KEY CLUSTERED ([id_proyecto] ASC),
+ CONSTRAINT [uq_proyectos_nombre] UNIQUE ([nombre_proyecto] ASC)
+);
+GO
+
+CREATE TABLE [dbo].[roles](
+	[id_rol] [int] NOT NULL,
+	[nombre_rol] [varchar](100) NOT NULL,
+ CONSTRAINT [pk_roles] PRIMARY KEY CLUSTERED ([id_rol] ASC),
+ CONSTRAINT [uq_roles_nombre] UNIQUE ([nombre_rol] ASC)
+);
+GO
+
+CREATE TABLE [ofertas].[maestro_materiales_bom](
+	[id_material] [int] IDENTITY(1,1) NOT NULL,
+	[material] [nvarchar](255) NOT NULL,
+	[precio] [decimal](18, 2) NOT NULL,
+ CONSTRAINT [pk_materiales_precio] PRIMARY KEY CLUSTERED ([id_material] ASC) -- Corregido: id_material
+);
+GO
+
+-- =========================================================================
+-- 2. TABLAS CON DEPENDENCIAS DIRECTAS
+-- =========================================================================
+
+CREATE TABLE [dbo].[usuarios_app](
+	[num_operario] [int] NOT NULL,
+	[id_departamento] [int] NULL,
+	[id_rol] [int] NOT NULL,
+	[email] [varchar](255) NULL,
+	[aplicacion] [int] NULL, -- Corregido: Agregado tipo de datos
+ CONSTRAINT [pk_usuarios_config] PRIMARY KEY CLUSTERED ([num_operario] ASC),
+ CONSTRAINT [fk_usuarios_config_departamentos] FOREIGN KEY ([id_departamento]) REFERENCES [ofertas].[departamentos] ([id_departamento]),
+ CONSTRAINT [fk_usuarios_config_roles] FOREIGN KEY ([id_rol]) REFERENCES [dbo].[roles] ([id_rol]), -- Corregido: Apunta a [dbo]
+ CONSTRAINT [ck_usuarios_config_num_operario] CHECK ([num_operario] >= 0)
+);
+GO
+
+CREATE TABLE [ofertas].[estados](
+	[id_estado] [int] IDENTITY(1,1) NOT NULL,
+	[nombre_estado] [varchar](255) NOT NULL,
+	[orden] [int] NULL,
+	[id_departamento] [int] NULL,
+	[emoji_sidebar] [nvarchar](8) NULL,
+	[estado] [bit] NOT NULL CONSTRAINT [df_estados_activo] DEFAULT ((1)),
+ CONSTRAINT [pk_estados] PRIMARY KEY CLUSTERED ([id_estado] ASC),
+ CONSTRAINT [fk_estados_departamentos] FOREIGN KEY ([id_departamento]) REFERENCES [ofertas].[departamentos] ([id_departamento])
+);
+GO
+
+CREATE TABLE [ofertas].[columnas_config](
+	[id_config] [int] IDENTITY(1,1) NOT NULL,
+	[id_estado] [int] NOT NULL,
+	[nombre_columna] [varchar](100) NOT NULL,
+	[orden_columna] [int] NULL,
+ CONSTRAINT [pk_configuracioncolumnas] PRIMARY KEY CLUSTERED ([id_config] ASC),
+ CONSTRAINT [fk_configuracioncolumnas_estados] FOREIGN KEY ([id_estado]) REFERENCES [ofertas].[estados] ([id_estado])
+);
+GO
+
+-- =========================================================================
+-- 3. TABLA MAESTRA UNIFICADA DE OFERTAS
+-- =========================================================================
+
+CREATE TABLE [ofertas].[ofertas](
+	[id_oferta] [int] IDENTITY(1,1) NOT NULL,
+	[numero_oferta] [nvarchar](50) NULL,
+	[id_estado] [int] NOT NULL CONSTRAINT [df_ofertas_id_estado] DEFAULT ((1)),
+	[id_cliente] [int] NULL,
+	[id_proyecto] [int] NULL,
+	[id_departamento_destino] [int] NULL,
+	[num_operario_responsable] [int] NULL,
+	
+	-- Datos del Origen (Email / Cliente)
+	[fecha_email] [date] NULL,
+	[fecha_alta_oferta] [date] NULL,
+	[ref_cliente_asunto_email] [nvarchar](500) NULL,
+	[nombre_emisor] [nvarchar](255) NULL,
+	[email_emisor] [nvarchar](255) NULL,
+	
+	-- Fechas de Seguimiento Técnico (Fase ETC)
+	[fecha_recepcion] [date] NULL,
+	[fecha_envio_oferta] [date] NULL,
+	[fecha_limite_respuesta] [date] NULL,
+	
+	-- Códigos y Referencias
+	[codigo_externo_oferta] [nvarchar](100) NULL,
+	[codigo_interno_oferta] [nvarchar](100) NULL,
+	[referencia_cliente] [nvarchar](255) NULL,
+	[numero_comision] [nvarchar](100) NULL,
+	[po_original] [nvarchar](100) NULL,
+	[pedido_b2b] [nvarchar](100) NULL,
+	[empresa_solicitante] [nvarchar](255) NULL,
+	
+	-- Atributos Comerciales
+	[incoterm] [varchar](10) NULL,
+	[moneda] [char](3) NOT NULL CONSTRAINT [df_ofertas_moneda] DEFAULT ('EUR'),
+	[prioridad] [varchar](20) NOT NULL CONSTRAINT [df_ofertas_prioridad] DEFAULT ('NORMAL'),
+	[es_urgente] [bit] NOT NULL CONSTRAINT [df_ofertas_es_urgente] DEFAULT ((0)),
+	
+	-- Resúmenes y Observaciones
+	[resumen_material_solicitado] [nvarchar](max) NULL,
+	[resumen_material_ofertado] [nvarchar](max) NULL,
+	[observaciones_cliente] [nvarchar](max) NULL,
+	[observaciones_tecnicas] [nvarchar](max) NULL,
+	[observaciones_internas] [nvarchar](max) NULL,
+	
+	-- Totales Económicos
+	[total_material_eur] [decimal](18, 2) NULL,
+	[total_fee_eur] [decimal](18, 2) NULL,
+	[total_oferta_eur] AS (CASE WHEN [total_material_eur] IS NULL AND [total_fee_eur] IS NULL THEN NULL ELSE isnull([total_material_eur],(0))+isnull([total_fee_eur],(0)) END) PERSISTED,
+	
+	-- Auditoría
+	[origen_registro] [varchar](20) NOT NULL CONSTRAINT [df_ofertas_origen_registro] DEFAULT ('MANUAL'),
+	[activo] [bit] NOT NULL CONSTRAINT [df_ofertas_activo] DEFAULT ((1)),
+	[fecha_creacion] [datetime2](0) NOT NULL CONSTRAINT [df_ofertas_fecha_creacion] DEFAULT (sysdatetime()),
+	[fecha_actualizacion] [datetime2](0) NOT NULL CONSTRAINT [df_ofertas_fecha_actualizacion] DEFAULT (sysdatetime()),
+
+ CONSTRAINT [pk_ofertas] PRIMARY KEY CLUSTERED ([id_oferta] ASC),
+ CONSTRAINT [fk_ofertas_estados] FOREIGN KEY ([id_estado]) REFERENCES [ofertas].[estados] ([id_estado]),
+ CONSTRAINT [fk_ofertas_clientes] FOREIGN KEY ([id_cliente]) REFERENCES [ofertas].[clientes] ([id_cliente]),
+ CONSTRAINT [fk_ofertas_proyectos] FOREIGN KEY ([id_proyecto]) REFERENCES [ofertas].[proyectos] ([id_proyecto]),
+ CONSTRAINT [fk_ofertas_departamentos] FOREIGN KEY ([id_departamento_destino]) REFERENCES [ofertas].[departamentos] ([id_departamento]),
+ CONSTRAINT [fk_ofertas_usuarios_config] FOREIGN KEY ([num_operario_responsable]) REFERENCES [dbo].[usuarios_app] ([num_operario]), -- Corregido: apunta a [dbo].[usuarios_app]
+ 
+ -- Validaciones
+ CONSTRAINT [ck_ofertas_email_emisor] CHECK ([email_emisor] IS NULL OR charindex('@',[email_emisor])>(1)),
+ CONSTRAINT [ck_ofertas_fechas] CHECK ([fecha_envio_oferta] IS NULL OR [fecha_recepcion] IS NULL OR [fecha_envio_oferta]>=[fecha_recepcion]),
+ CONSTRAINT [ck_ofertas_importes] CHECK (([total_material_eur] IS NULL OR [total_material_eur]>=(0)) AND ([total_fee_eur] IS NULL OR [total_fee_eur]>=(0))),
+ CONSTRAINT [ck_ofertas_incoterm] CHECK ([incoterm] IS NULL OR len(ltrim(rtrim([incoterm])))>=(3) AND len(ltrim(rtrim([incoterm])))<=(10)),
+ CONSTRAINT [ck_ofertas_moneda] CHECK (len([moneda])=(3) AND [moneda]=upper([moneda])),
+ CONSTRAINT [ck_ofertas_prioridad] CHECK ([prioridad]='CRITICA' OR [prioridad]='ALTA' OR [prioridad]='NORMAL' OR [prioridad]='BAJA'),
+ CONSTRAINT [ck_ofertas_origen_registro] CHECK ([origen_registro]='IMPORTACION' OR [origen_registro]='EXCEL' OR [origen_registro]='EMAIL' OR [origen_registro]='MANUAL')
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+-- =========================================================================
+-- 4. TABLAS RELACIONADAS (Metadatos de Emails, Interacciones, BOM y Adjuntos)
+-- =========================================================================
+
+CREATE TABLE [ofertas].[oferta_correos_importados](
+	[id_correo_importado] [int] IDENTITY(1,1) NOT NULL,
+	[id_oferta] [int] NOT NULL,
+	[source_type] [nvarchar](32) NULL,
+	[conversation_id] [nvarchar](255) NULL,
+	[internet_message_id] [nvarchar](512) NULL,
+	[in_reply_to_message_id] [nvarchar](512) NULL,
+	[reference_message_ids_json] [nvarchar](max) NULL,
+	[subject] [nvarchar](500) NULL,
+	[sender_name] [nvarchar](255) NULL,
+	[sender_email] [nvarchar](255) NULL,
+	[received_at] [datetime2](0) NULL,
+	[body_sha256] [char](64) NULL,
+	[fecha_registro] [datetime2](0) NOT NULL,
+ CONSTRAINT [pk_oferta_correos_importados] PRIMARY KEY CLUSTERED ([id_correo_importado] ASC),
+ CONSTRAINT [fk_correos_ofertas] FOREIGN KEY ([id_oferta]) REFERENCES [ofertas].[ofertas] ([id_oferta]) ON DELETE CASCADE
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+
+CREATE TABLE [ofertas].[oferta_interacciones](
+	[id_interaccion] [int] IDENTITY(1,1) NOT NULL,
+	[id_oferta] [int] NOT NULL,
+	[tipo_interaccion] [nvarchar](255) NOT NULL,
+	[fecha_interaccion] [datetime2](0) NOT NULL,
+	[observaciones] [nvarchar](500) NULL,
+	[fecha_limite] [date] NULL,
+ CONSTRAINT [pk_oferta_interacciones] PRIMARY KEY CLUSTERED ([id_interaccion] ASC),
+ CONSTRAINT [fk_oferta_interacciones_ofertas] FOREIGN KEY ([id_oferta]) REFERENCES [ofertas].[ofertas] ([id_oferta]) ON DELETE CASCADE
+) ON [PRIMARY]
+GO
+
+CREATE TABLE [ofertas].[oferta_materiales_bom](
+	[id_oferta_material] [int] IDENTITY(1,1) NOT NULL,
+	[id_oferta] [int] NOT NULL,
+	[id_material] [int] NOT NULL,
+	[cantidad] [decimal](18, 2) NOT NULL CONSTRAINT [df_bom_cantidad] DEFAULT (1),
+	[precio_unitario_congelado] [decimal](18, 2) NOT NULL,
+	[total] AS ([cantidad] * [precio_unitario_congelado]) PERSISTED, -- Corregido: Columna calculada automática persistida
+ CONSTRAINT [pk_oferta_materiales_bom] PRIMARY KEY CLUSTERED ([id_oferta_material] ASC),
+ CONSTRAINT [fk_bom_ofertas] FOREIGN KEY ([id_oferta]) REFERENCES [ofertas].[ofertas] ([id_oferta]) ON DELETE CASCADE,
+ CONSTRAINT [fk_bom_materiales] FOREIGN KEY ([id_material]) REFERENCES [ofertas].[maestro_materiales_bom] ([id_material]) -- Corregido: apunta a maestro_materiales_bom e id_material
+) ON [PRIMARY]
+GO
+
+CREATE TABLE [ofertas].[ofertas_adjuntos](
+	[id_adjunto] [int] IDENTITY(1,1) NOT NULL,
+	[id_oferta] [int] NOT NULL,
+	[nombre_archivo] [nvarchar](255) NOT NULL,
+	[ruta_almacenamiento] [nvarchar](1000) NOT NULL,
+	[peso_bytes] [bigint] NULL,
+	[extension] [varchar](10) NULL,
+	[hash_sha256] [char](64) NULL,
+	[fecha_registro] [datetime2](0) NOT NULL CONSTRAINT [df_adjuntos_fecha_registro] DEFAULT (sysdatetime()), -- Reincorporado por buenas prácticas
+ CONSTRAINT [pk_ofertas_adjuntos] PRIMARY KEY CLUSTERED ([id_adjunto] ASC),
+ CONSTRAINT [fk_adjuntos_ofertas] FOREIGN KEY ([id_oferta]) REFERENCES [ofertas].[ofertas] ([id_oferta]) ON DELETE CASCADE
+) ON [PRIMARY]
+GO
+
+-- =========================================================================
+-- 5. VISTAS ADAPTADAS AL MODELO UNIFICADO Y CON NUEVOS NOMBRES
+-- =========================================================================
+
+CREATE OR ALTER VIEW [ofertas].[vw_listado_ofertas_interacciones]
+AS
+SELECT
+	lo.id_oferta,
+	e.nombre_estado AS estado,
+	lo.fecha_email,
+	lo.fecha_alta_oferta,
+	lo.numero_oferta,
+	lo.ref_cliente_asunto_email,
+	CASE
+		WHEN NULLIF(LTRIM(RTRIM(ISNULL(lo.nombre_emisor, ''))), '') IS NOT NULL
+			AND NULLIF(LTRIM(RTRIM(ISNULL(lo.email_emisor, ''))), '') IS NOT NULL
+			THEN CONCAT(LTRIM(RTRIM(lo.nombre_emisor)), ' <', LTRIM(RTRIM(lo.email_emisor)), '>')
+		WHEN NULLIF(LTRIM(RTRIM(ISNULL(lo.email_emisor, ''))), '') IS NOT NULL
+			THEN LTRIM(RTRIM(lo.email_emisor))
+		ELSE NULLIF(LTRIM(RTRIM(ISNULL(lo.nombre_emisor, ''))), '')
+	END AS emisor,
+	lo.nombre_emisor,
+	lo.email_emisor,
+	c.nombre_cliente AS cliente,
+	lo.observaciones_cliente AS observaciones_oferta,
+	oi.id_interaccion,
+	oi.tipo_interaccion,
+	oi.fecha_interaccion,
+	oi.fecha_limite,
+	oi.observaciones AS observaciones_interaccion
+FROM ofertas.ofertas lo
+LEFT JOIN ofertas.oferta_interacciones oi
+	ON lo.id_oferta = oi.id_oferta
+LEFT JOIN ofertas.estados e
+	ON lo.id_estado = e.id_estado
+LEFT JOIN ofertas.clientes c
+	ON lo.id_cliente = c.id_cliente;
+GO
+
+-- =========================================================================
+-- 6. DISPARADORES (TRIGGERS) OPTIMIZADOS
+-- =========================================================================
+
+CREATE OR ALTER TRIGGER [ofertas].[tr_ofertas_autogenerar_numerooferta]
+ON [ofertas].[ofertas]
+AFTER INSERT
+AS
+BEGIN
+	IF TRIGGER_NESTLEVEL() > 1 RETURN;
+
+	SET NOCOUNT ON;
+
+	DECLARE @anio CHAR(4) = CONVERT(CHAR(4), YEAR(GETDATE()));
+	DECLARE @UltimoCorrelativo INT = 0;
+
+	-- Búsqueda directa sumamente veloz indexable (sin RIGHT() en el WHERE)
+	SELECT @UltimoCorrelativo = ISNULL(MAX(TRY_CONVERT(INT, SUBSTRING(numero_oferta, 5, 5))), 0)
+	FROM ofertas.ofertas WITH (UPDLOCK, HOLDLOCK)
+	WHERE numero_oferta LIKE @anio + '%';
+
+	;WITH pendientes AS (
+		SELECT i.id_oferta,
+			ROW_NUMBER() OVER (ORDER BY i.id_oferta) AS ordencorrelativo
+		FROM inserted i
+		WHERE ISNULL(i.numero_oferta, '') = ''
+	), numerados AS (
+		SELECT p.id_oferta,
+			CONCAT(@anio, RIGHT('00000' + CAST((@UltimoCorrelativo + p.ordencorrelativo) AS VARCHAR(5)), 5)) AS numerooferta
+		FROM pendientes p
+	)
+	UPDATE o
+	SET o.numero_oferta = n.numerooferta,
+		o.id_estado = 1
+	FROM ofertas.ofertas o
+	INNER JOIN numerados n
+		ON o.id_oferta = n.id_oferta;
+END;
+GO

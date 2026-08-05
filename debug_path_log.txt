@@ -196,3 +196,99 @@
 [2026-08-05 07:30:52] build_offer_attachment_payload oferta_id=70 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600001\20260804135151261852_test_upload_20260804.txt exists=True
 [2026-08-05 07:30:53] get_offer_attachments_dir oferta_id=70 numero_oferta=202600001 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600001 (isdir=True)
 [2026-08-05 07:30:54] build_offer_attachment_payload oferta_id=70 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600001\20260804135207287008_test_upload_20260804.txt exists=True
+[2026-08-05 08:03:54] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-08-05 08:03:54] frozen=False
+[2026-08-05 08:03:55] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-08-05 08:03:55] sys._MEIPASS=None
+[2026-08-05 08:03:56] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 08:03:56] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 08:03:57] RUNTIME_DATA_DIR=C:\Proyectos\OFERTAS_prueba\data
+[2026-08-05 08:03:57] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-08-05 08:03:58] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:\Proyectos\OFERTAS_prueba\data\imported_email_attachments
+[2026-08-05 08:03:58] OFFER_CHAT_DIR=C:\Proyectos\OFERTAS_prueba\data\offer_chat
+[2026-08-05 08:13:23] get_offer_attachments_dir oferta_id=1131 numero_oferta=202600058 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058 (isdir=True)
+[2026-08-05 08:13:24] list_offer_attachments oferta_id=1131 numero_oferta=202600058 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058 isdir=True
+[2026-08-05 08:13:24] get_offer_attachments_dir oferta_id=1131 numero_oferta=202600058 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058 (isdir=True)
+[2026-08-05 08:13:25] build_offer_attachment_payload oferta_id=1131 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058\20260805055432840520_8d4a2220f3344f8e845cecdc51529250.png exists=True
+[2026-08-05 08:13:27] get_offer_attachments_dir oferta_id=1131 numero_oferta=None -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058 (isdir=True)
+[2026-08-05 08:13:27] preview_offer_attachment oferta_id=1131 filename=20260805055432840520_8d4a2220f3344f8e845cecdc51529250.png -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058\20260805055432840520_8d4a2220f3344f8e845cecdc51529250.png exists=True
+[2026-08-05 08:13:43] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-08-05 08:13:44] frozen=False
+[2026-08-05 08:13:44] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-08-05 08:13:45] sys._MEIPASS=None
+[2026-08-05 08:13:45] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 08:13:46] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 08:13:46] RUNTIME_DATA_DIR=C:\Proyectos\OFERTAS_prueba\data
+[2026-08-05 08:13:47] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-08-05 08:13:47] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:\Proyectos\OFERTAS_prueba\data\imported_email_attachments
+[2026-08-05 08:13:48] OFFER_CHAT_DIR=C:\Proyectos\OFERTAS_prueba\data\offer_chat
+[2026-08-05 08:27:16] get_offer_attachments_dir oferta_id=1130 numero_oferta=202600057 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600057 (isdir=True)
+[2026-08-05 08:27:30] get_offer_attachments_dir oferta_id=1131 numero_oferta=202600058 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600058 (isdir=True)
+[2026-08-05 09:31:56] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-08-05 09:31:57] frozen=False
+[2026-08-05 09:31:57] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-08-05 09:31:58] sys._MEIPASS=None
+[2026-08-05 09:31:58] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 09:31:59] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 09:31:59] RUNTIME_DATA_DIR=C:\Proyectos\OFERTAS_prueba\data
+[2026-08-05 09:32:00] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-08-05 09:32:00] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:\Proyectos\OFERTAS_prueba\data\imported_email_attachments
+[2026-08-05 09:32:01] OFFER_CHAT_DIR=C:\Proyectos\OFERTAS_prueba\data\offer_chat
+[2026-08-05 09:37:25] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-08-05 09:37:25] frozen=False
+[2026-08-05 09:37:26] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-08-05 09:37:27] sys._MEIPASS=None
+[2026-08-05 09:37:27] os.getcwd()=C:\Proyectos\OFERTAS_prueba\api
+[2026-08-05 09:37:28] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-08-05 09:37:28] RUNTIME_DATA_DIR=C:\Proyectos\OFERTAS_prueba\data
+[2026-08-05 09:37:29] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-08-05 09:37:29] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:\Proyectos\OFERTAS_prueba\data\imported_email_attachments
+[2026-08-05 09:37:30] OFFER_CHAT_DIR=C:\Proyectos\OFERTAS_prueba\data\offer_chat
+[2026-08-05 11:47:39] get_offer_attachments_dir oferta_id=1129 numero_oferta=202600056 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 (isdir=False)
+[2026-08-05 11:47:39] list_offer_attachments oferta_id=1129 numero_oferta=202600056 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 isdir=False
+[2026-08-05 11:47:46] get_offer_attachments_dir oferta_id=1128 numero_oferta=202600055 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600055 (isdir=False)
+[2026-08-05 11:47:47] list_offer_attachments oferta_id=1128 numero_oferta=202600055 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600055 isdir=False
+[2026-08-05 11:50:33] get_offer_attachments_dir oferta_id=1129 numero_oferta=202600056 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 (isdir=False)
+[2026-08-05 11:50:33] list_offer_attachments oferta_id=1129 numero_oferta=202600056 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 isdir=False
+[2026-08-05 12:10:29] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:29] list_offer_attachments oferta_id=72 numero_oferta=202600003 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 isdir=True
+[2026-08-05 12:10:30] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:31] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604110315524789_image001.jpg exists=True
+[2026-08-05 12:10:32] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:32] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604110315540416_image002.jpg exists=True
+[2026-08-05 12:10:33] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:33] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604110800447462_51952239_z__44919229_AE00.pdf exists=True
+[2026-08-05 12:10:35] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:35] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604110800746882_COS_Brackets_MR_QC1.pdf exists=True
+[2026-08-05 12:10:36] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:37] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604110801052958_COS_Machine_Support_MR_QC1.pdf exists=True
+[2026-08-05 12:10:38] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:38] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604111210671671_image001.jpg exists=True
+[2026-08-05 12:10:39] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:40] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604111210671671_image002.jpg exists=True
+[2026-08-05 12:10:41] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:41] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604125142619475_image001.jpg exists=True
+[2026-08-05 12:10:42] get_offer_attachments_dir oferta_id=1124 numero_oferta=202600051 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600051 (isdir=False)
+[2026-08-05 12:10:42] get_offer_attachments_dir oferta_id=72 numero_oferta=202600003 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:42] list_offer_attachments oferta_id=1124 numero_oferta=202600051 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600051 isdir=False
+[2026-08-05 12:10:43] build_offer_attachment_payload oferta_id=72 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604125142619475_image002.jpg exists=True
+[2026-08-05 12:10:45] get_offer_attachments_dir oferta_id=72 numero_oferta=None -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:45] get_offer_attachments_dir oferta_id=72 numero_oferta=None -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:45] get_offer_attachments_dir oferta_id=72 numero_oferta=None -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:45] get_offer_attachments_dir oferta_id=72 numero_oferta=None -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003 (isdir=True)
+[2026-08-05 12:10:45] preview_offer_attachment oferta_id=72 filename=20260604125142619475_image002.jpg -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604125142619475_image002.jpg exists=True
+[2026-08-05 12:10:46] preview_offer_attachment oferta_id=72 filename=20260604111210671671_image001.jpg -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604111210671671_image001.jpg exists=True
+[2026-08-05 12:10:46] preview_offer_attachment oferta_id=72 filename=20260604125142619475_image001.jpg -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604125142619475_image001.jpg exists=True
+[2026-08-05 12:10:46] preview_offer_attachment oferta_id=72 filename=20260604111210671671_image002.jpg -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600003\20260604111210671671_image002.jpg exists=True
+[2026-08-05 12:11:22] get_offer_attachments_dir oferta_id=1124 numero_oferta=202600051 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600051 (isdir=False)
+[2026-08-05 12:11:22] list_offer_attachments oferta_id=1124 numero_oferta=202600051 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600051 isdir=False
+[2026-08-05 12:12:01] get_offer_attachments_dir oferta_id=1129 numero_oferta=202600056 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 (isdir=False)
+[2026-08-05 12:12:01] list_offer_attachments oferta_id=1129 numero_oferta=202600056 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 isdir=False
+[2026-08-05 12:13:42] get_offer_attachments_dir oferta_id=1129 numero_oferta=202600056 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 (isdir=False)
+[2026-08-05 12:13:43] list_offer_attachments oferta_id=1129 numero_oferta=202600056 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600056 isdir=False
+[2026-08-05 12:16:16] get_offer_attachments_dir oferta_id=1125 numero_oferta=202600052 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600052 (isdir=False)
+[2026-08-05 12:16:17] list_offer_attachments oferta_id=1125 numero_oferta=202600052 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600052 isdir=False
+[2026-08-05 12:33:46] save_binary_attachment_to_dir nombre=e241e1df1da24476b5ca28330d5837f4.png -> C:\Proyectos\OFERTAS_prueba\data\imported_email_attachments\pendientes\UStlpTILWmyqBIC-62q6GECJ\20260805103346190926_e241e1df1da24476b5ca28330d5837f4.png
+[2026-08-05 12:34:10] get_offer_attachments_dir oferta_id=1132 numero_oferta=202600057 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600057 (isdir=True)
+[2026-08-05 12:34:11] get_offer_attachments_dir oferta_id=1132 numero_oferta=202600057 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600057 (isdir=True)
+[2026-08-05 12:34:12] build_offer_attachment_payload oferta_id=1132 file=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600057\20260805103346190926_e241e1df1da24476b5ca28330d5837f4.png exists=True
