@@ -171,6 +171,40 @@ os.makedirs(IMPORTED_EMAIL_ATTACHMENTS_DIR, exist_ok=True)
 os.makedirs(OFFER_CHAT_DIR, exist_ok=True)
 os.makedirs(OFFER_CHAT_READ_STATE_DIR, exist_ok=True)
 
+# =====================================================
+# LOGS DE DIAGNOSTICO DE RUTAS (temporal: localizar carpeta de adjuntos en servidor)
+# =====================================================
+_PATH_DEBUG_LOG_CANDIDATES = (
+    "//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/debug_path_log.txt",
+    os.path.join(PROJECT_DIR, "debug_path_log.txt"),
+)
+
+
+def path_debug_log(message):
+    line = f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}"
+    try:
+        print(line, flush=True)
+    except Exception:
+        pass
+    for candidate in _PATH_DEBUG_LOG_CANDIDATES:
+        try:
+            with open(candidate, "a", encoding="utf-8") as log_file:
+                log_file.write(line + "\n")
+        except Exception:
+            pass
+
+
+path_debug_log("===== INICIO DE LA APP (diagnostico de rutas) =====")
+path_debug_log(f"frozen={getattr(sys, 'frozen', False)}")
+path_debug_log(f"sys.executable={sys.executable}")
+path_debug_log(f"sys._MEIPASS={getattr(sys, '_MEIPASS', None)}")
+path_debug_log(f"os.getcwd()={os.getcwd()}")
+path_debug_log(f"PROJECT_DIR={PROJECT_DIR}")
+path_debug_log(f"RUNTIME_DATA_DIR={RUNTIME_DATA_DIR}")
+path_debug_log(f"OFFER_ATTACHMENTS_DIR={OFFER_ATTACHMENTS_DIR}")
+path_debug_log(f"IMPORTED_EMAIL_ATTACHMENTS_DIR={IMPORTED_EMAIL_ATTACHMENTS_DIR}")
+path_debug_log(f"OFFER_CHAT_DIR={OFFER_CHAT_DIR}")
+
 IMAGE_ATTACHMENT_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 TEXT_ATTACHMENT_EXTENSIONS = {".txt", ".csv", ".eml"}
 INLINE_ATTACHMENT_EXTENSIONS = {".pdf"}
@@ -209,6 +243,7 @@ def get_offer_attachments_dir(oferta_id, create=False, numero_oferta=None):
 
     if create:
         os.makedirs(directory, exist_ok=True)
+    path_debug_log(f"get_offer_attachments_dir oferta_id={oferta_id} numero_oferta={numero_oferta} -> {directory} (isdir={os.path.isdir(directory)})")
     return directory
 
 
@@ -517,6 +552,7 @@ def save_binary_attachment_to_dir(target_dir, original_name, content_bytes):
     os.makedirs(target_dir, exist_ok=True)
     stored_name = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{safe_name}"
     file_path = os.path.join(target_dir, stored_name)
+    path_debug_log(f"save_binary_attachment_to_dir nombre={normalized_name} -> {file_path}")
     with open(file_path, "wb") as output_file:
         output_file.write(binary_content)
     save_offer_attachment_metadata(file_path, {"original_name": normalized_name})
@@ -602,6 +638,7 @@ def get_offer_attachment_mimetype(filename):
 def build_offer_attachment_payload(oferta_id, stored_name, numero_oferta=None):
     attachments_dir = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
     file_path = os.path.join(attachments_dir, stored_name)
+    path_debug_log(f"build_offer_attachment_payload oferta_id={oferta_id} file={file_path} exists={os.path.isfile(file_path)}")
     if not os.path.isfile(file_path):
         return None
 
@@ -624,6 +661,7 @@ def build_offer_attachment_payload(oferta_id, stored_name, numero_oferta=None):
 
 def list_offer_attachments(oferta_id, numero_oferta=None):
     attachments_dir = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
+    path_debug_log(f"list_offer_attachments oferta_id={oferta_id} numero_oferta={numero_oferta} dir={attachments_dir} isdir={os.path.isdir(attachments_dir)}")
     if not os.path.isdir(attachments_dir):
         return []
 
@@ -657,6 +695,7 @@ def save_offer_attachment(oferta_id, file_storage):
         raise ValueError("Cada archivo puede ocupar como máximo 25 MB.")
 
     attachments_dir = get_offer_attachments_dir(oferta_id, create=True)
+    path_debug_log(f"save_offer_attachment oferta_id={oferta_id} filename={original_name} dir={attachments_dir}")
     stored_name, file_path = save_binary_attachment_to_dir(attachments_dir, original_name, file_storage.read())
 
     stream = getattr(file_storage, "stream", None)
@@ -6577,6 +6616,8 @@ def upload_offer_attachments(oferta_id):
     if not uploaded_files:
         return jsonify({"success": False, "message": "Debes seleccionar al menos un archivo"}), 400
 
+    path_debug_log(f"ENDPOINT upload_offer_attachments oferta_id={oferta_id} files={[getattr(f, 'filename', '') for f in uploaded_files]}")
+
     try:
         with db_connection(autocommit=True) as conn:
             cursor = conn.cursor()
@@ -6613,6 +6654,7 @@ def download_offer_attachment(oferta_id, filename):
 
     attachments_dir = get_offer_attachments_dir(oferta_id)
     file_path = os.path.join(attachments_dir, safe_filename)
+    path_debug_log(f"download_offer_attachment oferta_id={oferta_id} filename={safe_filename} -> {file_path} exists={os.path.isfile(file_path)}")
     if not os.path.isfile(file_path):
         return jsonify({"success": False, "message": "Adjunto no encontrado"}), 404
 
@@ -6633,6 +6675,7 @@ def preview_offer_attachment(oferta_id, filename):
 
     attachments_dir = get_offer_attachments_dir(oferta_id)
     file_path = os.path.join(attachments_dir, safe_filename)
+    path_debug_log(f"preview_offer_attachment oferta_id={oferta_id} filename={safe_filename} -> {file_path} exists={os.path.isfile(file_path)}")
     if not os.path.isfile(file_path):
         return jsonify({"success": False, "message": "Adjunto no encontrado"}), 404
 
