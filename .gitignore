@@ -1,2 +1,13 @@
 .flask_session/
 .flask_session/0fd61d4aa43dbd48625341db727544a6
+
+# ============================================================
+# Datos de adjuntos y almacenamiento local: NUNCA versionar.
+# Red de seguridad: `git clean -fd` del Updater respeta .gitignore,
+# asi que data/ y adjuntos/ quedan protegidos aunque caigan dentro
+# del repo. En produccion los adjuntos viven FUERA del repo vía
+# .env.production (C:/ProgramData/OFERTAS/data/...).
+# ============================================================
+data/
+adjuntos/
+recuperacion_adjuntos_20260804/

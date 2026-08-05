@@ -150,7 +150,25 @@ CORS(app, supports_credentials=True)
 os.makedirs(app.config["SESSION_FILE_DIR"], exist_ok=True)
 Session(app)
 
-DEFAULT_RUNTIME_DATA_DIR = os.path.join(os.path.dirname(sys.executable) if getattr(sys, "frozen", False) else PROJECT_DIR, "data")
+def get_default_runtime_data_dir():
+    """Ruta por defecto para datos persistentes (adjuntos, e-mails, chat).
+
+    - Produccion (build frozen O APP_ENV=production): apunta a una carpeta
+      estable FUERA del repo gestionado por Updater-Digitalizacion (el
+      `git clean -fd` del Updater no la toca): %PROGRAMDATA%/OFERTAS/data
+      (normalmente C:/ProgramData/OFERTAS/data).
+    - Desarrollo local (no frozen y no produccion): mantiene <proyecto>/data
+      para no alterar el flujo de trabajo habitual.
+    - Siempre se puede sobrescribir con la variable RUNTIME_DATA_DIR (o las
+      variables OFERTA_*/IMPORTED_EMAIL_* especificas).
+    """
+    if getattr(sys, "frozen", False) or get_env_value("APP_ENV", "FLASK_ENV", "ENV", default="development").strip().lower() == "production":
+        program_data = os.environ.get("PROGRAMDATA") or os.environ.get("ProgramData") or r"C:\ProgramData"
+        return os.path.join(program_data, "OFERTAS", "data")
+    return os.path.join(PROJECT_DIR, "data")
+
+
+DEFAULT_RUNTIME_DATA_DIR = get_default_runtime_data_dir()
 RUNTIME_DATA_DIR = resolve_storage_dir("RUNTIME_DATA_DIR", DEFAULT_RUNTIME_DATA_DIR)
 OFFER_ATTACHMENTS_DIR = resolve_storage_dir("OFFER_ATTACHMENTS_DIR", os.path.join(RUNTIME_DATA_DIR, "offer_attachments"))
 IMPORTED_EMAIL_ATTACHMENTS_DIR = resolve_storage_dir("IMPORTED_EMAIL_ATTACHMENTS_DIR", os.path.join(RUNTIME_DATA_DIR, "imported_email_attachments"))

@@ -63,6 +63,24 @@ Nota especifica de este proyecto:
 - En esa modalidad, este proyecto toma `SSL_CERT_FILE=certificados_ofertas/cert_chain.pem` y `SSL_KEY_FILE=certificados_ofertas/key.pem`, por lo que no debe caer en certificados `adhoc` temporales y sirve la cadena completa cuando existe.
 - Si al arrancar se observa `https://localhost:3010` en vez de la IP publica, o si vuelve a pedirse confianza tras reiniciar, revisar primero que no se este usando solo `.env` sin `.env.production`.
 
+## Paso 3b. Copiar `.env.production` junto al EXE (OBLIGATORIO)
+
+> CRITICO para este proyecto: la app la gestiona `Updater-Digitalizacion`, que en cada cambio de version ejecuta `git reset --hard` + `git clean -fd` sobre el repo gestionado (`managed_repos/repos/OFERTAS`). Ese `git clean -fd` borra PERMANENTEMENTE todo lo no versionado que viva DENTRO del repo (adjuntos, e-mails importados, chat), sin papelera.
+
+1. Copiar `.env.production` junto al EXE (o al directorio desde el que arranca la API) en el servidor.
+2. Asegurarse de que incluya las rutas de datos persistentes APUNTANDO FUERA del repo:
+
+```text
+RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+OFFER_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/offer_attachments
+IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+```
+
+- `RUNTIME_DATA_DIR` fija tambien `offer_chat` y `offer_chat_read_state` (derivan de esa variable).
+- `C:/ProgramData/OFERTAS/` esta FUERA de `managed_repos/repos/OFERTAS`, por lo que `git clean -fd` del Updater no lo toca.
+- Si el servidor ya tiene una copia local de `.env.production` distinta a la versionada, replicar estas 3 variables en esa copia.
+- Red de seguridad adicional: `.gitignore` del repo incluye `data/`, `adjuntos/` y `recuperacion_adjuntos_20260804/`; como el Updater usa `git clean -fd` (no `-x`), respeta `.gitignore`.
+
 ## Paso 4. Instalar la CA raiz en clientes Windows
 
 Manual:
