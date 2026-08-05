@@ -145,6 +145,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   const offerCenterChatSubmit = document.getElementById('offerCenterChatSubmit');
   const offerAttachmentPreviewModal = document.getElementById('offerAttachmentPreviewModal');
+  const filesDropzone = document.getElementById('filesDropzone');
+  const filesFolderInput = document.getElementById('filesFolderInput');
+  const filesDropFeedback = document.getElementById('filesDropFeedback');
+  const filesProgress = document.getElementById('filesProgress');
+  const filesTableWrap = document.getElementById('filesTableWrap');
+  const filesTableBody = document.getElementById('filesTableBody');
+  const filesSummary = document.getElementById('filesSummary');
   const offerAttachmentPreviewTitle = document.getElementById('offerAttachmentPreviewTitle');
   const offerAttachmentPreviewMeta = document.getElementById('offerAttachmentPreviewMeta');
   const offerAttachmentPreviewActions = document.getElementById('offerAttachmentPreviewActions');
@@ -1119,6 +1126,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
         { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
         { label: t('config.boms', 'BOM'), target: 'boms', htmlFile: null },
+      ];
+    }
+
+    if (viewName === 'files') {
+      return [
+        { label: t('nav.home', 'Inicio'), target: 'inicio', htmlFile: null },
+        { label: t('nav.settings', 'Configuración'), target: 'configuracion', htmlFile: null },
+        { label: t('config.files', 'Files'), target: 'files', htmlFile: null },
       ];
     }
 
@@ -8154,7 +8169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     configButtons.forEach((configButton) => {
-      const isConfigActive = viewName === 'configuracion' || viewName === 'clientes' || viewName === 'estados' || viewName === 'departamentos' || viewName === 'usuarios' || viewName === 'proyectos' || viewName === 'boms';
+      const isConfigActive = viewName === 'configuracion' || viewName === 'clientes' || viewName === 'estados' || viewName === 'departamentos' || viewName === 'usuarios' || viewName === 'proyectos' || viewName === 'boms' || viewName === 'files';
       configButton.classList.toggle('active', isConfigActive);
       configButton.classList.toggle('is-active', isConfigActive);
       configButton.setAttribute('aria-current', isConfigActive ? 'page' : 'false');
@@ -8231,6 +8246,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       setBomsMode('ver');
       if (!isManagerUser()) {
         setGenericFeedback(bomsTableFeedback, MANAGER_ONLY_MESSAGE, 'success');
+      }
+    }
+
+    if (viewName === 'files') {
+      clearGenericFeedback(filesDropFeedback);
+      clearGenericFeedback(filesProgress);
+      clearGenericFeedback(filesSummary);
+      if (!isManagerUser()) {
+        setGenericFeedback(filesDropFeedback, MANAGER_ONLY_MESSAGE, 'success');
       }
     }
 
@@ -9537,6 +9561,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (card.dataset.configTarget === 'boms') {
         setActiveView('boms');
+        return;
+      }
+
+      if (card.dataset.configTarget === 'files') {
+        setActiveView('files');
       }
     });
   });
@@ -9975,6 +10004,280 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (file) {
         importMailFile(file);
       }
+    });
+  }
+
+  // =====================================================
+  // Files: recuperación de adjuntos de correos ya importados
+  // =====================================================
+  const FILES_STATUS_LABELS = {
+    nuevo: () => t('config.files_status_new', 'Nuevo (no insertado)'),
+    viejo: () => t('config.files_status_old', 'Ya importado'),
+    recuperado: () => t('config.files_status_recovered', 'Adjuntos recuperados'),
+    ya_existe: () => t('config.files_status_exists', 'Carpeta ya existe'),
+    sin_adjuntos: () => t('config.files_status_no_attachments', 'Sin adjuntos'),
+    error: () => t('config.files_status_error', 'Error'),
+    procesando: () => t('config.files_status_processing', 'Procesando...'),
+  };
+
+  const collectDroppedFiles = (dataTransfer) => new Promise((resolve) => {
+    const results = [];
+    const items = Array.from(dataTransfer?.items || []);
+    const hasEntryApi = items.some((item) => item && item.kind === 'file' && typeof item.webkitGetAsEntry === 'function');
+
+    if (!hasEntryApi) {
+      resolve(Array.from(dataTransfer?.files || []));
+      return;
+    }
+
+    const walkEntry = (entry, path) => new Promise((res) => {
+      if (!entry) {
+        res();
+        return;
+      }
+      if (entry.isFile) {
+        entry.file((file) => {
+          if (file) {
+            const rel = path ? `${path}/${file.name}` : file.name;
+            try {
+              Object.defineProperty(file, 'webkitRelativePath', { value: rel, configurable: true });
+            } catch (error) {
+              // webkitRelativePath no es configurable en algunos navegadores; ignorar.
+            }
+            results.push(file);
+          }
+          res();
+        }, () => res());
+        return;
+      }
+      if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const nextPath = path ? `${path}/${entry.name}` : entry.name;
+        const readBatch = () => {
+          reader.readEntries((entries) => {
+            if (!entries || !entries.length) {
+              res();
+              return;
+            }
+            Promise.all(entries.map((child) => walkEntry(child, nextPath))).then(readBatch);
+          }, () => res());
+        };
+        readBatch();
+        return;
+      }
+      res();
+    });
+
+    Promise.all(
+      items
+        .filter((item) => item && item.kind === 'file' && typeof item.webkitGetAsEntry === 'function')
+        .map((item) => walkEntry(item.webkitGetAsEntry(), '')),
+    ).then(() => resolve(results));
+  });
+
+  const filesRenderRow = (entry) => {
+    const row = document.createElement('tr');
+    const statusLabel = entry.statusLabel || (FILES_STATUS_LABELS[entry.status] ? FILES_STATUS_LABELS[entry.status]() : entry.status);
+    const folderLabel = filesRenderFolderLabel(entry);
+    const attachmentsTitle = entry.attachmentsTitle ? ` title="${escapeHtml(entry.attachmentsTitle)}"` : '';
+    row.innerHTML = `
+      <td>${escapeHtml(String(entry.filename || ''))}</td>
+      <td>${escapeHtml(String(statusLabel || ''))}</td>
+      <td>${escapeHtml(String(entry.oferta || '-'))}</td>
+      <td>${escapeHtml(String(folderLabel || ''))}</td>
+      <td${attachmentsTitle}>${escapeHtml(String(entry.attachmentsText || ''))}</td>
+    `;
+    return row;
+  };
+
+  const filesRenderFolderLabel = (entry) => {
+    if (entry.status === 'nuevo' || entry.status === 'error' || entry.status === 'procesando') {
+      return '';
+    }
+    if (entry.status === 'recuperado') {
+      return t('config.files_folder_created', 'Carpeta creada');
+    }
+    if (entry.status === 'ya_existe') {
+      return t('config.files_folder_exists', 'Carpeta existe');
+    }
+    if (entry.status === 'sin_adjuntos') {
+      return t('config.files_folder_missing', 'Sin carpeta');
+    }
+    if (entry.status === 'viejo') {
+      return entry.folder_exists
+        ? t('config.files_folder_exists', 'Carpeta existe')
+        : t('config.files_folder_missing', 'Sin carpeta');
+    }
+    return '';
+  };
+
+  const processFilesFolder = async (fileList) => {
+    if (!fileList || !fileList.length) {
+      return;
+    }
+    if (guardReadOnlyAction()) {
+      return;
+    }
+
+    const mailFiles = Array.from(fileList).filter((file) => {
+      const name = String(file.name || '').toLowerCase();
+      return name.endsWith('.eml') || name.endsWith('.msg');
+    });
+
+    if (!mailFiles.length) {
+      setGenericFeedback(filesDropFeedback, t('offer.invalid_mail_file', 'Solo se admiten correos en formato .eml o .msg.'), 'error');
+      return;
+    }
+
+    if (filesDropFeedback) {
+      filesDropFeedback.textContent = '';
+    }
+    if (filesTableBody) {
+      filesTableBody.innerHTML = '';
+    }
+    if (filesTableWrap) {
+      filesTableWrap.hidden = false;
+    }
+    if (filesProgress) {
+      filesProgress.hidden = false;
+    }
+    if (filesSummary) {
+      filesSummary.textContent = '';
+    }
+
+    const counts = { nuevo: 0, recuperado: 0, ya_existe: 0, sin_adjuntos: 0, error: 0 };
+
+    for (let index = 0; index < mailFiles.length; index += 1) {
+      const file = mailFiles[index];
+      const entry = { filename: file.name, status: 'procesando', attachmentsText: '' };
+      const rowElement = filesRenderRow(entry);
+      if (filesTableBody) {
+        filesTableBody.appendChild(rowElement);
+      }
+
+      const progressMessage = t('config.files_processing_progress', 'Procesando {current}/{total}: {file}...')
+        .replace('{current}', String(index + 1))
+        .replace('{total}', String(mailFiles.length))
+        .replace('{file}', file.name);
+      setGenericFeedback(filesProgress, progressMessage, 'success');
+
+      const formData = new FormData();
+      formData.append('correos', file);
+
+      try {
+        const response = await fetch('/api/config/files/importar-carpeta', {
+          method: 'POST',
+          body: formData,
+        });
+        if (response.status === 401) {
+          handleUnauthorized();
+          return;
+        }
+        const result = await response.json();
+        if (!response.ok || result.success === false) {
+          throw new Error(result.message || 'No se pudo procesar el correo');
+        }
+        const item = result.results && result.results[0] ? result.results[0] : {};
+        entry.status = item.status || 'error';
+        entry.oferta = item.oferta || '';
+
+        const adjuntos = Array.isArray(item.adjuntos) ? item.adjuntos : [];
+        if (adjuntos.length) {
+          const names = adjuntos
+            .map((adjunto) => adjunto.original_name || adjunto.stored_name)
+            .filter(Boolean);
+          if (names.length === 1) {
+            entry.attachmentsText = names[0];
+          } else {
+            const countLabel = t('config.files_attachments_count', '{count} adjuntos').replace('{count}', String(names.length));
+            entry.attachmentsText = `${countLabel}: ${names[0]}`;
+            entry.attachmentsTitle = names.join(', ');
+          }
+        } else if (Array.isArray(item.rejected) && item.rejected.length) {
+          entry.attachmentsText = `${t('config.files_rejected', 'Adjuntos no guardados')}: ${item.rejected
+            .map((rejected) => rejected.original_name)
+            .join(', ')}`;
+        }
+        if (item.message) {
+          entry.attachmentsText = `${entry.attachmentsText ? `${entry.attachmentsText} ` : ''}${item.message}`.trim();
+        }
+        if (Object.prototype.hasOwnProperty.call(counts, entry.status)) {
+          counts[entry.status] += 1;
+        }
+      } catch (error) {
+        entry.status = 'error';
+        entry.attachmentsText = error.message || '';
+        counts.error += 1;
+      }
+
+      if (filesTableBody && rowElement.parentNode) {
+        rowElement.replaceWith(filesRenderRow(entry));
+      }
+    }
+
+    setGenericFeedback(filesProgress, t('config.files_finished', 'Proceso finalizado.'), 'success');
+
+    const summaryParts = [
+      `${t('config.files_summary_total', 'Total')}: ${mailFiles.length}`,
+      `${t('config.files_status_recovered', 'Recuperados')}: ${counts.recuperado}`,
+      `${t('config.files_status_new', 'Nuevos (no insertados)')}: ${counts.nuevo}`,
+      `${t('config.files_status_exists', 'Carpeta ya existe')}: ${counts.ya_existe}`,
+      `${t('config.files_status_no_attachments', 'Sin adjuntos')}: ${counts.sin_adjuntos}`,
+      `${t('config.files_status_error', 'Errores')}: ${counts.error}`,
+    ];
+    setGenericFeedback(filesSummary, summaryParts.join(' · '), counts.error ? 'error' : 'success');
+  };
+
+  if (filesDropzone && filesFolderInput) {
+    filesDropzone.addEventListener('click', () => {
+      if (guardReadOnlyAction()) {
+        return;
+      }
+      filesFolderInput.click();
+    });
+
+    filesDropzone.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        if (guardReadOnlyAction()) {
+          return;
+        }
+        event.preventDefault();
+        filesFolderInput.click();
+      }
+    });
+
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      filesDropzone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        filesDropzone.classList.add('is-dragover');
+      });
+    });
+
+    ['dragleave', 'dragend'].forEach((eventName) => {
+      filesDropzone.addEventListener(eventName, () => {
+        filesDropzone.classList.remove('is-dragover');
+      });
+    });
+
+    filesDropzone.addEventListener('drop', async (event) => {
+      if (guardReadOnlyAction(event)) {
+        filesDropzone.classList.remove('is-dragover');
+        return;
+      }
+      event.preventDefault();
+      filesDropzone.classList.remove('is-dragover');
+      const droppedFiles = await collectDroppedFiles(event.dataTransfer);
+      processFilesFolder(droppedFiles);
+    });
+
+    filesFolderInput.addEventListener('change', () => {
+      if (guardReadOnlyAction()) {
+        filesFolderInput.value = '';
+        return;
+      }
+      const selectedFiles = filesFolderInput.files;
+      processFilesFolder(selectedFiles);
+      filesFolderInput.value = '';
     });
   }
 

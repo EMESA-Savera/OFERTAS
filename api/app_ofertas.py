@@ -3079,6 +3079,131 @@ def discard_staged_imported_email_attachments(token):
     cleanup_imported_email_attachment_bucket(target_dir)
 
 
+def find_offer_by_sender_subject(cursor, parsed_email):
+    """Empareja el correo con una oferta por emisor + asunto normalizado.
+
+    Sirve de respaldo para ofertas creadas sin registro en
+    oferta_correos_importados (caso típico de ofertas antiguas).
+    """
+    sender_email = normalize_optional_text(parsed_email.get("sender_email"), 255)
+    subject = normalize_email_subject_for_matching(parsed_email.get("subject"))
+    if not sender_email or not subject or len(subject) < 3:
+        return None
+
+    cursor.execute(
+        """
+        SELECT lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+        FROM ofertas.listado_ofertas lo
+        WHERE LOWER(LTRIM(RTRIM(lo.email_emisor))) = ?
+        ORDER BY lo.fecha_alta_oferta DESC, lo.id_oferta DESC
+        """,
+        (sender_email.strip().lower(),),
+    )
+    for row in cursor.fetchall():
+        stored_subject = normalize_email_subject_for_matching(row[2])
+        if stored_subject == subject:
+            return {"id_oferta": row[0], "numero_oferta": row[1], "match_type": "sender_subject"}
+    return None
+
+
+def find_registered_offer_for_email(cursor, parsed_email):
+    """Devuelve {id_oferta, numero_oferta} si el correo ya está en el sistema,
+    o None si es un correo nuevo.
+
+    Orden de coincidencia:
+      1. internet_message_id (id fijo del correo) en oferta_correos_importados.
+      2. body_sha256 en oferta_correos_importados.
+      3. emisor + asunto normalizado contra ofertas.listado_ofertas
+         (respaldo para ofertas creadas sin registro de tracking).
+    """
+    if oferta_email_tracking_table_exists(cursor):
+        metadata = get_imported_email_metadata_for_match(parsed_email)
+        if metadata is not None:
+            internet_message_id = metadata.get("internet_message_id")
+            if internet_message_id:
+                cursor.execute(
+                    """
+                    SELECT TOP 1 lo.id_oferta, lo.numero_oferta
+                    FROM ofertas.oferta_correos_importados oci
+                    INNER JOIN ofertas.listado_ofertas lo
+                        ON lo.id_oferta = oci.id_oferta
+                    WHERE oci.internet_message_id = ?
+                    ORDER BY oci.id_correo_importado DESC
+                    """,
+                    (internet_message_id,),
+                )
+                row = cursor.fetchone()
+                if row is not None:
+                    return {"id_oferta": row[0], "numero_oferta": row[1], "match_type": "internet_message_id"}
+
+            body_sha256 = metadata.get("body_sha256")
+            if body_sha256:
+                cursor.execute(
+                    """
+                    SELECT TOP 1 lo.id_oferta, lo.numero_oferta
+                    FROM ofertas.oferta_correos_importados oci
+                    INNER JOIN ofertas.listado_ofertas lo
+                        ON lo.id_oferta = oci.id_oferta
+                    WHERE oci.body_sha256 = ?
+                    ORDER BY oci.id_correo_importado DESC
+                    """,
+                    (body_sha256,),
+                )
+                row = cursor.fetchone()
+                if row is not None:
+                    return {"id_oferta": row[0], "numero_oferta": row[1], "match_type": "body_sha256"}
+
+    return find_offer_by_sender_subject(cursor, parsed_email)
+
+
+def recover_offer_attachments_from_email(parsed_email, oferta_id, numero_oferta):
+    """Recupera los adjuntos de un correo ya importado en la carpeta de la oferta.
+
+    Solo actúa si la carpeta de adjuntos de la oferta NO existe (adjuntos
+    perdidos). No borra ni modifica nada de la BD ni de la oferta.
+    """
+    attachments = [
+        item
+        for item in (parsed_email or {}).get("attachments") or []
+        if item.get("filename") and item.get("content_bytes")
+    ]
+
+    attachments_dir = get_offer_attachments_dir(oferta_id, numero_oferta=numero_oferta)
+    if os.path.isdir(attachments_dir):
+        # La carpeta ya existe: se asume que la oferta ya tiene adjuntos.
+        return {"folder_exists": True, "recovered": [], "skipped": True, "rejected": []}
+
+    if not attachments:
+        return {"folder_exists": False, "recovered": [], "skipped": True, "rejected": []}
+
+    os.makedirs(attachments_dir, exist_ok=True)
+    recovered = []
+    rejected = []
+    for attachment in attachments:
+        try:
+            stored_name, _file_path = save_binary_attachment_to_dir(
+                attachments_dir,
+                attachment.get("filename"),
+                attachment.get("content_bytes"),
+            )
+            recovered.append(
+                {
+                    "stored_name": stored_name,
+                    "original_name": attachment.get("filename"),
+                    "size_bytes": len(attachment.get("content_bytes") or b""),
+                }
+            )
+        except ValueError as exc:
+            rejected.append(
+                {
+                    "original_name": attachment.get("filename"),
+                    "error": str(exc),
+                }
+            )
+
+    return {"folder_exists": False, "recovered": recovered, "skipped": False, "rejected": rejected}
+
+
 def split_offer_conversation_segments(body_text):
     normalized = str(body_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not normalized:
@@ -6692,6 +6817,104 @@ def mark_offer_chat_read(oferta_id):
         return jsonify({"success": False, "message": str(exc)}), 500
     except Exception as exc:
         return jsonify({"success": False, "message": f"No se pudo actualizar el estado del chat: {str(exc)}"}), 500
+
+
+@app.route("/api/config/files/importar-carpeta", methods=["POST"])
+def import_folder_attachment_recovery():
+    user_data = get_logged_user_data()
+    if not user_data:
+        return jsonify({"success": False, "message": "Debes iniciar sesión para recuperar adjuntos"}), 401
+    if is_read_only_user(user_data):
+        return read_only_response()
+    if not is_manager_user(user_data):
+        return manager_only_response("Solo los usuarios con rol Manager pueden recuperar adjuntos desde Files.")
+
+    uploaded_files = request.files.getlist("correos")
+    if not uploaded_files:
+        return jsonify({"success": False, "message": "Debes adjuntar al menos un correo .eml o .msg"}), 400
+
+    results = []
+    stats = {
+        "total": len(uploaded_files),
+        "nuevo": 0,
+        "viejo": 0,
+        "recuperado": 0,
+        "ya_existe": 0,
+        "sin_adjuntos": 0,
+        "error": 0,
+    }
+
+    try:
+        with db_connection(autocommit=True) as conn:
+            cursor = conn.cursor()
+            for uploaded_file in uploaded_files:
+                filename = str(getattr(uploaded_file, "filename", "") or "")
+                entry = {
+                    "filename": filename,
+                    "status": "error",
+                    "oferta": None,
+                    "id_oferta": None,
+                    "adjuntos": [],
+                    "rejected": [],
+                    "folder_exists": False,
+                    "message": None,
+                }
+                try:
+                    parsed_email = parse_uploaded_email(uploaded_file)
+                    match = find_registered_offer_for_email(cursor, parsed_email)
+                    if match is None:
+                        # Correo nuevo: NO se inserta de ninguna manera, solo se lista.
+                        entry["status"] = "nuevo"
+                        stats["nuevo"] += 1
+                        results.append(entry)
+                        continue
+
+                    entry["status"] = "viejo"
+                    entry["oferta"] = match["numero_oferta"] or match["id_oferta"]
+                    entry["id_oferta"] = match["id_oferta"]
+                    stats["viejo"] += 1
+
+                    recovery = recover_offer_attachments_from_email(
+                        parsed_email,
+                        match["id_oferta"],
+                        match["numero_oferta"],
+                    )
+                    entry["folder_exists"] = recovery["folder_exists"]
+                    entry["adjuntos"] = recovery["recovered"]
+                    entry["rejected"] = recovery["rejected"]
+
+                    if recovery["folder_exists"]:
+                        entry["status"] = "ya_existe"
+                        stats["ya_existe"] += 1
+                    elif recovery["skipped"]:
+                        entry["status"] = "sin_adjuntos"
+                        stats["sin_adjuntos"] += 1
+                    elif recovery["recovered"]:
+                        entry["status"] = "recuperado"
+                        stats["recuperado"] += 1
+                    else:
+                        entry["status"] = "error"
+                        entry["message"] = "No se pudo guardar ningún adjunto del correo."
+                        stats["error"] += 1
+                except ValueError as exc:
+                    entry["status"] = "error"
+                    entry["message"] = str(exc)
+                    stats["error"] += 1
+                except RuntimeError as exc:
+                    entry["status"] = "error"
+                    entry["message"] = str(exc)
+                    stats["error"] += 1
+                except Exception as exc:
+                    entry["status"] = "error"
+                    entry["message"] = str(exc)
+                    stats["error"] += 1
+                results.append(entry)
+    except RuntimeError as exc:
+        return jsonify({"success": False, "message": str(exc)}), 500
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"No se pudo procesar la carpeta: {str(exc)}"}), 500
+
+    return jsonify({"success": True, "results": results, "stats": stats})
 
 
 @app.route("/api/ofertas/<int:oferta_id>/adjuntos", methods=["POST"])

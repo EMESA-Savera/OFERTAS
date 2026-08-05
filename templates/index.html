@@ -814,6 +814,11 @@
           <span class="emesa-config-card__icon" aria-hidden="true">📦</span>
           <span class="emesa-config-card__title" data-translate-key="config.boms">BOM</span>
         </button>
+
+        <button class="emesa-config-card" type="button" data-config-target="files">
+          <span class="emesa-config-card__icon" aria-hidden="true">📂</span>
+          <span class="emesa-config-card__title" data-translate-key="config.files">Files</span>
+        </button>
       </div>
     </div>
   </main>
@@ -1380,6 +1385,49 @@
           <button id="bomExportCsvButton" class="btn-secondary" type="button" data-translate-key="config.export_boms_csv">Exportar plantilla CSV</button>
         </div>
       </section>
+    </section>
+  </main>
+</section>
+
+<section class="view-panel emesa-config-menu-view" data-view-panel="files">
+  <main class="content-area content-area--config">
+    <section class="page-card page-card--clientes">
+      <div class="page-card__header">
+        <div>
+          <p class="page-eyebrow" data-translate-key="nav.settings">Configuración</p>
+          <h1 data-translate-key="config.files">Files</h1>
+          <p data-translate-key="config.files_description">Recupera adjuntos perdidos de ofertas antiguas arrastrando una carpeta de correos (.eml/.msg) que ya estén importados. Los correos nuevos no se insertan.</p>
+        </div>
+      </div>
+
+      <div id="filesDropzone" class="mail-dropzone files-dropzone" role="button" tabindex="0" aria-label="Arrastrar una carpeta de correos" data-translate-key-aria-label="config.files_drop_aria">
+        <input id="filesFolderInput" type="file" multiple hidden webkitdirectory />
+        <span class="mail-dropzone__icon" aria-hidden="true">📂</span>
+        <div class="mail-dropzone__content">
+          <strong data-translate-key="config.files_drop_title">Arrastra aquí la carpeta de correos</strong>
+          <p data-translate-key="config.files_drop_hint">o haz clic para seleccionarla desde tu equipo</p>
+        </div>
+      </div>
+
+      <div id="filesDropFeedback" class="form-feedback" aria-live="polite"></div>
+      <div id="filesProgress" class="form-feedback" aria-live="polite" hidden></div>
+
+      <div id="filesTableWrap" class="clientes-table-wrap files-table-wrap" hidden>
+        <table class="clientes-table clientes-table--wide-scroll">
+          <thead>
+            <tr>
+              <th data-translate-key="config.files_column_file">Archivo</th>
+              <th data-translate-key="config.files_column_status">Estado</th>
+              <th data-translate-key="table.offer_number">Nº oferta</th>
+              <th data-translate-key="config.files_column_folder">Carpeta</th>
+              <th data-translate-key="config.files_column_attachments">Adjuntos recuperados</th>
+            </tr>
+          </thead>
+          <tbody id="filesTableBody"></tbody>
+        </table>
+      </div>
+
+      <div id="filesSummary" class="form-feedback" aria-live="polite"></div>
     </section>
   </main>
 </section>
