@@ -2274,9 +2274,9 @@
 }
 
 .oferta-modal__dialog--bom {
-  width: min(1080px, calc(100vw - 32px));
+  width: min(1120px, calc(100vw - 32px));
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   gap: 0;
   max-height: calc(100vh - 32px);
   overflow: hidden;
@@ -2284,6 +2284,11 @@
 
 .oferta-modal__dialog--bom .oferta-modal__header {
   flex-shrink: 0;
+}
+
+.oferta-modal__dialog--bom .bom-modal__view,
+.oferta-modal__dialog--bom .bom-modal__split {
+  min-height: 0;
 }
 
 .oferta-modal__dialog--center {
@@ -3607,8 +3612,40 @@
 .bom-etc-sync-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
-  padding: 12px 0 4px;
+  flex-shrink: 0;
+  margin-top: auto;
+  padding: 12px 2px 2px;
+  border-top: 1px solid #d9e6f2;
+  flex-wrap: wrap;
+}
+
+.bom-etc-sync-bar__total {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.bom-etc-sync-bar__total-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7f93;
+}
+
+.bom-etc-sync-bar__total-value {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #123b63;
+  font-variant-numeric: tabular-nums;
+}
+
+.bom-etc-sync-bar__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -3620,25 +3657,82 @@
   font-style: italic;
 }
 
-/* ── Catalog section integrado en el modal (tabla precargada abajo) ── */
-.bom-modal__catalog-section {
+/* ── Modal BOM: layout dividido catálogo + seleccionados ── */
+.bom-modal__split {
   display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.bom-modal__split[hidden],
+.bom-modal__view[hidden] {
+  display: none;
+}
+
+.bom-modal__pane {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 0 0 16px;
-  border-bottom: 1px solid #d9e6f2;
-  margin-bottom: 14px;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px;
+  border: 1px solid #dbe6f1;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.bom-modal__pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   flex-shrink: 0;
 }
 
-.bom-modal__catalog-section .bom-modal__search {
-  width: 100%;
-  max-width: 420px;
+.bom-modal__pane-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #123b63;
 }
 
-.bom-modal__catalog-section .bom-modal__table-wrap {
-  max-height: 220px;
+.bom-modal__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #e7f0f9;
+  color: #1a4b77;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.bom-modal__pane .bom-modal__search {
+  width: 100%;
+  max-width: none;
+  flex-shrink: 0;
+}
+
+.bom-modal__pane .bom-modal__table-wrap {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   margin-bottom: 0;
+}
+
+.bom-modal__pane .bom-modal__table-wrap .bom-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .bom-modal__search {
@@ -3654,16 +3748,13 @@
   width: 100%;
 }
 
-.bom-modal__table-wrap {
-  margin-bottom: 6px;
-}
-
 .bom-table .column-bom-part-nr {
   white-space: nowrap;
   width: 1px;
 }
 
-.bom-table .bom-part-nr {
+.bom-table .bom-part-nr,
+.bom-card .bom-part-nr {
   display: inline-block;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
   font-size: 0.9rem;
@@ -3704,11 +3795,6 @@
   box-shadow: 0 0 0 3px rgba(56, 128, 199, 0.14);
 }
 
-.bom-subtotal-label {
-  color: #6b7f93;
-  font-weight: 600;
-}
-
 .bom-diff {
   display: inline-flex;
   align-items: center;
@@ -3740,34 +3826,148 @@
   color: #153a61;
 }
 
+/* ── Lista seleccionados en oferta: tarjetas BOM ─────── */
+.bom-modal__pane--selected .bom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 2px 2px 0;
+  list-style: none;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.bom-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid #dbe6f1;
+  border-radius: 14px;
+  background: #fbfdff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.bom-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bom-card__header .bom-part-nr {
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.bom-card__name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  color: #153a61;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.bom-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bom-card__details {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px dashed #dbe6f1;
+}
+
+.bom-card__details > * {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bom-card__label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #8da3b8;
+}
+
+.bom-card__details strong {
+  font-size: 0.95rem;
+  color: #123b63;
+  font-variant-numeric: tabular-nums;
+}
+
+.bom-card__price strong {
+  font-size: 1rem;
+}
+
+.bom-card__subtotal strong {
+  color: #027a48;
+}
+
+.bom-card__qty .bom-qty-input {
+  width: 66px;
+  min-height: 30px;
+}
+
+.bom-card__date {
+  margin-left: auto;
+}
+
+.bom-card__date > span:last-child {
+  font-size: 0.8rem;
+  color: #6b7f93;
+}
+
+.bom-card-empty {
+  padding: 22px 14px;
+  border: 1px dashed #dbe6f1;
+  border-radius: 14px;
+  background: #f8fbfe;
+  color: #6b7f93;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 @media (max-width: 900px) {
+  .bom-modal__split {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .bom-modal__pane {
+    flex: none;
+    min-height: auto;
+    max-height: none;
+  }
+
+  .bom-modal__pane .bom-modal__table-wrap {
+    flex: none;
+    max-height: 42vh;
+    min-height: 160px;
+  }
+
+  .bom-modal__pane--selected .bom-list {
+    flex: none;
+    max-height: 42vh;
+    min-height: 160px;
+  }
+
   .bom-modal__search {
     width: 100%;
   }
-
-  .bom-modal__catalog-section .bom-modal__search {
-    max-width: none;
-  }
-
-  .bom-modal__catalog-section .bom-modal__table-wrap {
-    max-height: 160px;
-  }
-}
-
-/* ── Total row en listado BOM ─────────────────────────── */
-.bom-total-row {
-  background: linear-gradient(180deg, #f0f7fe 0%, #e8f2fc 100%);
-  border-top: 2px solid #cfe0ef;
-}
-
-.bom-total-row td {
-  padding: 12px 12px !important;
-  color: #123b63;
-  font-size: 0.95rem;
-}
-
-.bom-total-row .column-bom-price {
-  font-size: 1.05rem;
 }
 
 .outlook-import__layout {

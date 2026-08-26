@@ -200,6 +200,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   const bomOfferSelectionSummary = document.getElementById('bomOfferSelectionSummary');
   const bomSearchInput = document.getElementById('bomSearchInput');
   const bomListView = document.getElementById('bomListView');
+  const bomSplitView = document.getElementById('bomSplitView');
+  const bomCatalogCount = document.getElementById('bomCatalogCount');
+  const bomSelectedCount = document.getElementById('bomSelectedCount');
+  const bomListTotalValue = document.getElementById('bomListTotalValue');
   const bomEditView = document.getElementById('bomEditView');
   const bomListBody = document.getElementById('bomListBody');
   const bomCatalogBody = document.getElementById('bomCatalogBody');
@@ -2026,6 +2030,396 @@ document.addEventListener('DOMContentLoaded', async () => {
       en: 'A quote with the same email date and subject already exists.',
       cs: 'Nabídka se stejným datem e-mailu a stejným předmětem už existuje.',
     },
+    'adjunto no encontrado': {
+      en: 'Attachment not found',
+      cs: 'Příloha nebyla nalezena',
+    },
+    'archivo no válido': {
+      en: 'Invalid file',
+      cs: 'Neplatný soubor',
+    },
+    'aviso enviado a los managers del departamento': {
+      en: 'Notice sent to the department managers',
+      cs: 'Oznámení bylo odesláno vedoucím oddělení',
+    },
+    'aviso enviado al usuario reasignado': {
+      en: 'Notice sent to the reassigned user',
+      cs: 'Oznámení bylo odesláno znovu přiřazenému uživateli',
+    },
+    'bom añadido a la oferta': {
+      en: 'BOM added to the quote',
+      cs: 'BOM byl přidán do nabídky',
+    },
+    'bom eliminado de la oferta': {
+      en: 'BOM removed from the quote',
+      cs: 'BOM byl odstraněn z nabídky',
+    },
+    'bom no encontrado': {
+      en: 'BOM not found',
+      cs: 'BOM nebyl nalezen',
+    },
+    'cantidad actualizada': {
+      en: 'Quantity updated',
+      cs: 'Množství bylo aktualizováno',
+    },
+    'cantidad inválida': {
+      en: 'Invalid quantity',
+      cs: 'Neplatné množství',
+    },
+    'cliente no encontrado': {
+      en: 'Client not found',
+      cs: 'Zákazník nebyl nalezen',
+    },
+    'configuración de columna no encontrada': {
+      en: 'Configuration column not found',
+      cs: 'Konfigurační sloupec nebyl nalezen',
+    },
+    'configuración de usuario guardada correctamente': {
+      en: 'User configuration saved successfully',
+      cs: 'Konfigurace uživatele byla úspěšně uložena',
+    },
+    'contraseña incorrecta': {
+      en: 'Incorrect password',
+      cs: 'Nesprávné heslo',
+    },
+    'correo enviado correctamente con outlook': {
+      en: 'Email sent successfully with Outlook.',
+      cs: 'E-mail byl úspěšně odeslán přes Outlook.',
+    },
+    'debes adjuntar al menos un correo .eml o .msg': {
+      en: 'You must attach at least one .eml or .msg email',
+      cs: 'Musíte připojit alespoň jeden e-mail .eml nebo .msg',
+    },
+    'debes adjuntar un correo .eml o .msg': {
+      en: 'You must attach a .eml or .msg email',
+      cs: 'Musíte připojit e-mail .eml nebo .msg',
+    },
+    'debes seleccionar al menos un archivo': {
+      en: 'You must select at least one file',
+      cs: 'Musíte vybrat alespoň jeden soubor',
+    },
+    'debes seleccionar un archivo csv o excel': {
+      en: 'You must select a CSV or Excel file',
+      cs: 'Musíte vybrat soubor CSV nebo Excel',
+    },
+    'debes seleccionar un estado distinto al actual': {
+      en: 'You must select a different status than the current one',
+      cs: 'Musíte vybrat jiný stav než aktuální',
+    },
+    'debes seleccionar un usuario valido': {
+      en: 'You must select a valid user',
+      cs: 'Musíte vybrat platného uživatele',
+    },
+    'departamento no encontrado': {
+      en: 'Department not found',
+      cs: 'Oddělení nebylo nalezeno',
+    },
+    'el bom no está asociado a la oferta': {
+      en: 'The BOM is not associated with the quote',
+      cs: 'BOM není přiřazen k nabídce',
+    },
+    'el chat interno está desactivado': {
+      en: 'The internal chat is disabled',
+      cs: 'Interní chat je vypnutý',
+    },
+    'el estado no tiene un departamento asociado': {
+      en: 'The status has no associated department',
+      cs: 'Stav nemá přiřazené oddělení',
+    },
+    'el estado seleccionado está inactivo y no se puede usar en procesos': {
+      en: 'The selected status is inactive and cannot be used in processes',
+      cs: 'Vybraný stav je neaktivní a nelze ho použít v procesech',
+    },
+    'el estado siguiente está inactivo y no se puede seleccionar': {
+      en: 'The next status is inactive and cannot be selected',
+      cs: 'Další stav je neaktivní a nelze ho vybrat',
+    },
+    'el nombre no coincide con el usuario de general.usuarios': {
+      en: 'The name does not match the user in General.Usuarios',
+      cs: 'Jméno neodpovídá uživateli z General.Usuarios',
+    },
+    'el número de operario no existe en general.usuarios': {
+      en: 'The operator number does not exist in General.Usuarios',
+      cs: 'Číslo pracovníka neexistuje v General.Usuarios',
+    },
+    'el usuario reasignado no tiene email configurado': {
+      en: 'The reassigned user has no email configured',
+      cs: 'Znovu přiřazený uživatel nemá nakonfigurovaný e-mail',
+    },
+    'el usuario seleccionado no existe': {
+      en: 'The selected user does not exist',
+      cs: 'Vybraný uživatel neexistuje',
+    },
+    'estado no encontrado': {
+      en: 'Status not found',
+      cs: 'Stav nebyl nalezen',
+    },
+    'estado siguiente no encontrado': {
+      en: 'Next status not found',
+      cs: 'Další stav nebyl nalezen',
+    },
+    'la cantidad debe ser al menos 1': {
+      en: 'The quantity must be at least 1',
+      cs: 'Množství musí být alespoň 1',
+    },
+    'la columna indicada ya no existe en la estructura actual': {
+      en: 'The indicated column no longer exists in the current structure',
+      cs: 'Uvedený sloupec již v aktuální struktuře neexistuje',
+    },
+    'la cuenta de outlook se ha desconectado correctamente': {
+      en: 'The Outlook account has been disconnected successfully.',
+      cs: 'Účet Outlook byl úspěšně odpojen.',
+    },
+    'la oferta no tiene un departamento asociado por estado': {
+      en: 'The quote has no department associated by status',
+      cs: 'Nabídka nemá oddělení přiřazené podle stavu',
+    },
+    'la oferta vuelve a usar el precio del catalogo': {
+      en: 'The quote uses the catalog price again.',
+      cs: 'Nabídka opět používá katalogovou cenu.',
+    },
+    'la oferta ya está asignada a ese usuario': {
+      en: 'The quote is already assigned to that user',
+      cs: 'Nabídka je tomuto uživateli již přiřazena',
+    },
+    'la tabla de ofertas etc no está disponible': {
+      en: 'The ETC quotes table is not available',
+      cs: 'Tabulka ETC nabídek není dostupná',
+    },
+    'la tabla ofertas.oferta_etc no existe todavía': {
+      en: 'The table ofertas.oferta_etc does not exist yet',
+      cs: 'Tabulka ofertas.oferta_etc zatím neexistuje',
+    },
+    'materiales bom volcados a etc correctamente': {
+      en: 'BOM materials synced to ETC successfully',
+      cs: 'Materiály BOM byly úspěšně přeneseny do ETC',
+    },
+    'mensaje enviado correctamente': {
+      en: 'Message sent successfully',
+      cs: 'Zpráva byla úspěšně odeslána',
+    },
+    'no hay managers con email configurado en el departamento del estado': {
+      en: 'There are no managers with email configured in the status department',
+      cs: 'V oddělení stavu nejsou žádní vedoucí s nakonfigurovaným e-mailem',
+    },
+    'no hay sesión activa': {
+      en: 'No active session',
+      cs: 'Není aktivní relace',
+    },
+    'no se ha generado la notificacion': {
+      en: 'The notification was not generated',
+      cs: 'Oznámení nebylo vytvořeno',
+    },
+    'no se ha generado la notificación': {
+      en: 'The notification was not generated',
+      cs: 'Oznámení nebylo vytvořeno',
+    },
+    'no se pudo actualizar la oferta etc': {
+      en: 'Could not update the offer ETC',
+      cs: 'ETC nabídky se nepodařilo aktualizovat',
+    },
+    'no se pudo actualizar la reasignacion': {
+      en: 'Could not update the reassignment',
+      cs: 'Znovupřiřazení se nepodařilo aktualizovat',
+    },
+    'nota rápida guardada correctamente': {
+      en: 'Quick note saved successfully',
+      cs: 'Rychlá poznámka byla úspěšně uložena',
+    },
+    'oferta etc actualizada correctamente': {
+      en: 'Offer ETC updated successfully',
+      cs: 'ETC nabídky bylo úspěšně aktualizováno',
+    },
+    'oferta etc guardada correctamente': {
+      en: 'Offer ETC saved successfully',
+      cs: 'ETC nabídky bylo úspěšně uloženo',
+    },
+    'oferta etc no encontrada': {
+      en: 'Offer ETC not found',
+      cs: 'ETC nabídky nebylo nalezeno',
+    },
+    'oferta guardada correctamente': {
+      en: 'Quote saved successfully',
+      cs: 'Nabídka byla úspěšně uložena',
+    },
+    'oferta no encontrada': {
+      en: 'Quote not found',
+      cs: 'Nabídka nebyla nalezena',
+    },
+    'payload inválido: se espera {orden: [{id_config, orden_columna}]}': {
+      en: 'Invalid payload: expected {orden: [{id_config, orden_columna}]}',
+      cs: 'Neplatný payload: očekává se {orden: [{id_config, orden_columna}]}',
+    },
+    'payload inválido: se espera {orden: [{id_estado, orden}]}': {
+      en: 'Invalid payload: expected {orden: [{id_estado, orden}]}',
+      cs: 'Neplatný payload: očekává se {orden: [{id_estado, orden}]}',
+    },
+    'precio bom especifico de la oferta guardado correctamente': {
+      en: 'The quote-specific BOM price was saved successfully.',
+      cs: 'Cena BOM specifická pro nabídku byla úspěšně uložena.',
+    },
+    'responsable no encontrado en ofertas.usuarios_config': {
+      en: 'Responsible person not found in ofertas.usuarios_config',
+      cs: 'Odpovědná osoba nebyla nalezena v ofertas.usuarios_config',
+    },
+    'rol no encontrado': {
+      en: 'Role not found',
+      cs: 'Role nebyla nalezena',
+    },
+    'sesión cerrada exitosamente': {
+      en: 'Session closed successfully',
+      cs: 'Relace byla úspěšně ukončena',
+    },
+    'solo puedes reasignar a usuarios del mismo departamento': {
+      en: 'You can only reassign to users from the same department',
+      cs: 'Můžete přiřadit pouze uživatelům ze stejného oddělení',
+    },
+    'solo puedes reasignar ofertas de tu departamento': {
+      en: 'You can only reassign quotes from your department',
+      cs: 'Můžete přiřadit pouze nabídky ze svého oddělení',
+    },
+    'solo se admite importación csv o excel (.xlsx/.xlsm) en este menú bom': {
+      en: 'Only CSV or Excel (.xlsx/.xlsm) import is supported in this BOM menu',
+      cs: 'V této nabídce BOM je podporován pouze import CSV nebo Excel (.xlsx/.xlsm)',
+    },
+    'tu usuario no tiene ningun departamento asignado': {
+      en: 'Your user has no department assigned',
+      cs: 'Váš uživatel nemá přiřazené žádné oddělení',
+    },
+    'una o más columnas ya no existen en la estructura actual': {
+      en: 'One or more columns no longer exist in the current structure',
+      cs: 'Jeden nebo více sloupců již v aktuální struktuře neexistuje',
+    },
+    'usuario en modo solo lectura. no puede crear, editar, eliminar ni guardar cambios': {
+      en: 'User in read-only mode. They cannot create, edit, delete or save changes.',
+      cs: 'Uživatel v režimu pouze pro čtení. Nemůže vytvářet, upravovat, mazat ani ukládat změny.',
+    },
+    'usuario no encontrado': {
+      en: 'User not found',
+      cs: 'Uživatel nebyl nalezen',
+    },
+    'usuario y contraseña requeridos': {
+      en: 'User and password required',
+      cs: 'Vyžaduje se uživatel a heslo',
+    },
+    'ya existe otro bom con ese part nr o material': {
+      en: 'Another BOM with that Part Nr or material already exists',
+      cs: 'Již existuje jiný BOM s tímto Part Nr nebo materiálem',
+    },
+    'ya existe otro departamento con ese nombre': {
+      en: 'Another department with that name already exists',
+      cs: 'Již existuje jiné oddělení s tímto názvem',
+    },
+    'ya existe un bom con ese part nr o material': {
+      en: 'A BOM with that Part Nr or material already exists',
+      cs: 'Již existuje BOM s tímto Part Nr nebo materiálem',
+    },
+    'ya existe un cliente con esa descripción': {
+      en: 'A client with that description already exists',
+      cs: 'Již existuje zákazník s tímto popisem',
+    },
+    'ya existe un cliente con ese dominio': {
+      en: 'A client with that domain already exists',
+      cs: 'Již existuje zákazník s touto doménou',
+    },
+    'ya existe un departamento con ese nombre': {
+      en: 'A department with that name already exists',
+      cs: 'Již existuje oddělení s tímto názvem',
+    },
+    'ya existe un estado con esa descripción': {
+      en: 'A status with that description already exists',
+      cs: 'Již existuje stav s tímto popisem',
+    },
+    'ya existe un proyecto con esa descripción': {
+      en: 'A project with that description already exists',
+      cs: 'Již existuje projekt s tímto popisem',
+    },
+    'ya existe una columna con ese nombre para el estado seleccionado': {
+      en: 'A column with that name already exists for the selected status',
+      cs: 'Pro vybraný stav již existuje sloupec s tímto názvem',
+    },
+    'columna de configuración creada correctamente': {
+      en: 'Configuration column created successfully',
+      cs: 'Konfigurační sloupec byl úspěšně vytvořen',
+    },
+    'proyecto no encontrado': {
+      en: 'Project not found',
+      cs: 'Projekt nebyl nalezen',
+    },
+    'proyecto no encontrado en la configuración': {
+      en: 'Project not found in the configuration',
+      cs: 'Projekt nebyl nalezen v konfiguraci',
+    },
+  };
+
+  // Acciones para el patrón "Debes iniciar sesión para <acción>"
+  const UI_RUNTIME_ACTION_TRANSLATIONS = {
+    'actualizar el chat': { en: 'update the chat', cs: 'aktualizovat chat' },
+    'actualizar el estado de la oferta': { en: 'update the offer status', cs: 'aktualizovat stav nabídky' },
+    'actualizar la oferta': { en: 'update the quote', cs: 'aktualizovat nabídku' },
+    'actualizar la oferta etc': { en: 'update the offer ETC', cs: 'aktualizovat ETC nabídky' },
+    'actualizar usuarios': { en: 'update users', cs: 'aktualizovat uživatele' },
+    'adjuntar archivos': { en: 'attach files', cs: 'připojit soubory' },
+    'comprobar el correo': { en: 'check the email', cs: 'zkontrolovat e-mail' },
+    'consultar outlook': { en: 'view Outlook', cs: 'zobrazit Outlook' },
+    'consultar el chat': { en: 'view the chat', cs: 'zobrazit chat' },
+    'consultar el siguiente número de oferta': { en: 'get the next quote number', cs: 'zobrazit další číslo nabídky' },
+    'consultar la configuración de columnas': { en: 'view the column configuration', cs: 'zobrazit konfiguraci sloupců' },
+    'consultar la configuración del usuario': { en: 'view the user configuration', cs: 'zobrazit konfiguraci uživatele' },
+    'consultar la oferta': { en: 'view the quote', cs: 'zobrazit nabídku' },
+    'consultar la oferta etc': { en: 'view the offer ETC', cs: 'zobrazit ETC nabídky' },
+    'consultar las columnas disponibles': { en: 'view the available columns', cs: 'zobrazit dostupné sloupce' },
+    'consultar las ofertas': { en: 'view the quotes', cs: 'zobrazit nabídky' },
+    'consultar las ofertas etc': { en: 'view the ETC quotes', cs: 'zobrazit ETC nabídky' },
+    'consultar los bom': { en: 'view the BOMs', cs: 'zobrazit BOM' },
+    'consultar los bom de la oferta': { en: 'view the offer BOMs', cs: 'zobrazit BOM nabídky' },
+    'consultar los clientes': { en: 'view the clients', cs: 'zobrazit zákazníky' },
+    'consultar los departamentos': { en: 'view the departments', cs: 'zobrazit oddělení' },
+    'consultar los estados': { en: 'view the statuses', cs: 'zobrazit stavy' },
+    'consultar los materiales bom': { en: 'view the BOM materials', cs: 'zobrazit BOM materiály' },
+    'consultar los proyectos': { en: 'view the projects', cs: 'zobrazit projekty' },
+    'consultar los roles': { en: 'view the roles', cs: 'zobrazit role' },
+    'consultar los usuarios': { en: 'view the users', cs: 'zobrazit uživatele' },
+    'consultar los usuarios generales': { en: 'view the general users', cs: 'zobrazit obecné uživatele' },
+    'crear bom': { en: 'create BOM', cs: 'vytvořit BOM' },
+    'crear clientes': { en: 'create clients', cs: 'vytvořit zákazníky' },
+    'crear columnas de configuración': { en: 'create configuration columns', cs: 'vytvořit konfigurační sloupce' },
+    'crear departamentos': { en: 'create departments', cs: 'vytvořit oddělení' },
+    'crear estados': { en: 'create statuses', cs: 'vytvořit stavy' },
+    'crear proyectos': { en: 'create projects', cs: 'vytvořit projekty' },
+    'crear usuarios': { en: 'create users', cs: 'vytvořit uživatele' },
+    'descargar adjuntos': { en: 'download attachments', cs: 'stáhnout přílohy' },
+    'desconectar outlook': { en: 'disconnect Outlook', cs: 'odpojit Outlook' },
+    'editar bom': { en: 'edit BOM', cs: 'upravit BOM' },
+    'editar clientes': { en: 'edit clients', cs: 'upravit zákazníky' },
+    'editar columnas de configuración': { en: 'edit configuration columns', cs: 'upravit konfigurační sloupce' },
+    'editar departamentos': { en: 'edit departments', cs: 'upravit oddělení' },
+    'editar estados': { en: 'edit statuses', cs: 'upravit stavy' },
+    'editar proyectos': { en: 'edit projects', cs: 'upravit projekty' },
+    'eliminar bom': { en: 'delete BOM', cs: 'smazat BOM' },
+    'eliminar columnas de configuración': { en: 'delete configuration columns', cs: 'smazat konfigurační sloupce' },
+    'eliminar la oferta': { en: 'delete the quote', cs: 'smazat nabídku' },
+    'enviar correos': { en: 'send emails', cs: 'odesílat e-maily' },
+    'exportar los bom': { en: 'export the BOMs', cs: 'exportovat BOM' },
+    'guardar bom en etc': { en: 'save BOM to ETC', cs: 'uložit BOM do ETC' },
+    'guardar la configuración de usuario': { en: 'save the user configuration', cs: 'uložit konfiguraci uživatele' },
+    'guardar las notas rápidas de la oferta': { en: 'save the quote quick notes', cs: 'uložit rychlé poznámky nabídky' },
+    'guardar precios bom': { en: 'save BOM prices', cs: 'uložit ceny BOM' },
+    'guardar una oferta': { en: 'save a quote', cs: 'uložit nabídku' },
+    'guardar una oferta etc': { en: 'save an offer ETC', cs: 'uložit ETC nabídky' },
+    'importar bom': { en: 'import BOM', cs: 'importovat BOM' },
+    'importar correos': { en: 'import emails', cs: 'importovat e-maily' },
+    'importar correos de outlook': { en: 'import Outlook emails', cs: 'importovat e-maily z Outlooku' },
+    'modificar el precio bom de la oferta': { en: 'change the quote BOM price', cs: 'změnit cenu BOM nabídky' },
+    'modificar la cantidad bom': { en: 'change the BOM quantity', cs: 'změnit množství BOM' },
+    'modificar los bom de la oferta': { en: 'change the offer BOMs', cs: 'změnit BOM nabídky' },
+    'reasignar ofertas': { en: 'reassign quotes', cs: 'znovu přiřadit nabídky' },
+    'recuperar adjuntos': { en: 'recover attachments', cs: 'obnovit přílohy' },
+    'reordenar columnas de configuración': { en: 'reorder configuration columns', cs: 'přeuspořádat konfigurační sloupce' },
+    'reordenar estados': { en: 'reorder statuses', cs: 'přeuspořádat stavy' },
+    'usar outlook': { en: 'use Outlook', cs: 'používat Outlook' },
+    'usar el chat': { en: 'use the chat', cs: 'používat chat' },
+    'visualizar adjuntos': { en: 'view attachments', cs: 'zobrazit přílohy' },
   };
 
   const normalizeUiRuntimeMessage = (message) => String(message ?? '')
@@ -2075,6 +2469,17 @@ document.addEventListener('DOMContentLoaded', async () => {
       return language === 'en'
         ? `Quote ${offerReference} saved successfully. ETC was also inserted.`
         : `Nabídka ${offerReference} byla úspěšně uložena. ETC bylo také vloženo.`;
+    }
+
+    const loginRequiredMatch = rawMessage.match(/^Debes iniciar sesión para (.+)$/i);
+    if (loginRequiredMatch) {
+      const action = loginRequiredMatch[1].trim();
+      const actionTranslation = UI_RUNTIME_ACTION_TRANSLATIONS[normalizeUiRuntimeMessage(action)];
+      if (actionTranslation) {
+        return language === 'en'
+          ? `You must sign in to ${actionTranslation.en}`
+          : `Pro ${actionTranslation.cs} se musíte přihlásit`;
+      }
     }
 
     const translatedMessage = UI_RUNTIME_MESSAGE_TRANSLATIONS[normalizeUiRuntimeMessage(rawMessage)]?.[language];
@@ -3946,14 +4351,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   const actualizarTotalBomEnTiempoReal = () => {
-    if (!bomListBody) return;
-    const totalRow = bomListBody.querySelector('.bom-total-row .column-bom-price strong');
-    if (!totalRow) return;
     const totalPrice = currentBomOfferMaterials.reduce(
       (sum, m) => sum + (Number(m.precio) || 0) * (Number(m.cantidad) || 1),
       0
     );
-    totalRow.textContent = formatCurrencyAmount(totalPrice);
+    if (bomListTotalValue) {
+      bomListTotalValue.textContent = formatCurrencyAmount(totalPrice);
+    }
   };
 
   const mostrarUltimaImportacionBom = async () => {
@@ -3987,82 +4391,90 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (loading) {
       bomListBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
-        </tr>
+        <li class="bom-card-empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</li>
       `;
+      if (bomSelectedCount) bomSelectedCount.textContent = '…';
+      if (bomListTotalValue) bomListTotalValue.textContent = '…';
       return;
     }
 
     const materiales = Array.isArray(currentBomOfferMaterials) ? currentBomOfferMaterials : [];
+    if (bomSelectedCount) bomSelectedCount.textContent = String(materiales.length);
     if (!materiales.length) {
       bomListBody.innerHTML = `
-        <tr>
-          <td colspan="6" class="clientes-table__empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</td>
-        </tr>
+        <li class="bom-card-empty">${escapeHtml(t('literal.bom.none_selected_for_offer', 'Todavia no hay BOM seleccionados para esta oferta.'))}</li>
       `;
+      if (bomListTotalValue) bomListTotalValue.textContent = formatCurrencyAmount(0);
+      if (bomSyncToEtcButton) bomSyncToEtcButton.hidden = true;
       return;
     }
 
     const readOnly = isReadOnlyUser();
 
     const totalPrice = materiales.reduce((sum, m) => sum + (Number(m.precio) || 0) * (Number(m.cantidad) || 1), 0);
+    if (bomListTotalValue) bomListTotalValue.textContent = formatCurrencyAmount(totalPrice);
 
     bomListBody.innerHTML = materiales.map((material) => {
       const cantidad = Number(material.cantidad) || 1;
       const precioUnitario = Number(material.precio) || 0;
       const subtotal = precioUnitario * cantidad;
+      const idMaterial = escapeHtml(material.id_material_precio);
+      const nombre = escapeHtml(material.material || '');
       return `
-      <tr>
-        <td class="column-bom-part-nr"><span class="bom-part-nr">${escapeHtml(material.part_nr || '—')}</span></td>
-        <td><span class="bom-material-name">${escapeHtml(material.material || '')}</span></td>
-        <td class="column-bom-price">
-          <span>${escapeHtml(formatCurrencyAmount(precioUnitario))}</span>
-          ${cantidad > 1 ? `<br><small class="bom-subtotal-label">x${cantidad} = ${escapeHtml(formatCurrencyAmount(subtotal))}</small>` : ''}
-        </td>
-        <td class="column-bom-qty">
-          <input
-            class="bom-qty-input"
-            type="number"
-            min="1"
-            step="1"
-            value="${cantidad}"
-            data-bom-qty="${escapeHtml(material.id_material_precio)}"
-            ${readOnly ? 'disabled' : ''}
-          />
-        </td>
-        <td class="column-bom-date">${escapeHtml(formatDisplayDateTime(material.fecha_creacion) || '—')}</td>
-        <td class="column-bom-actions">
-          <button
-            class="btn-inline btn-inline--cancel"
-            type="button"
-            data-toggle-offer-bom="${escapeHtml(material.id_material_precio)}"
-            data-bom-selected="true"
-            ${readOnly ? 'disabled' : ''}
-          >${escapeHtml(t('common.remove', 'Quitar'))}</button>
-          <button
-            class="btn-inline btn-inline--success btn-inline--icon"
-            type="button"
-            data-edit-material-precio="${escapeHtml(material.id_material_precio)}"
-            aria-label="${escapeHtml(tf('literal.bom.edit_price_aria', 'Editar precio de {material}', { material: material.material || '' }))}"
-            title="${escapeHtml(t('literal.bom.edit_price', 'Editar precio'))}"
-            ${readOnly ? 'disabled' : ''}
-          >✎</button>
-        </td>
-      </tr>`;
-    }).join('') + `
-      <tr class="bom-total-row">
-        <td><strong>${escapeHtml(t('literal.bom.total', 'TOTAL'))}</strong></td>
-        <td></td>
-        <td class="column-bom-price"><strong>${escapeHtml(formatCurrencyAmount(totalPrice))}</strong></td>
-        <td></td>
-        <td></td>
-        <td></td>
-      </tr>`;
+      <li class="bom-card">
+        <div class="bom-card__header">
+          <span class="bom-part-nr" title="${escapeHtml(material.part_nr || '')}">${escapeHtml(material.part_nr || '—')}</span>
+          <span class="bom-card__name" title="${nombre}">${nombre || '—'}</span>
+          <div class="bom-card__actions">
+            <button
+              class="btn-inline btn-inline--success btn-inline--icon"
+              type="button"
+              data-edit-material-precio="${idMaterial}"
+              aria-label="${escapeHtml(tf('literal.bom.edit_price_aria', 'Editar precio de {material}', { material: material.material || '' }))}"
+              title="${escapeHtml(t('literal.bom.edit_price', 'Editar precio'))}"
+              ${readOnly ? 'disabled' : ''}
+            >✎</button>
+            <button
+              class="btn-inline btn-inline--cancel"
+              type="button"
+              data-toggle-offer-bom="${idMaterial}"
+              data-bom-selected="true"
+              ${readOnly ? 'disabled' : ''}
+            >${escapeHtml(t('common.remove', 'Quitar'))}</button>
+          </div>
+        </div>
+        <div class="bom-card__details">
+          <span class="bom-card__price">
+            <span class="bom-card__label">${escapeHtml(t('literal.bom.current_price', 'Precio actual'))}</span>
+            <strong>${escapeHtml(formatCurrencyAmount(precioUnitario))}</strong>
+          </span>
+          <label class="bom-card__qty">
+            <span class="bom-card__label">${escapeHtml(t('literal.bom.quantity', 'Cantidad'))}</span>
+            <input
+              class="bom-qty-input"
+              type="number"
+              min="1"
+              step="1"
+              value="${cantidad}"
+              data-bom-qty="${idMaterial}"
+              ${readOnly ? 'disabled' : ''}
+            />
+          </label>
+          <span class="bom-card__subtotal">
+            <span class="bom-card__label">${escapeHtml(t('literal.bom.subtotal', 'Subtotal'))}</span>
+            <strong>${escapeHtml(formatCurrencyAmount(subtotal))}</strong>
+          </span>
+          <span class="bom-card__date">
+            <span class="bom-card__label">${escapeHtml(t('literal.bom.updated', 'Actualizado'))}</span>
+            <span>${escapeHtml(formatDisplayDateTime(material.fecha_creacion) || '—')}</span>
+          </span>
+        </div>
+      </li>`;
+    }).join('');
 
     // Mostrar/ocultar boton sync segun haya materiales
     if (bomSyncToEtcButton) {
-      bomSyncToEtcButton.hidden = materiales.length === 0;
+      bomSyncToEtcButton.hidden = false;
     }
   };
 
@@ -4077,10 +4489,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           <td colspan="4" class="clientes-table__empty">${escapeHtml(t('literal.bom.loading_materials', 'Cargando materiales...'))}</td>
         </tr>
       `;
+      if (bomCatalogCount) bomCatalogCount.textContent = '…';
       return;
     }
 
     const materiales = getFilteredBomMateriales();
+    if (bomCatalogCount) bomCatalogCount.textContent = String(materiales.length);
     if (!materiales.length) {
       const emptyMessage = bomMaterialesCache.length
         ? t('literal.bom.search_empty', 'No hay materiales que coincidan con la busqueda.')
@@ -4125,8 +4539,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const openBomListView = () => {
     currentBomMaterial = null;
-    if (bomListView) {
-      bomListView.hidden = false;
+    if (bomSplitView) {
+      bomSplitView.hidden = false;
     }
     if (bomEditView) {
       bomEditView.hidden = true;
@@ -4178,8 +4592,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (bomEditResetOverrideButton) {
       bomEditResetOverrideButton.hidden = !(hasCurrentBomOfferContext() && currentBomMaterial.tiene_precio_override);
     }
-    if (bomListView) {
-      bomListView.hidden = true;
+    if (bomSplitView) {
+      bomSplitView.hidden = true;
     }
     bomEditView.hidden = false;
   };

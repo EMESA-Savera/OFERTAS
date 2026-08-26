@@ -684,54 +684,55 @@
               <button class="oferta-modal__close" type="button" data-close-bom-modal="true" aria-label="Cerrar" data-translate-key-aria-label="common.close">×</button>
             </div>
 
-            <section id="bomCatalogSection" class="bom-modal__catalog-section">
-              <label class="bom-modal__search" for="bomSearchInput">
-                <span data-translate-key="literal.bom.search_material">Buscar material</span>
-                <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
-              </label>
-              <div class="clientes-table-wrap bom-modal__table-wrap">
-                <table class="clientes-table bom-table">
-                  <thead>
-                    <tr>
-                      <th data-translate-key="config.bom_part_nr">Part Nr</th>
-                      <th data-translate-key="literal.bom.material">Material</th>
-                      <th data-translate-key="literal.bom.current_price">Precio actual</th>
-                      <th data-translate-key="table.actions">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="bomCatalogBody">
-                    <tr>
-                      <td colspan="4" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-            <section id="bomListView" class="bom-modal__view">
-              <div class="clientes-table-wrap bom-modal__table-wrap">
-                <table class="clientes-table bom-table">
-                  <thead>
-                    <tr>
-                      <th data-translate-key="config.bom_part_nr">Part Nr</th>
-                      <th data-translate-key="literal.bom.material">Material</th>
-                      <th data-translate-key="literal.bom.current_price">Precio actual</th>
-                      <th data-translate-key="literal.bom.quantity">Cantidad</th>
-                      <th data-translate-key="literal.bom.updated">Actualizado</th>
-                      <th data-translate-key="table.actions">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody id="bomListBody">
-                    <tr>
-                      <td colspan="6" class="clientes-table__empty" data-translate-key="literal.bom.none_selected_for_offer">Todavia no hay BOM seleccionados para esta oferta.</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="bom-etc-sync-bar">
-                <button id="bomSyncToEtcButton" class="btn-inline btn-inline--save" type="button" data-translate-key="literal.bom.sync_to_etc">Aceptar</button>
-                <small class="bom-etc-sync-bar__hint">Pokud změny nepotvrdíte, neuloží se.</small>
-              </div>
-            </section>
+            <div id="bomSplitView" class="bom-modal__split">
+              <section id="bomCatalogSection" class="bom-modal__pane bom-modal__pane--catalog" aria-labelledby="bomCatalogTitle">
+                <div class="bom-modal__pane-header">
+                  <h3 id="bomCatalogTitle" data-translate-key="literal.bom.catalog_title">Catálogo de materiales</h3>
+                  <span id="bomCatalogCount" class="bom-modal__badge" aria-hidden="true">0</span>
+                </div>
+                <label class="bom-modal__search" for="bomSearchInput">
+                  <span data-translate-key="literal.bom.search_material">Buscar material</span>
+                  <input id="bomSearchInput" type="search" placeholder="Escribe para filtrar materiales" data-translate-key-placeholder="literal.bom.search_placeholder" />
+                </label>
+                <div class="clientes-table-wrap bom-modal__table-wrap">
+                  <table class="clientes-table bom-table">
+                    <thead>
+                      <tr>
+                        <th data-translate-key="config.bom_part_nr">Part Nr</th>
+                        <th data-translate-key="literal.bom.material">Material</th>
+                        <th data-translate-key="literal.bom.current_price">Precio actual</th>
+                        <th data-translate-key="table.actions">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bomCatalogBody">
+                      <tr>
+                        <td colspan="4" class="clientes-table__empty" data-translate-key="literal.bom.loading_materials">Cargando materiales...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              <section id="bomListView" class="bom-modal__pane bom-modal__pane--selected" aria-labelledby="bomSelectedTitle">
+                <div class="bom-modal__pane-header">
+                  <h3 id="bomSelectedTitle" data-translate-key="literal.bom.selected_for_offer">Seleccionados en la oferta</h3>
+                  <span id="bomSelectedCount" class="bom-modal__badge" aria-hidden="true">0</span>
+                </div>
+                <ul id="bomListBody" class="bom-list" aria-label="BOM seleccionados en la oferta">
+                  <li class="bom-card-empty" data-translate-key="literal.bom.none_selected_for_offer">Todavia no hay BOM seleccionados para esta oferta.</li>
+                </ul>
+                <div class="bom-etc-sync-bar">
+                  <div class="bom-etc-sync-bar__total">
+                    <span class="bom-etc-sync-bar__total-label" data-translate-key="literal.bom.total">TOTAL</span>
+                    <strong id="bomListTotalValue" class="bom-etc-sync-bar__total-value">0,00 €</strong>
+                  </div>
+                  <div class="bom-etc-sync-bar__actions">
+                    <button id="bomSyncToEtcButton" class="btn-inline btn-inline--save" type="button" data-translate-key="literal.bom.sync_to_etc">Aceptar</button>
+                    <small class="bom-etc-sync-bar__hint" data-translate-key="literal.bom.sync_to_etc_hint">Guarda el listado y total de materiales en la ficha ETC de la oferta</small>
+                  </div>
+                </div>
+              </section>
+            </div>
 
             <section id="bomEditView" class="bom-modal__view" hidden>
               <form id="bomEditForm" class="oferta-form" autocomplete="off">
