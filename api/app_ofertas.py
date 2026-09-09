@@ -2611,7 +2611,10 @@ def parse_eml_bytes(file_bytes):
         "sender_display": sender_identity["sender_display"],
         "received_at": received_at,
         "subject": subject,
-        "body": clean_email_body(body_text),
+        "body": build_clean_offer_thread_body(body_text),
+        # Se conserva para separar un hilo por sus cabeceras; la UI usa body,
+        # ya depurado, para no exponerlas como texto del mensaje.
+        "thread_body": str(body_text or ""),
         "attachments": extract_eml_attachments(message),
         "source_type": "email_file",
         "conversation_id": None,
@@ -2677,7 +2680,8 @@ def parse_msg_bytes(file_bytes):
             "sender_display": sender_identity["sender_display"],
             "received_at": normalize_email_datetime(getattr(message, "date", None)),
             "subject": str(getattr(message, "subject", "") or "").strip(),
-            "body": clean_email_body(body_text),
+            "body": build_clean_offer_thread_body(body_text),
+            "thread_body": str(body_text or ""),
             "attachments": attachments,
             "source_type": "email_file",
             "conversation_id": None,
@@ -2877,6 +2881,7 @@ def serialize_imported_email_metadata(parsed_email):
         "sender_email": normalize_optional_text(parsed_email.get("sender_email"), 255),
         "received_at": serialize_date(parsed_email.get("received_at")),
         "body_sha256": build_email_body_sha256(parsed_email.get("body")),
+        "thread_body": normalize_optional_text(parsed_email.get("thread_body")),
     }
     if metadata["sender_email"]:
         metadata["sender_email"] = metadata["sender_email"].lower()
@@ -2915,6 +2920,144 @@ def normalize_email_subject_for_matching(subject):
 def oferta_email_tracking_table_exists(cursor):
     cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.oferta_correos_importados', 'U') IS NOT NULL")
     return cursor.fetchone() is not None
+
+
+def oferta_email_messages_table_exists(cursor):
+    """Indica si está desplegado el almacén normalizado de correos de oferta.
+
+    No crea la tabla en tiempo de ejecución: el despliegue debe aplicar antes la
+    migración SQL correspondiente, especialmente en entornos con ofertas reales.
+    """
+    cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.oferta_correos', 'U') IS NOT NULL")
+    return cursor.fetchone() is not None
+
+
+def build_offer_email_message_records(parsed_email):
+    """Convierte un correo importado en mensajes presentables y deduplicables."""
+    body_text = str((parsed_email or {}).get("thread_body") or (parsed_email or {}).get("body") or "").strip()
+    if not body_text:
+        return []
+
+    segments = split_offer_conversation_message_parts(
+        body_text,
+        initial_metadata={
+            "sender_name": parsed_email.get("sender_name"),
+            "sender_email": parsed_email.get("sender_email"),
+            "received_at": parsed_email.get("received_at"),
+            "subject": parsed_email.get("subject"),
+            "extraction_method": "source_header",
+            "extraction_confidence": "high",
+        },
+    )
+    internet_message_id = normalize_message_identifier(parsed_email.get("internet_message_id"))
+    is_thread_upload = len(segments) > 1
+    records = []
+    for segment_index, segment_data in enumerate(segments, start=1):
+        segment = segment_data.get("body")
+        normalized_body = normalize_offer_conversation_segment(segment)
+        if not normalized_body:
+            continue
+
+        body_sha256 = hashlib.sha256(normalized_body.encode("utf-8")).hexdigest()
+        # Un correo individual se identifica por Message-ID para permitir dos
+        # mensajes legítimos con el mismo texto. Un hilo adjunto se identifica
+        # por cada fragmento: el Message-ID exterior no representa sus citas.
+        message_key = (
+            f"message:{hashlib.sha256(internet_message_id.encode('utf-8')).hexdigest()}"
+            if internet_message_id and not is_thread_upload
+            else f"body:{body_sha256}"
+        )
+        is_outer_message = not is_thread_upload or segment_index == 1
+        records.append(
+            {
+                "message_key": message_key,
+                "source_type": normalize_optional_text(parsed_email.get("source_type"), 32),
+                "conversation_id": normalize_optional_text(parsed_email.get("conversation_id"), 255),
+                "internet_message_id": normalize_message_identifier(segment_data.get("internet_message_id")) or (internet_message_id if is_outer_message else None),
+                "in_reply_to_message_id": normalize_message_identifier(segment_data.get("in_reply_to_message_id")) or (normalize_message_identifier(parsed_email.get("in_reply_to_message_id")) if is_outer_message else None),
+                "reference_message_ids_json": json.dumps(normalize_message_identifier_list(parsed_email.get("reference_message_ids") or [])),
+                "subject": normalize_optional_text(segment_data.get("subject") or (parsed_email.get("subject") if is_outer_message else None), 500),
+                "sender_name": normalize_optional_text(segment_data.get("sender_name") or (parsed_email.get("sender_name") if is_outer_message else None), 255),
+                "sender_email": normalize_optional_text(segment_data.get("sender_email") or (parsed_email.get("sender_email") if is_outer_message else None), 255),
+                "received_at": normalize_email_datetime(segment_data.get("received_at") or (parsed_email.get("received_at") if is_outer_message else None)),
+                "body_text": segment.strip(),
+                "body_sha256": body_sha256,
+                "fragment_index": segment_index if len(segments) > 1 else None,
+                "extraction_method": normalize_optional_text(segment_data.get("extraction_method") or "body_only", 32),
+                "extraction_confidence": normalize_optional_text(segment_data.get("extraction_confidence") or "low", 16),
+            }
+        )
+    return records
+
+
+def build_initial_offer_email_from_payload(oferta_payload, imported_email_metadata):
+    """Reconstruye el correo importado al crear una oferta desde el formulario."""
+    if not isinstance(imported_email_metadata, dict):
+        return None
+
+    body_text = imported_email_metadata.get("thread_body") or oferta_payload.get("observaciones")
+    if not body_text:
+        return None
+
+    return {
+        "body": body_text,
+        "source_type": imported_email_metadata.get("source_type"),
+        "conversation_id": imported_email_metadata.get("conversation_id"),
+        "internet_message_id": imported_email_metadata.get("internet_message_id"),
+        "in_reply_to_message_id": imported_email_metadata.get("in_reply_to_message_id"),
+        "reference_message_ids": imported_email_metadata.get("reference_message_ids") or [],
+        "subject": imported_email_metadata.get("subject") or oferta_payload.get("ref_cliente_asunto_email"),
+        "sender_name": imported_email_metadata.get("sender_name") or oferta_payload.get("nombre_emisor"),
+        "sender_email": imported_email_metadata.get("sender_email") or oferta_payload.get("email_emisor"),
+        "received_at": imported_email_metadata.get("received_at") or oferta_payload.get("fecha_email"),
+    }
+
+
+def store_offer_email_messages(cursor, oferta_id, parsed_email):
+    """Inserta solo los fragmentos nuevos del correo, de forma idempotente."""
+    if not oferta_email_messages_table_exists(cursor):
+        return []
+
+    inserted = []
+    for record in build_offer_email_message_records(parsed_email):
+        cursor.execute(
+            """
+            INSERT INTO ofertas.oferta_correos (
+                id_oferta, message_key, source_type, conversation_id,
+                internet_message_id, in_reply_to_message_id,
+                reference_message_ids_json, subject, sender_name, sender_email,
+                received_at, body_text, body_sha256, fragment_index,
+                extraction_method, extraction_confidence
+            )
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE NOT EXISTS (
+                SELECT 1 FROM ofertas.oferta_correos WITH (UPDLOCK, HOLDLOCK)
+                WHERE id_oferta = ? AND message_key = ?
+            )
+            """,
+            (oferta_id, record["message_key"], record["source_type"], record["conversation_id"], record["internet_message_id"], record["in_reply_to_message_id"], record["reference_message_ids_json"], record["subject"], record["sender_name"], record["sender_email"], record["received_at"], record["body_text"], record["body_sha256"], record["fragment_index"], record["extraction_method"], record["extraction_confidence"], oferta_id, record["message_key"]),
+        )
+        if cursor.rowcount:
+            inserted.append(record)
+    return inserted
+
+
+def list_offer_email_messages(cursor, oferta_id):
+    if not oferta_email_messages_table_exists(cursor):
+        return []
+    cursor.execute(
+        """
+        SELECT id_correo, source_type, conversation_id, internet_message_id,
+               subject, sender_name, sender_email, received_at, body_text, fragment_index,
+               extraction_method, extraction_confidence
+        FROM ofertas.oferta_correos
+        WHERE id_oferta = ?
+        ORDER BY CASE WHEN received_at IS NULL THEN 1 ELSE 0 END, received_at ASC,
+                 fecha_registro ASC, id_correo ASC
+        """,
+        (oferta_id,),
+    )
+    return [{"id_correo": row[0], "source_type": row[1], "conversation_id": row[2], "internet_message_id": row[3], "subject": row[4], "sender_name": row[5], "sender_email": row[6], "received_at": serialize_date(row[7]), "body": row[8], "fragment_index": row[9], "extraction_method": row[10], "extraction_confidence": row[11]} for row in cursor.fetchall()]
 
 
 def get_imported_email_metadata_for_match(parsed_email):
@@ -3204,7 +3347,7 @@ def recover_offer_attachments_from_email(parsed_email, oferta_id, numero_oferta)
     return {"folder_exists": False, "recovered": recovered, "skipped": False, "rejected": rejected}
 
 
-def split_offer_conversation_segments(body_text):
+def split_offer_conversation_message_parts(body_text, initial_metadata=None):
     normalized = str(body_text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not normalized:
         return []
@@ -3212,42 +3355,175 @@ def split_offer_conversation_segments(body_text):
     lines = normalized.split("\n")
     segments = []
     current_lines = []
+    current_metadata = dict(initial_metadata or {})
+    pending_metadata = {}
+    reading_headers = False
     hard_divider_regex = re.compile(
         r"^(?:-{2,}\s*(?:original message|mensaje original|quoted message|p[ůu]vodn[ií]\s*e[-‑–—]?mail)\s*-*|_{5,})$",
         re.IGNORECASE,
     )
     wrote_regex = re.compile(r"^on\s.+wrote:$", re.IGNORECASE)
+    sent_header_regex = re.compile(r"^(?:enviado\s+el|sent|odeslano|odesláno)\s*:", re.IGNORECASE)
     header_line_regex = re.compile(
-        r"^(from|de|sent|enviado|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět)\s*:",
+        r"^(from|de|sent|enviado|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět|message-id|in-reply-to)\s*:",
         re.IGNORECASE,
     )
 
+    def update_header_metadata(line, metadata):
+        match = re.match(r"^([^:]+)\s*:\s*(.+)$", line)
+        if not match:
+            return
+        header_name = match.group(1).strip().lower()
+        header_value = match.group(2).strip()
+        header_aliases = {
+            "from": "sender",
+            "de": "sender",
+            "date": "date",
+            "datum": "date",
+            "sent": "date",
+            "enviado": "date",
+            "enviado el": "date",
+            "odeslano": "date",
+            "odesláno": "date",
+            "subject": "subject",
+            "asunto": "subject",
+            "predmet": "subject",
+            "předmět": "subject",
+            "message-id": "internet_message_id",
+            "in-reply-to": "in_reply_to_message_id",
+        }
+        field = header_aliases.get(header_name)
+        if not field:
+            return
+
+        if field == "sender":
+            identity = extract_sender_identity(header_value)
+            if identity.get("sender_name"):
+                metadata["sender_name"] = identity["sender_name"]
+            if identity.get("sender_email"):
+                metadata["sender_email"] = identity["sender_email"]
+        elif field == "date":
+            parsed_date = normalize_email_datetime(header_value)
+            if parsed_date:
+                metadata["received_at"] = parsed_date
+        elif field == "subject":
+            metadata["subject"] = decode_email_header(header_value)
+        else:
+            metadata[field] = normalize_message_identifier(header_value)
+
+        metadata["extraction_method"] = "quoted_header"
+        metadata["extraction_confidence"] = "high"
+
+    def extract_signature_sender(raw_segment):
+        lines = [line.strip() for line in str(raw_segment or "").split("\n") if line.strip()]
+        signature_start_regex = re.compile(
+            r"^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|"
+            r"best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*",
+            re.IGNORECASE,
+        )
+        signature_index = next((index for index, line in enumerate(lines) if signature_start_regex.match(line)), None)
+        if signature_index is None:
+            return {}
+        email_match = re.search(r"([^\s<>@]+@[^\s<>@]+)", " ".join(lines[signature_index:]))
+        return {
+            "sender_email": email_match.group(1).lower(),
+            "extraction_method": "signature",
+            "extraction_confidence": "medium",
+        } if email_match else {}
+
     def push_segment():
-        text = "\n".join(current_lines).strip()
+        raw_segment = "\n".join(current_lines)
+        text = clean_offer_email_segment(raw_segment)
         if text:
-            segments.append(text)
+            metadata = {**extract_signature_sender(raw_segment), **current_metadata}
+            metadata.setdefault("extraction_method", "body_only")
+            metadata.setdefault("extraction_confidence", "low")
+            segments.append({"body": text, **metadata})
         current_lines.clear()
 
     for index, line in enumerate(lines):
         trimmed = line.strip()
 
         if not trimmed:
+            if reading_headers:
+                continue
             if current_lines and current_lines[-1] != "":
                 current_lines.append("")
             continue
 
         next_lines = [item.strip() for item in lines[index:index + 4] if item.strip()]
         header_matches = sum(1 for item in next_lines if header_line_regex.match(item))
-        starts_quoted_block = hard_divider_regex.match(trimmed) or wrote_regex.match(trimmed) or header_matches >= 2
+        starts_quoted_block = hard_divider_regex.match(trimmed) or wrote_regex.match(trimmed) or sent_header_regex.match(trimmed) or header_matches >= 2
 
         if starts_quoted_block:
             push_segment()
+            reading_headers = True
+            update_header_metadata(trimmed, pending_metadata)
             continue
+
+        if reading_headers:
+            if header_line_regex.match(trimmed):
+                update_header_metadata(trimmed, pending_metadata)
+                continue
+            current_metadata = dict(pending_metadata)
+            pending_metadata.clear()
+            reading_headers = False
 
         current_lines.append(trimmed)
 
     push_segment()
-    return segments or [normalized]
+    return segments or [{"body": normalized, **(initial_metadata or {})}]
+
+
+def split_offer_conversation_segments(body_text):
+    return [item["body"] for item in split_offer_conversation_message_parts(body_text)]
+
+
+def build_clean_offer_thread_body(body_text):
+    """Devuelve todos los mensajes legibles de un hilo, sin sus cabeceras."""
+    segments = split_offer_conversation_segments(body_text)
+    return "\n\n----- quoted message -----\n\n".join(segments)
+
+
+def clean_offer_email_segment(segment):
+    """Quita firmas y avisos corporativos sin convertirlos en correos."""
+    footer_start_regex = re.compile(
+        r"^(?:este mensaje(?:\s+y\s+sus\s+archivos)?\s+es\s+confidencial|"
+        r"this (?:e-?mail|message)(?:\s+and\s+(?:any\s+)?attachments)?\s+is\s+confidential|"
+        r"please consider the environment before printing|"
+        r"horario de atenci[oó]n al p[uú]blico|customer service timetable)",
+        re.IGNORECASE,
+    )
+    signature_start_regex = re.compile(
+        r"^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|"
+        r"best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*",
+        re.IGNORECASE,
+    )
+    contact_line_regex = re.compile(
+        r"(?:@|\b(?:tel(?:e?fono)?|tlf|phone|mobile|fax|departamento|department|"
+        r"assistant|branch)\b|\+?\d[\d\s().-]{6,})",
+        re.IGNORECASE,
+    )
+
+    cleaned_lines = []
+    for raw_line in str(segment or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = raw_line.strip()
+        if not line:
+            if cleaned_lines and cleaned_lines[-1] != "":
+                cleaned_lines.append("")
+            continue
+        if footer_start_regex.match(line):
+            break
+        # Solo se corta una firma si antes hay texto; así no se pierde un
+        # mensaje breve cuyo único contenido es una despedida.
+        if signature_start_regex.match(line) and any(item.strip() for item in cleaned_lines):
+            break
+        cleaned_lines.append(line)
+
+    non_empty_lines = [line for line in cleaned_lines if line.strip()]
+    if non_empty_lines and all(contact_line_regex.search(line) for line in non_empty_lines):
+        return ""
+    return "\n".join(cleaned_lines).strip()
 
 
 def normalize_offer_conversation_segment(segment):
@@ -3261,7 +3537,7 @@ def normalize_offer_conversation_segment(segment):
     )
 
     normalized_lines = []
-    raw_segment = unicodedata.normalize("NFKC", str(segment or ""))
+    raw_segment = unicodedata.normalize("NFKC", clean_offer_email_segment(segment))
     raw_segment = raw_segment.replace("\u00a0", " ").replace("\u200b", "")
     raw_segment = raw_segment.replace("‑", "-").replace("–", "-").replace("—", "-")
 
@@ -3415,18 +3691,34 @@ def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_e
     skipped_count = 0
     latest_message = None
     current_observaciones = observaciones_actuales
+    use_normalized_email_store = oferta_email_messages_table_exists(cursor)
 
     for parsed_email in ordered_messages:
         metadata = get_imported_email_metadata_for_match(parsed_email)
-        if metadata is not None and imported_email_already_registered(cursor, oferta_id, metadata):
+        if use_normalized_email_store:
+            inserted_records = store_offer_email_messages(cursor, oferta_id, parsed_email)
+            if not inserted_records:
+                skipped_count += 1
+                continue
+            register_imported_email_metadata(cursor, oferta_id, parsed_email)
+            latest_message = parsed_email
+            imported_count += 1
+            continue
+
+        import_body = parsed_email.get("thread_body") or parsed_email.get("body")
+        adds_new_content = imported_email_adds_new_offer_content(current_observaciones, import_body)
+        # Una importación antigua pudo haberse guardado con sólo el último
+        # mensaje del hilo. Permitimos reanalizarla si ahora aporta fragmentos
+        # nuevos; el merge por contenido evita duplicarlos.
+        if metadata is not None and imported_email_already_registered(cursor, oferta_id, metadata) and not adds_new_content:
             skipped_count += 1
             continue
 
-        if not imported_email_adds_new_offer_content(current_observaciones, parsed_email.get("body")):
+        if not adds_new_content:
             skipped_count += 1
             continue
 
-        current_observaciones = prepend_imported_message_to_observaciones(current_observaciones, parsed_email.get("body"))
+        current_observaciones = prepend_imported_message_to_observaciones(current_observaciones, import_body)
         register_imported_email_metadata(cursor, oferta_id, parsed_email)
         latest_message = parsed_email
         imported_count += 1
@@ -3434,25 +3726,35 @@ def sync_imported_emails_into_offer(cursor, oferta_id, parsed_emails, imported_e
     attachments = []
     if imported_count > 0:
         latest_received_at = normalize_email_datetime((latest_message or {}).get("received_at"))
-        cursor.execute(
-            """
-            UPDATE ofertas.listado_ofertas
-            SET fecha_email = ?,
-                ref_cliente_asunto_email = ?,
-                observaciones = ?,
-                nombre_emisor = ?,
-                email_emisor = ?
-            WHERE id_oferta = ?
-            """,
-            (
-                latest_received_at.date() if latest_received_at else None,
-                normalize_optional_text((latest_message or {}).get("subject"), 500),
-                current_observaciones,
-                normalize_optional_text((latest_message or {}).get("sender_name"), 255),
-                normalize_optional_text((latest_message or {}).get("sender_email"), 255),
-                oferta_id,
-            ),
+        update_values = (
+            latest_received_at.date() if latest_received_at else None,
+            normalize_optional_text((latest_message or {}).get("subject"), 500),
+            normalize_optional_text((latest_message or {}).get("sender_name"), 255),
+            normalize_optional_text((latest_message or {}).get("sender_email"), 255),
+            oferta_id,
         )
+        if use_normalized_email_store:
+            # Conserva observaciones como histórico de compatibilidad: los nuevos
+            # correos viven individualmente en ofertas.oferta_correos.
+            cursor.execute(
+                """
+                UPDATE ofertas.listado_ofertas
+                SET fecha_email = ?, ref_cliente_asunto_email = ?,
+                    nombre_emisor = ?, email_emisor = ?
+                WHERE id_oferta = ?
+                """,
+                update_values,
+            )
+        else:
+            cursor.execute(
+                """
+                UPDATE ofertas.listado_ofertas
+                SET fecha_email = ?, ref_cliente_asunto_email = ?, observaciones = ?,
+                    nombre_emisor = ?, email_emisor = ?
+                WHERE id_oferta = ?
+                """,
+                (update_values[0], update_values[1], current_observaciones, *update_values[2:]),
+            )
         if imported_email_attachment_token:
             attachments = move_staged_imported_email_attachments_to_offer(
                 oferta_id,
@@ -6698,6 +7000,7 @@ def get_oferta(oferta_id):
                 "nombre_emisor": row[12],
                 "email_emisor": row[13],
                 "emisor": format_sender_display(row[12], row[13]),
+                "correos": list_offer_email_messages(cursor, row[0]),
                 "interacciones": [],
                 "adjuntos": list_offer_attachments(row[0], numero_oferta=row[1]),
             }
@@ -7224,6 +7527,11 @@ def delete_oferta(oferta_id):
                 "DELETE FROM ofertas.oferta_correos_importados WHERE id_oferta = ?",
                 (oferta_id,),
             )
+            if oferta_email_messages_table_exists(cursor):
+                cursor.execute(
+                    "DELETE FROM ofertas.oferta_correos WHERE id_oferta = ?",
+                    (oferta_id,),
+                )
             cursor.execute(
                 "DELETE FROM ofertas.oferta_bom_precio_override WHERE id_oferta = ?",
                 (oferta_id,),
@@ -9994,6 +10302,10 @@ def create_oferta_completa():
             cursor = conn.cursor()
             inserted_id, numero_oferta = insert_oferta_record(cursor, oferta_payload)
             inserted_etc_id = insert_oferta_etc_record(cursor, oferta_etc_payload, explicit_id=inserted_id)
+            initial_imported_email = build_initial_offer_email_from_payload(oferta_payload, imported_email_metadata)
+            if initial_imported_email and oferta_email_messages_table_exists(cursor):
+                store_offer_email_messages(cursor, inserted_id, initial_imported_email)
+                register_imported_email_metadata(cursor, inserted_id, initial_imported_email)
             if imported_email_attachment_token:
                 staged_attachment_payloads = move_staged_imported_email_attachments_to_offer(
                     inserted_id,

@@ -6552,7 +6552,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderOfferHistory(ofertaEstadoHistorial, interacciones);
   };
 
-  const splitOfferConversation = (rawText) => {
+  const splitOfferConversation = (rawText, initialMetadata = {}) => {
     const normalized = String(rawText || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
     if (!normalized) {
       return [];
@@ -6561,14 +6561,80 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lines = normalized.split('\n');
     const segments = [];
     const currentLines = [];
+    let currentMetadata = { ...initialMetadata };
+    let pendingMetadata = {};
+    let readingHeaders = false;
     const hardDividerRegex = /^(?:-{2,}\s*(?:original message|mensaje original|quoted message|p[ůu]vodn[ií]\s*e[-‑–—]?mail)\s*-*|_{5,})$/i;
     const wroteRegex = /^on\s.+wrote:$/i;
+    const sentHeaderRegex = /^(?:enviado\s+el|sent|odeslano|odesláno)\s*:/i;
     const headerLineRegex = /^(from|de|sent|enviado|date|datum|to|para|cc|subject|asunto|od|odeslano|odesláno|komu|predmet|předmět)\s*:/i;
 
+    const cleanOfferEmailSegment = (rawSegment) => {
+      const footerStartRegex = /^(?:este mensaje(?:\s+y\s+sus\s+archivos)?\s+es\s+confidencial|this (?:e-?mail|message)(?:\s+and\s+(?:any\s+)?attachments)?\s+is\s+confidential|please consider the environment before printing|horario de atenci[oó]n al p[uú]blico|customer service timetable)/i;
+      const signatureStartRegex = /^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*/i;
+      const contactLineRegex = /(?:@|\b(?:tel(?:e?fono)?|tlf|phone|mobile|fax|departamento|department|assistant|branch)\b|\+?\d[\d\s().-]{6,})/i;
+      const cleanedLines = [];
+
+      for (const rawLine of String(rawSegment || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
+        const line = rawLine.trim();
+        if (!line) {
+          if (cleanedLines.length && cleanedLines[cleanedLines.length - 1] !== '') {
+            cleanedLines.push('');
+          }
+          continue;
+        }
+        if (footerStartRegex.test(line)) {
+          break;
+        }
+        if (signatureStartRegex.test(line) && cleanedLines.some((item) => item.trim())) {
+          break;
+        }
+        cleanedLines.push(line);
+      }
+
+      const nonEmptyLines = cleanedLines.filter((line) => line.trim());
+      if (nonEmptyLines.length && nonEmptyLines.every((line) => contactLineRegex.test(line))) {
+        return '';
+      }
+      return cleanedLines.join('\n').trim();
+    };
+
+    const updateSenderMetadata = (line, metadata) => {
+      const match = String(line || '').match(/^(?:from|de)\s*:\s*(.+)$/i);
+      if (!match) {
+        return;
+      }
+      const rawSender = match[1].trim();
+      const emailMatch = rawSender.match(/<?([^\s<>@]+@[^\s<>@]+)>?/);
+      const senderEmail = emailMatch?.[1]?.toLowerCase() || '';
+      const senderName = rawSender
+        .replace(/<?[^\s<>@]+@[^\s<>@]+>?/, '')
+        .replace(/[<>]/g, '')
+        .trim();
+      if (senderName) {
+        metadata.sender_name = senderName;
+      }
+      if (senderEmail) {
+        metadata.sender_email = senderEmail;
+      }
+    };
+
+    const extractSignatureSender = (rawSegment) => {
+      const lines = String(rawSegment || '').split('\n').map((line) => line.trim()).filter(Boolean);
+      const signatureIndex = lines.findIndex((line) => /^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*/i.test(line));
+      if (signatureIndex < 0) {
+        return {};
+      }
+      const signatureLines = lines.slice(signatureIndex);
+      const emailMatch = signatureLines.join(' ').match(/([^\s<>@]+@[^\s<>@]+)/);
+      return emailMatch ? { sender_email: emailMatch[1].toLowerCase() } : {};
+    };
+
     const pushSegment = () => {
-      const text = currentLines.join('\n').trim();
+      const rawSegment = currentLines.join('\n');
+      const text = cleanOfferEmailSegment(rawSegment);
       if (text) {
-        segments.push(text);
+        segments.push({ body: text, ...extractSignatureSender(rawSegment), ...currentMetadata });
       }
       currentLines.length = 0;
     };
@@ -6578,6 +6644,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       const trimmed = line.trim();
 
       if (!trimmed) {
+        if (readingHeaders) {
+          continue;
+        }
         if (currentLines.length && currentLines[currentLines.length - 1] !== '') {
           currentLines.push('');
         }
@@ -6586,22 +6655,60 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const nextLines = lines.slice(index, index + 4).map((item) => item.trim()).filter(Boolean);
       const headerMatches = nextLines.filter((item) => headerLineRegex.test(item)).length;
-      const startsQuotedBlock = hardDividerRegex.test(trimmed) || wroteRegex.test(trimmed) || headerMatches >= 2;
+      const startsQuotedBlock = hardDividerRegex.test(trimmed) || wroteRegex.test(trimmed) || sentHeaderRegex.test(trimmed) || headerMatches >= 2;
 
       if (startsQuotedBlock) {
         pushSegment();
+        readingHeaders = true;
+        updateSenderMetadata(trimmed, pendingMetadata);
         continue;
+      }
+
+      if (readingHeaders) {
+        if (headerLineRegex.test(trimmed)) {
+          updateSenderMetadata(trimmed, pendingMetadata);
+          continue;
+        }
+        currentMetadata = { ...pendingMetadata };
+        pendingMetadata = {};
+        readingHeaders = false;
       }
 
       currentLines.push(trimmed);
     }
 
     pushSegment();
-    return segments.length ? segments : [normalized];
+    return segments.length ? segments : [{ body: normalized, ...initialMetadata }];
   };
 
-  const renderOfferConversation = (bodyText) => {
-    const segments = splitOfferConversation(bodyText);
+  const renderOfferConversation = (bodyText, storedMessages = [], initialMetadata = {}) => {
+    let segments = Array.isArray(storedMessages) && storedMessages.length
+      ? storedMessages.map((message) => ({ ...message, body: message?.body || '' }))
+      : splitOfferConversation(bodyText, initialMetadata).map((message, index) => ({
+        id_correo: `legacy-${index}`,
+        ...message,
+        subject: '',
+        received_at: null,
+      }));
+
+    // En el histórico antiguo un mismo correo puede aparecer varias veces como
+    // cita. Se muestra una vez; los correos nuevos se deduplican en BBDD.
+    if (!(Array.isArray(storedMessages) && storedMessages.length)) {
+      const seenBodies = new Set();
+      segments = segments.filter((message) => {
+        const fingerprint = String(message.body || '')
+          .replace(/\s*<mailto:[^>]+>/gi, '')
+          .toLocaleLowerCase()
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (!fingerprint || seenBodies.has(fingerprint)) {
+          return false;
+        }
+        seenBodies.add(fingerprint);
+        return true;
+      });
+    }
+
     if (!segments.length) {
       return `<p>${escapeHtml(t('crm.no_comments', 'Sin comentarios.'))}</p>`;
     }
@@ -6659,23 +6766,35 @@ document.addEventListener('DOMContentLoaded', async () => {
       return sanitizedLines.join('\n').trim();
     };
     const visibleSegments = segments
-      .map((segment) => sanitizeConversationSegmentForDisplay(segment))
-      .filter(Boolean);
+      .map((message, index) => ({
+        ...message,
+        index,
+        body: sanitizeConversationSegmentForDisplay(message.body),
+      }))
+      .filter((message) => message.body);
 
     if (!visibleSegments.length) {
       return `<p>${escapeHtml(t('crm.no_comments', 'Sin comentarios.'))}</p>`;
     }
 
-    const fullConversation = visibleSegments.join('\n\n');
-
     return `
       <div class="offer-center__conversation">
-        <article class="offer-center__thread-card">
-          <header class="offer-center__thread-header">
-            <strong>${escapeHtml(t('offer.full_conversation', 'Conversacion completa'))}</strong>
-          </header>
-          <div class="offer-center__thread-body">${escapeHtml(fullConversation).replace(/\n/g, '<br>')}</div>
-        </article>
+        <div class="offer-center__thread-selector" role="tablist" aria-label="${escapeHtml(t('offer.full_conversation', 'Conversacion completa'))}">
+          ${visibleSegments.map((message, index) => {
+            const label = message.subject || `${t('offer.mail_label', 'Correo')} ${index + 1}`;
+            const selected = index === visibleSegments.length - 1;
+            return `<button class="offer-center__thread-button${selected ? ' is-active' : ''}" type="button" role="tab" aria-selected="${selected ? 'true' : 'false'}" data-offer-email-select="${index}" title="${escapeHtml(label)}"><span aria-hidden="true">✉</span><span>${index + 1}</span></button>`;
+          }).join('')}
+        </div>
+        ${visibleSegments.map((message, index) => {
+          const sender = [message.sender_name, message.sender_email ? `<${message.sender_email}>` : ''].filter(Boolean).join(' ') || t('common.not_available', 'No disponible');
+          const title = message.subject || `${t('offer.mail_label', 'Correo')} ${index + 1}`;
+          const meta = [sender, formatDisplayDateTime(message.received_at)].filter(Boolean).join(' · ');
+          return `<article class="offer-center__thread-card" data-offer-email-panel="${index}" tabindex="-1"${index === visibleSegments.length - 1 ? '' : ' hidden'}>
+            <header class="offer-center__thread-header"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(meta)}</span></header>
+            <div class="offer-center__thread-body">${escapeHtml(message.body).replace(/\n/g, '<br>')}</div>
+          </article>`;
+        }).join('')}
       </div>
     `;
   };
@@ -7020,7 +7139,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         </article>
         <article class="offer-center__mail-body">
           <span>${escapeHtml(t('offer.fields.notes', 'OBSERVACIONES'))}</span>
-          ${renderOfferConversation(notes)}
+          ${renderOfferConversation(notes, oferta.correos || [], {
+            sender_name: oferta.nombre_emisor || '',
+            sender_email: oferta.email_emisor || '',
+          })}
         </article>
       </section>
     `;
@@ -9255,6 +9377,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         offerAttachmentPreviewReturnToGallery = offerAttachmentsGalleryModal?.classList.contains('is-visible') || false;
         closeOfferAttachmentsGalleryModal();
         openOfferAttachmentPreviewModal(attachment);
+        return;
+      }
+
+      const offerEmailSelector = event.target.closest('[data-offer-email-select]');
+      if (offerEmailSelector) {
+        const conversation = offerEmailSelector.closest('.offer-center__conversation');
+        const selectedIndex = offerEmailSelector.dataset.offerEmailSelect;
+        conversation?.querySelectorAll('[data-offer-email-select]').forEach((button) => {
+          const selected = button.dataset.offerEmailSelect === selectedIndex;
+          button.classList.toggle('is-active', selected);
+          button.setAttribute('aria-selected', selected ? 'true' : 'false');
+        });
+        conversation?.querySelectorAll('[data-offer-email-panel]').forEach((panel) => {
+          panel.hidden = panel.dataset.offerEmailPanel !== selectedIndex;
+        });
+        const selectedPanel = conversation?.querySelector(`[data-offer-email-panel="${selectedIndex}"]`);
+        selectedPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        selectedPanel?.focus({ preventScroll: true });
         return;
       }
 

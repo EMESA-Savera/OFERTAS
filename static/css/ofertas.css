@@ -2984,7 +2984,35 @@
 
 .offer-center__conversation {
   display: grid;
-  gap: 12px;
+  gap: 8px;
+}
+
+.offer-center__thread-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+
+.offer-center__thread-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 42px;
+  padding: 6px 9px;
+  border: 1px solid #c9d9e8;
+  border-radius: 9px;
+  color: #315675;
+  background: #f7fbff;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.offer-center__thread-button:hover,
+.offer-center__thread-button.is-active {
+  border-color: #2672aa;
+  color: #fff;
+  background: #2672aa;
 }
 
 .offer-center__attachments-list {
@@ -3185,24 +3213,35 @@
 
 .offer-center__thread-card {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 6px;
+  padding: 10px 12px;
   border: 1px solid #dce8f3;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);
+  border-radius: 10px;
+  background: #fbfdff;
 }
 
 .offer-center__thread-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: baseline;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 3px 10px;
   color: #123b63;
+}
+
+.offer-center__thread-header strong {
+  font-size: 0.9rem;
+}
+
+.offer-center__thread-header span {
+  color: #6b7f93;
+  font-size: 0.8rem;
 }
 
 .offer-center__thread-body {
   color: #35516c;
-  line-height: 1.65;
+  font-size: 0.92rem;
+  line-height: 1.48;
   word-break: break-word;
 }
 
