@@ -2987,10 +2987,18 @@
   gap: 8px;
 }
 
+.offer-center__thread-controls {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .offer-center__thread-selector {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
   padding-bottom: 2px;
 }
 
@@ -3013,6 +3021,34 @@
   border-color: #2672aa;
   color: #fff;
   background: #2672aa;
+}
+
+.offer-center__thread-expand-toggle {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 32px;
+  gap: 6px;
+  padding: 0 3px;
+  color: #315675;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.offer-center__thread-expand-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #2672aa;
+  cursor: pointer;
+}
+
+.offer-center__thread-expand-toggle:has(input:focus-visible) {
+  outline: 2px solid #2672aa;
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 .offer-center__attachments-list {
@@ -3216,8 +3252,41 @@
   gap: 6px;
   padding: 10px 12px;
   border: 1px solid #dce8f3;
+  border-left-width: 5px;
   border-radius: 10px;
   background: #fbfdff;
+}
+
+.offer-center__thread-card[hidden] {
+  display: none;
+}
+
+/* Cada correo del hilo usa un borde izquierdo y un fondo distintos para distinguirse de los demas */
+.offer-center__conversation .offer-center__thread-card:nth-of-type(4n + 1) {
+  border-left-color: #2672aa;
+  background: #f4faff;
+}
+
+.offer-center__conversation .offer-center__thread-card:nth-of-type(4n + 2) {
+  border-left-color: #1f9d67;
+  background: #f3fcf7;
+}
+
+.offer-center__conversation .offer-center__thread-card:nth-of-type(4n + 3) {
+  border-left-color: #c77b16;
+  background: #fffaf1;
+}
+
+.offer-center__conversation .offer-center__thread-card:nth-of-type(4n + 4) {
+  border-left-color: #8a4fbf;
+  background: #faf6ff;
+}
+
+.offer-center__conversation.is-expanded .offer-center__thread-card.is-selected {
+  border-top-color: #2672aa;
+  border-right-color: #2672aa;
+  border-bottom-color: #2672aa;
+  box-shadow: 0 0 0 2px rgba(38, 114, 170, 0.12);
 }
 
 .offer-center__thread-header {
@@ -3236,6 +3305,20 @@
 .offer-center__thread-header span {
   color: #6b7f93;
   font-size: 0.8rem;
+}
+
+/* Orden del correo dentro del hilo, marcado arriba a la derecha de cada correo */
+.offer-center__thread-header .offer-center__thread-order {
+  align-self: flex-start;
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(18, 59, 99, 0.08);
+  color: #315675;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .offer-center__thread-body {

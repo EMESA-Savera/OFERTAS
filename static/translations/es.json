@@ -864,6 +864,8 @@
   "offer.close_history": "Cerrar histórico",
   "offer.current_message": "Mensaje actual",
   "offer.full_conversation": "Conversacion completa",
+  "offer.show_full_conversation": "Mostrar toda la conversacion",
+  "offer.mail_order": "Correo {order} de {total}",
   "offer.current_offer_error": "No se pudo recuperar la oferta actual.",
   "offer.delete_aria": "Eliminar oferta {number}",
   "offer.delete_confirm": "¿Seguro que quieres eliminar la oferta {number}? Esta acción no se puede deshacer.",

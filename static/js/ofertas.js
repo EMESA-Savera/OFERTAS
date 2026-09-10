@@ -464,9 +464,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 
-  function t(key, fallback = key) {
+  function t(key, fallback = key, params = null) {
     if (window.GlobalHeader && typeof window.GlobalHeader.translate === 'function') {
-      const translated = window.GlobalHeader.translate(key);
+      const translated = params
+        ? window.GlobalHeader.translate(key, params, fallback)
+        : window.GlobalHeader.translate(key);
       if (translated && translated !== key) {
         return translated;
       }
@@ -6778,20 +6780,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     return `
-      <div class="offer-center__conversation">
-        <div class="offer-center__thread-selector" role="tablist" aria-label="${escapeHtml(t('offer.full_conversation', 'Conversacion completa'))}">
-          ${visibleSegments.map((message, index) => {
-            const label = message.subject || `${t('offer.mail_label', 'Correo')} ${index + 1}`;
-            const selected = index === visibleSegments.length - 1;
-            return `<button class="offer-center__thread-button${selected ? ' is-active' : ''}" type="button" role="tab" aria-selected="${selected ? 'true' : 'false'}" data-offer-email-select="${index}" title="${escapeHtml(label)}"><span aria-hidden="true">✉</span><span>${index + 1}</span></button>`;
-          }).join('')}
+      <div class="offer-center__conversation is-expanded">
+        <div class="offer-center__thread-controls">
+          <div class="offer-center__thread-selector" role="tablist" aria-label="${escapeHtml(t('offer.full_conversation', 'Conversacion completa'))}">
+            ${visibleSegments.map((message, index) => {
+              const label = message.subject || `${t('offer.mail_label', 'Correo')} ${index + 1}`;
+              const selected = index === visibleSegments.length - 1;
+              return `<button class="offer-center__thread-button${selected ? ' is-active' : ''}" type="button" role="tab" aria-selected="${selected ? 'true' : 'false'}" data-offer-email-select="${index}" title="${escapeHtml(label)}"><span aria-hidden="true">✉</span><span>${index + 1}</span></button>`;
+            }).join('')}
+          </div>
+          <label class="offer-center__thread-expand-toggle">
+            <input type="checkbox" data-offer-conversation-expand="true" checked />
+            <span>${escapeHtml(t('offer.show_full_conversation', 'Mostrar toda la conversacion'))}</span>
+          </label>
         </div>
         ${visibleSegments.map((message, index) => {
           const sender = [message.sender_name, message.sender_email ? `<${message.sender_email}>` : ''].filter(Boolean).join(' ') || t('common.not_available', 'No disponible');
           const title = message.subject || `${t('offer.mail_label', 'Correo')} ${index + 1}`;
           const meta = [sender, formatDisplayDateTime(message.received_at)].filter(Boolean).join(' · ');
-          return `<article class="offer-center__thread-card" data-offer-email-panel="${index}" tabindex="-1"${index === visibleSegments.length - 1 ? '' : ' hidden'}>
-            <header class="offer-center__thread-header"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(meta)}</span></header>
+          const selected = index === visibleSegments.length - 1;
+          const orderLabel = t('offer.mail_order', 'Correo {order} de {total}', { order: index + 1, total: visibleSegments.length });
+          return `<article class="offer-center__thread-card${selected ? ' is-selected' : ''}" data-offer-email-panel="${index}" tabindex="-1">
+            <header class="offer-center__thread-header"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(meta)}</span><span class="offer-center__thread-order" title="${escapeHtml(orderLabel)}">${escapeHtml(orderLabel)}</span></header>
             <div class="offer-center__thread-body">${escapeHtml(message.body).replace(/\n/g, '<br>')}</div>
           </article>`;
         }).join('')}
@@ -9380,17 +9390,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
+      const offerConversationExpandInput = event.target.closest('[data-offer-conversation-expand]');
+      if (offerConversationExpandInput) {
+        const conversation = offerConversationExpandInput.closest('.offer-center__conversation');
+        const expanded = Boolean(offerConversationExpandInput.checked);
+        const selectedIndex = conversation?.querySelector('[data-offer-email-select].is-active')?.dataset.offerEmailSelect;
+
+        conversation?.classList.toggle('is-expanded', expanded);
+        conversation?.querySelectorAll('[data-offer-email-panel]').forEach((panel) => {
+          const selected = panel.dataset.offerEmailPanel === selectedIndex;
+          panel.hidden = !expanded && !selected;
+          panel.classList.toggle('is-selected', selected);
+        });
+        return;
+      }
+
       const offerEmailSelector = event.target.closest('[data-offer-email-select]');
       if (offerEmailSelector) {
         const conversation = offerEmailSelector.closest('.offer-center__conversation');
         const selectedIndex = offerEmailSelector.dataset.offerEmailSelect;
+        const expanded = conversation?.classList.contains('is-expanded');
         conversation?.querySelectorAll('[data-offer-email-select]').forEach((button) => {
           const selected = button.dataset.offerEmailSelect === selectedIndex;
           button.classList.toggle('is-active', selected);
           button.setAttribute('aria-selected', selected ? 'true' : 'false');
         });
         conversation?.querySelectorAll('[data-offer-email-panel]').forEach((panel) => {
-          panel.hidden = panel.dataset.offerEmailPanel !== selectedIndex;
+          const selected = panel.dataset.offerEmailPanel === selectedIndex;
+          panel.hidden = !expanded && !selected;
+          panel.classList.toggle('is-selected', selected);
         });
         const selectedPanel = conversation?.querySelector(`[data-offer-email-panel="${selectedIndex}"]`);
         selectedPanel?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

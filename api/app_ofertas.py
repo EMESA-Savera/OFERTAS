@@ -2264,10 +2264,62 @@ def normalize_email_datetime(value):
     if isinstance(value, datetime):
         return value
 
-    try:
-        return parsedate_to_datetime(str(value))
-    except (TypeError, ValueError, IndexError, OverflowError):
+    raw_value = str(value).strip()
+    if not raw_value:
         return None
+
+    # Microsoft Graph uses ISO 8601 (normally ending in Z), whereas .eml and
+    # .msg expose RFC 2822 values.  ``parsedate_to_datetime`` only supports
+    # the latter, so try the ISO representation first.
+    try:
+        return datetime.fromisoformat(raw_value.replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        pass
+
+    try:
+        return parsedate_to_datetime(raw_value)
+    except (TypeError, ValueError, IndexError, OverflowError):
+        pass
+
+    # Outlook desktop localizes its quoted headers.  A common Spanish example
+    # is ``lunes, 16 de febrero de 2026 13:55``; this cannot be read by the
+    # standard-library RFC parser.  Czech is included as it is another
+    # corporate Outlook locale used by the application.
+    normalized_value = unicodedata.normalize("NFKD", raw_value.lower())
+    normalized_value = "".join(
+        character for character in normalized_value if not unicodedata.combining(character)
+    )
+    localized_months = {
+        "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+        "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+        "septiembre": 9, "setiembre": 9, "octubre": 10,
+        "noviembre": 11, "diciembre": 12,
+        "ledna": 1, "unora": 2, "brezna": 3, "dubna": 4,
+        "kvetna": 5, "cervna": 6, "cervence": 7, "srpna": 8,
+        "zari": 9, "rijna": 10, "listopadu": 11, "prosince": 12,
+    }
+    localized_date_match = re.search(
+        r"(?:^|,\s*)(\d{1,2})\.?\s+(?:de\s+)?([a-z]+)(?:\s+de)?\s+(\d{4})"
+        r"(?:[\s,]+(?:a\s+las\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?)?",
+        normalized_value,
+    )
+    if localized_date_match:
+        day, month_name, year, hour, minute, second = localized_date_match.groups()
+        month = localized_months.get(month_name)
+        if month:
+            try:
+                return datetime(
+                    int(year),
+                    month,
+                    int(day),
+                    int(hour or 0),
+                    int(minute or 0),
+                    int(second or 0),
+                )
+            except ValueError:
+                return None
+
+    return None
 
 
 def decode_email_header(value):
@@ -2809,8 +2861,8 @@ def resolve_cliente_for_sender_email(sender_email):
 def normalize_outlook_message_for_offer(message):
     body_content = message.get("body_content") or message.get("body_preview") or ""
     body_type = str(message.get("body_content_type") or "text").strip().lower()
-    body_text = html_to_text(body_content) if body_type == "html" else str(body_content)
-    body_text = clean_email_body(body_text)
+    thread_body = html_to_text(body_content) if body_type == "html" else str(body_content)
+    body_text = clean_email_body(thread_body)
 
     sender_name = normalize_optional_text(message.get("sender_name"), 255)
     sender_email = normalize_optional_text(message.get("sender_email"), 255)
@@ -2824,6 +2876,10 @@ def normalize_outlook_message_for_offer(message):
         "subject": normalize_optional_text(message.get("subject"), 500),
         "received_at": normalize_email_datetime(message.get("received_at")),
         "body": body_text,
+        # ``body`` is used to prefill the offer and therefore omits quoted
+        # headers.  Keep the untouched text separately so the normalized
+        # message store can split every cited mail and retain its metadata.
+        "thread_body": thread_body,
         "source_type": "outlook",
         "conversation_id": normalize_optional_text(message.get("conversation_id"), 255),
         "internet_message_id": normalize_message_identifier(message.get("internet_message_id")),

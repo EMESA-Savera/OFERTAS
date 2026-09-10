@@ -864,6 +864,8 @@
   "offer.close_history": "Cerrar histórico",
   "offer.current_message": "Current message",
   "offer.full_conversation": "Full conversation",
+  "offer.show_full_conversation": "Show full conversation",
+  "offer.mail_order": "Email {order} of {total}",
   "offer.current_offer_error": "No se pudo recuperar la oferta actual.",
   "offer.delete_aria": "Delete quote {number}",
   "offer.delete_confirm": "Are you sure you want to delete quote {number}? This action cannot be undone.",

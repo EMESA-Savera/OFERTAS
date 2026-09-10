@@ -589,6 +589,7 @@ class OutlookGraphService:
             "id": message.get("id"),
             "subject": message.get("subject") or "(sin asunto)",
             "received_at": message.get("receivedDateTime"),
+            "conversation_id": message.get("conversationId"),
             "body_preview": message.get("bodyPreview") or "",
             "sender_name": sender.get("name"),
             "sender_email": sender.get("address"),
@@ -607,6 +608,7 @@ class OutlookGraphService:
             "id": message.get("id"),
             "subject": message.get("subject") or "(sin asunto)",
             "received_at": message.get("receivedDateTime"),
+            "conversation_id": message.get("conversationId"),
             "body_preview": message.get("bodyPreview") or "",
             "body_content": body.get("content") or "",
             "body_content_type": body.get("contentType") or "text",
@@ -636,7 +638,7 @@ class OutlookGraphService:
             params={
                 "$top": max(1, min(int(top or 20), 50)),
                 "$orderby": "receivedDateTime DESC",
-                "$select": "id,subject,receivedDateTime,bodyPreview,from,isRead,hasAttachments,webLink",
+                "$select": "id,subject,conversationId,receivedDateTime,bodyPreview,from,isRead,hasAttachments,webLink",
             },
         )
         account = cls.get_connected_account(session_store)
@@ -678,7 +680,7 @@ class OutlookGraphService:
                     "GET",
                     endpoint,
                     params={
-                        "$select": "id,subject,receivedDateTime,bodyPreview,body,from,toRecipients,ccRecipients,isRead,hasAttachments,internetMessageId,webLink",
+                        "$select": "id,subject,conversationId,receivedDateTime,bodyPreview,body,from,toRecipients,ccRecipients,isRead,hasAttachments,internetMessageId,webLink",
                     },
                 )
                 detail = cls._serialize_message_detail(payload)

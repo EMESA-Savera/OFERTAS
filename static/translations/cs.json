@@ -864,6 +864,8 @@
   "offer.close_history": "Zavřít historii",
   "offer.current_message": "Aktualni zprava",
   "offer.full_conversation": "Cela konverzace",
+  "offer.show_full_conversation": "Zobrazit celou konverzaci",
+  "offer.mail_order": "E-mail {order} z {total}",
   "offer.current_offer_error": "Nepodařilo se načíst aktuální nabídku.",
   "offer.delete_aria": "Smazat nabídku {number}",
   "offer.delete_confirm": "Opravdu chcete smazat nabídku {number}? Tuto akci nelze vrátit zpět.",
