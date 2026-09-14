@@ -6573,8 +6573,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const cleanOfferEmailSegment = (rawSegment) => {
       const footerStartRegex = /^(?:este mensaje(?:\s+y\s+sus\s+archivos)?\s+es\s+confidencial|this (?:e-?mail|message)(?:\s+and\s+(?:any\s+)?attachments)?\s+is\s+confidential|please consider the environment before printing|horario de atenci[oó]n al p[uú]blico|customer service timetable)/i;
-      const signatureStartRegex = /^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*/i;
-      const contactLineRegex = /(?:@|\b(?:tel(?:e?fono)?|tlf|phone|mobile|fax|departamento|department|assistant|branch)\b|\+?\d[\d\s().-]{6,})/i;
       const cleanedLines = [];
 
       for (const rawLine of String(rawSegment || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n')) {
@@ -6588,16 +6586,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (footerStartRegex.test(line)) {
           break;
         }
-        if (signatureStartRegex.test(line) && cleanedLines.some((item) => item.trim())) {
-          break;
-        }
         cleanedLines.push(line);
       }
 
-      const nonEmptyLines = cleanedLines.filter((line) => line.trim());
-      if (nonEmptyLines.length && nonEmptyLines.every((line) => contactLineRegex.test(line))) {
-        return '';
-      }
       return cleanedLines.join('\n').trim();
     };
 

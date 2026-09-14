@@ -100,6 +100,29 @@ Could you confirm the criteria?
         self.assertTrue(all(record["extraction_confidence"] == "high" for record in records))
         self.assertNotIn("Este mensaje", "\n".join(record["body_text"] for record in records))
 
+    def test_farewell_and_text_that_follows_it_are_preserved(self):
+        # A farewell is still part of a message. Some Outlook signatures are
+        # also followed by a short final note, so neither may be discarded.
+        segment = """Información de la oferta.
+
+Un saludo,
+Ana
+
+Buenos días, añado que el plazo confirmado es el viernes.
+"""
+
+        cleaned_segment = self.app.clean_offer_email_segment(segment)
+        cleaned_body = self.app.clean_email_body(segment)
+
+        self.assertIn("Un saludo", cleaned_segment)
+        self.assertIn("Buenos días", cleaned_segment)
+        self.assertIn("Un saludo", cleaned_body)
+        self.assertIn("Buenos días", cleaned_body)
+
+        final_farewell = "Confirmamos la fecha solicitada.\n\nSaludos cordiales."
+        self.assertEqual(self.app.clean_offer_email_segment(final_farewell), final_farewell)
+        self.assertEqual(self.app.clean_email_body(final_farewell), final_farewell)
+
     def test_outlook_normalizer_keeps_raw_thread_only_for_separation(self):
         message = {
             "body_content_type": "text",

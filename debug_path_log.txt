@@ -2301,3 +2301,13 @@
 [2026-09-10 13:01:13] list_offer_attachments oferta_id=1165 numero_oferta=202600079 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600079 isdir=False
 [2026-09-10 13:03:56] get_offer_attachments_dir oferta_id=1165 numero_oferta=202600079 -> //192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600079 (isdir=False)
 [2026-09-10 13:03:57] list_offer_attachments oferta_id=1165 numero_oferta=202600079 dir=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments\202600079 isdir=False
+[2026-09-14 12:14:01] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-09-14 12:14:02] frozen=False
+[2026-09-14 12:14:02] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-09-14 12:14:03] sys._MEIPASS=None
+[2026-09-14 12:14:03] os.getcwd()=C:\Proyectos\OFERTAS_prueba\api
+[2026-09-14 12:14:04] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-09-14 12:14:04] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-09-14 12:14:05] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-09-14 12:14:05] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-09-14 12:14:06] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat

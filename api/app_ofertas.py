@@ -2508,27 +2508,7 @@ def clean_email_body(body_text):
         r"^(?:te\s+lo\s+reenv[ií]o|reenv[ií]o|reenviado|forwarding|forwarded|fyi|přepos[ií]l[aá]m|preposilam)\b",
         re.IGNORECASE,
     )
-    mobile_signatures = {
-        "sent from my iphone",
-        "sent from my ipad",
-        "enviado desde mi iphone",
-        "enviado desde mi ipad",
-        "obtener outlook para android",
-    }
-    signature_markers = (
-        "--",
-        "__",
-        "saludos",
-        "un saludo",
-        "atentamente",
-        "best regards",
-        "kind regards",
-        "muchas gracias",
-        "gracias",
-    )
-
     cleaned_lines = []
-    signature_name = None
     seen_message_content = False
 
     def looks_like_forwarded_header_block(start_index):
@@ -2555,7 +2535,6 @@ def clean_email_body(body_text):
 
     for index, line in enumerate(lines):
         stripped = line.strip()
-        lowered = stripped.lower()
 
         if not stripped:
             if cleaned_lines and cleaned_lines[-1] != "":
@@ -2580,19 +2559,6 @@ def clean_email_body(body_text):
             append_quoted_divider()
             continue
 
-        if lowered in mobile_signatures:
-            break
-
-        if any(lowered == marker or lowered.startswith(f"{marker},") for marker in signature_markers):
-            for candidate in lines[index + 1:index + 4]:
-                candidate = candidate.strip()
-                if not candidate:
-                    continue
-                if len(candidate) <= 60 and "@" not in candidate and not re.search(r"\d{3,}", candidate):
-                    signature_name = candidate
-                break
-            break
-
         cleaned_lines.append(stripped)
         seen_message_content = True
 
@@ -2601,9 +2567,6 @@ def clean_email_body(body_text):
 
     cleaned_text = "\n".join(cleaned_lines).strip()
     cleaned_text = re.sub(r"\n{3,}", "\n\n", cleaned_text)
-
-    if signature_name and signature_name.lower() not in cleaned_text.lower():
-        cleaned_text = f"{cleaned_text}\n\n{signature_name}".strip()
 
     return cleaned_text
 
@@ -3542,7 +3505,7 @@ def build_clean_offer_thread_body(body_text):
 
 
 def clean_offer_email_segment(segment):
-    """Quita firmas y avisos corporativos sin convertirlos en correos."""
+    """Elimina únicamente pies legales inequívocos, sin perder el mensaje."""
     footer_start_regex = re.compile(
         r"^(?:este mensaje(?:\s+y\s+sus\s+archivos)?\s+es\s+confidencial|"
         r"this (?:e-?mail|message)(?:\s+and\s+(?:any\s+)?attachments)?\s+is\s+confidential|"
@@ -3550,17 +3513,6 @@ def clean_offer_email_segment(segment):
         r"horario de atenci[oó]n al p[uú]blico|customer service timetable)",
         re.IGNORECASE,
     )
-    signature_start_regex = re.compile(
-        r"^(?:saludos(?:\s+cordiales)?|un\s+saludo|atentamente|"
-        r"best\s+regards|kind\s+regards|s\s+pozdravem|regards|thanks)[,.!\s]*",
-        re.IGNORECASE,
-    )
-    contact_line_regex = re.compile(
-        r"(?:@|\b(?:tel(?:e?fono)?|tlf|phone|mobile|fax|departamento|department|"
-        r"assistant|branch)\b|\+?\d[\d\s().-]{6,})",
-        re.IGNORECASE,
-    )
-
     cleaned_lines = []
     for raw_line in str(segment or "").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         line = raw_line.strip()
@@ -3570,15 +3522,8 @@ def clean_offer_email_segment(segment):
             continue
         if footer_start_regex.match(line):
             break
-        # Solo se corta una firma si antes hay texto; así no se pierde un
-        # mensaje breve cuyo único contenido es una despedida.
-        if signature_start_regex.match(line) and any(item.strip() for item in cleaned_lines):
-            break
         cleaned_lines.append(line)
 
-    non_empty_lines = [line for line in cleaned_lines if line.strip()]
-    if non_empty_lines and all(contact_line_regex.search(line) for line in non_empty_lines):
-        return ""
     return "\n".join(cleaned_lines).strip()
 
 
