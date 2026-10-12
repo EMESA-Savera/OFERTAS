@@ -2311,3 +2311,17 @@
 [2026-09-14 12:14:05] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
 [2026-09-14 12:14:05] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
 [2026-09-14 12:14:06] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-12 08:49:14] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-12 08:49:16] frozen=False
+[2026-10-12 08:49:17] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-12 08:49:18] sys._MEIPASS=None
+[2026-10-12 08:49:19] os.getcwd()=C:\Proyectos\OFERTAS_prueba\api
+[2026-10-12 08:49:20] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-12 08:49:21] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-12 08:49:22] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-12 08:49:23] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-12 08:49:24] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-12 08:52:22] save_binary_attachment_to_dir nombre=5521cff87fa54d0492ae482be3e6c319.jpg -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065222835076_5521cff87fa54d0492ae482be3e6c319.jpg
+[2026-10-12 08:52:24] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.pdf -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065224992204_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.pdf
+[2026-10-12 08:52:26] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.STEP -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065226084978_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.STEP
+[2026-10-12 08:52:27] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.DXF -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065227219255_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.DXF

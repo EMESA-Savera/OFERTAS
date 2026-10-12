@@ -182,7 +182,7 @@ ALLOWED_OFFER_ATTACHMENT_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".webp", ".gif",
     ".zip", ".7z", ".rar",
     ".eml", ".msg",
-    ".dwg", ".dxf",
+    ".dwg", ".dxf", ".step", ".stp",
 }
 os.makedirs(OFFER_ATTACHMENTS_DIR, exist_ok=True)
 os.makedirs(IMPORTED_EMAIL_ATTACHMENTS_DIR, exist_ok=True)
@@ -554,7 +554,7 @@ def save_binary_attachment_to_dir(target_dir, original_name, content_bytes):
         raise ValueError("Debes seleccionar al menos un archivo.")
 
     if not is_allowed_offer_attachment(normalized_name):
-        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP o correo.")
+        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP, correo o CAD.")
 
     binary_content = bytes(content_bytes or b"")
     if not binary_content:
@@ -645,6 +645,8 @@ def get_offer_attachment_mimetype(filename):
         ".7z": "application/x-7z-compressed",
         ".rar": "application/vnd.rar",
         ".msg": "application/vnd.ms-outlook",
+        ".step": "application/step",
+        ".stp": "application/step",
     }
     if extension in explicit_map:
         return explicit_map[extension]
@@ -706,7 +708,7 @@ def save_offer_attachment(oferta_id, file_storage):
         raise ValueError("Debes seleccionar al menos un archivo.")
 
     if not is_allowed_offer_attachment(original_name):
-        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP o correo.")
+        raise ValueError("Formato de archivo no permitido. Usa PDF, Excel, CSV, Word, imágenes, ZIP, correo o CAD.")
 
     file_size = get_uploaded_file_size(file_storage)
     if file_size is not None and file_size > MAX_OFFER_ATTACHMENT_SIZE_BYTES:

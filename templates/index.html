@@ -45,9 +45,9 @@
 
       <!-- Importación de correo: mismo comportamiento, menor altura visual -->
       <section class="mail-import-card mail-import-card--compact" aria-labelledby="mailImportTitle">
-        <p class="mail-import-card__subtle-note" data-translate-key="offer.outlook_new_download_hint">Si usas Outlook nuevo, descargar el correo (.eml) da mayor precisión.</p>
-        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml" data-translate-key-aria-label="offer.mail_import_aria">
-          <input id="mailFileInput" type="file" accept=".eml,message/rfc822" hidden />
+        <p class="mail-import-card__subtle-note" data-translate-key="offer.outlook_new_download_hint">Admite correos de Outlook en formato .eml y .msg.</p>
+        <div id="mailDropzone" class="mail-dropzone" role="button" tabindex="0" aria-label="Importar correo arrastrando un archivo .eml o .msg" data-translate-key-aria-label="offer.mail_import_aria">
+          <input id="mailFileInput" type="file" accept=".eml,.msg,message/rfc822,application/vnd.ms-outlook" hidden />
           <span class="mail-dropzone__icon" aria-hidden="true">✉️</span>
           <div class="mail-dropzone__content">
             <strong data-translate-key="offer.mail_drop_title">Arrastra aquí el correo</strong>
@@ -546,7 +546,7 @@
             </div>
 
             <div id="offerCenterFeedback" class="form-feedback" aria-live="polite"></div>
-            <input id="offerCenterAttachmentInput" type="file" multiple hidden accept=".pdf,.csv,.xls,.xlsx,.xlsm,.ods,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip,.7z,.rar,.eml" />
+            <input id="offerCenterAttachmentInput" type="file" multiple hidden accept=".pdf,.csv,.xls,.xlsx,.xlsm,.ods,.doc,.docx,.txt,.rtf,.png,.jpg,.jpeg,.webp,.gif,.zip,.7z,.rar,.eml,.msg,.dwg,.dxf,.step,.stp" />
           </div>
         </div>
 
