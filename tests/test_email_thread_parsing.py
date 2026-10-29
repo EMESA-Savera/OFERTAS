@@ -142,6 +142,93 @@ Buenos días, añado que el plazo confirmado es el viernes.
         self.assertEqual(normalized["conversation_id"], "conversation-123")
         self.assertEqual(normalized["received_at"].isoformat(), "2026-02-16T10:00:00+00:00")
 
+    def test_project_reference_is_extracted_from_forwarded_subject(self):
+        self.assertEqual(
+            self.app.extract_offer_project_reference(
+                "FW: Project: 171VS - GPL6/20146970 - Request for quotation"
+            ),
+            "171VS - GPL6/20146970",
+        )
+
+    def test_project_reference_does_not_fall_back_to_shared_outlook_references(self):
+        class Cursor:
+            def __init__(self):
+                self._row = None
+
+            def execute(self, query, params=()):
+                if "OBJECT_ID('ofertas.oferta_correos_importados'" in query:
+                    self._row = (1,)
+                elif "OBJECT_ID('ofertas.oferta_correos'" in query:
+                    self._row = (1,)
+                elif "FROM ofertas.oferta_correos oc" in query:
+                    self._row = None
+                else:
+                    raise AssertionError(f"No debe usar coincidencia por cabeceras: {query}")
+
+            def fetchone(self):
+                row, self._row = self._row, None
+                return row
+
+        match = self.app.get_offer_thread_match(
+            Cursor(),
+            {
+                "thread_body": "Mensaje nuevo",
+                "source_type": "email_file",
+                "sender_name": "Ana",
+                "sender_email": "ana@example.com",
+                "received_at": datetime(2026, 2, 16, 10, 0),
+                "subject": "FW: Project: 171VS - GPL6/20146970 - Request for quotation",
+                "internet_message_id": "new@example.com",
+                "in_reply_to_message_id": "shared@example.com",
+                "reference_message_ids": ["shared@example.com"],
+            },
+        )
+
+        self.assertIsNone(match)
+
+    def test_thread_match_prefers_offer_with_most_referenced_messages(self):
+        class Cursor:
+            def __init__(self):
+                self.queries = []
+                self._row = None
+
+            def execute(self, query, params=()):
+                self.queries.append((query, params))
+                if "OBJECT_ID('ofertas.oferta_correos_importados'" in query:
+                    self._row = (1,)
+                elif "GROUP BY lo.id_oferta" in query:
+                    self._row = (1208, "202600122", "PL5", 4, 1250)
+                else:
+                    raise AssertionError(f"Consulta inesperada: {query}")
+
+            def fetchone(self):
+                row, self._row = self._row, None
+                return row
+
+        cursor = Cursor()
+        match = self.app.get_offer_thread_match(
+            cursor,
+            {
+                "thread_body": "Mensaje nuevo",
+                "source_type": "email_file",
+                "sender_name": "Ana",
+                "sender_email": "ana@example.com",
+                "received_at": datetime(2026, 2, 16, 10, 0),
+                "subject": "RE: PL5",
+                "internet_message_id": "new@example.com",
+                "in_reply_to_message_id": "reply@example.com",
+                "reference_message_ids": [
+                    "first@example.com",
+                    "second@example.com",
+                    "third@example.com",
+                ],
+            },
+        )
+
+        self.assertEqual(match["id_oferta"], 1208)
+        self.assertEqual(match["matched_reference_count"], 4)
+        self.assertIn("COUNT(DISTINCT oci.internet_message_id)", cursor.queries[-1][0])
+
 
 if __name__ == "__main__":
     unittest.main()

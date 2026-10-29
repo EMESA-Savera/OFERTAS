@@ -2938,6 +2938,28 @@ def normalize_email_subject_for_matching(subject):
     return normalized.lower() or None
 
 
+def extract_offer_project_reference(subject):
+    """Devuelve la referencia de proyecto contenida en un asunto de oferta.
+
+    Los correos reenviados de un mismo proyecto pueden compartir cabeceras
+    ``References`` aunque correspondan a ofertas distintas. La referencia
+    visible en el asunto es la señal estable para separar esos casos.
+    """
+    normalized = normalize_email_subject_for_matching(subject)
+    if not normalized:
+        return None
+
+    match = re.search(
+        r"\b([a-z0-9]+)\s*-\s*([a-z0-9]+)\s*/\s*([0-9]+)\b",
+        normalized,
+        re.IGNORECASE,
+    )
+    if not match:
+        return None
+
+    return f"{match.group(1).upper()} - {match.group(2).upper()}/{match.group(3)}"
+
+
 def oferta_email_tracking_table_exists(cursor):
     cursor.execute("SELECT 1 WHERE OBJECT_ID('ofertas.oferta_correos_importados', 'U') IS NOT NULL")
     return cursor.fetchone() is not None
@@ -3099,6 +3121,50 @@ def get_offer_thread_match(cursor, parsed_email):
     if metadata is None:
         return None
 
+    project_reference = extract_offer_project_reference(parsed_email.get("subject"))
+    if project_reference:
+        project_like = f"%{project_reference}%"
+        if oferta_email_messages_table_exists(cursor):
+            cursor.execute(
+                """
+                SELECT TOP 1
+                       lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+                FROM ofertas.oferta_correos oc
+                INNER JOIN ofertas.listado_ofertas lo
+                    ON lo.id_oferta = oc.id_oferta
+                WHERE UPPER(ISNULL(oc.subject, '')) LIKE UPPER(?)
+                   OR UPPER(ISNULL(lo.ref_cliente_asunto_email, '')) LIKE UPPER(?)
+                ORDER BY
+                    CASE WHEN UPPER(ISNULL(oc.subject, '')) LIKE UPPER(?) THEN 0 ELSE 1 END,
+                    oc.id_correo DESC,
+                    lo.id_oferta DESC
+                """,
+                (project_like, project_like, project_like),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT TOP 1 lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+                FROM ofertas.listado_ofertas lo
+                WHERE UPPER(ISNULL(lo.ref_cliente_asunto_email, '')) LIKE UPPER(?)
+                ORDER BY lo.id_oferta DESC
+                """,
+                (project_like,),
+            )
+        row = cursor.fetchone()
+        if row is not None:
+            return {
+                "id_oferta": row[0],
+                "numero_oferta": row[1],
+                "ref_cliente_asunto_email": row[2],
+                "match_type": "project_reference",
+            }
+
+        # A project reference in the subject is an explicit boundary. Do not
+        # fall back to shared Outlook References/Conversation-Id values, as
+        # forwarded project emails commonly reuse those headers.
+        return None
+
     conversation_id = metadata.get("conversation_id")
     if conversation_id:
         cursor.execute(
@@ -3136,12 +3202,18 @@ def get_offer_thread_match(cursor, parsed_email):
     placeholders = ", ".join("?" for _ in related_message_ids)
     cursor.execute(
         f"""
-        SELECT TOP 1 lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+        SELECT TOP 1
+               lo.id_oferta,
+               lo.numero_oferta,
+               lo.ref_cliente_asunto_email,
+               COUNT(DISTINCT oci.internet_message_id) AS matched_reference_count,
+               MAX(oci.id_correo_importado) AS latest_match_id
         FROM ofertas.oferta_correos_importados oci
         INNER JOIN ofertas.listado_ofertas lo
             ON lo.id_oferta = oci.id_oferta
         WHERE oci.internet_message_id IN ({placeholders})
-        ORDER BY oci.id_correo_importado DESC
+        GROUP BY lo.id_oferta, lo.numero_oferta, lo.ref_cliente_asunto_email
+        ORDER BY matched_reference_count DESC, latest_match_id DESC, lo.id_oferta ASC
         """,
         tuple(related_message_ids),
     )
@@ -3154,6 +3226,7 @@ def get_offer_thread_match(cursor, parsed_email):
         "numero_oferta": row[1],
         "ref_cliente_asunto_email": row[2],
         "match_type": "message_reference",
+        "matched_reference_count": row[3],
     }
 
 
@@ -5977,6 +6050,13 @@ def api_outlook_import_message(message_id):
             if conversation_id:
                 conversation_messages = OutlookGraphService.list_messages_by_conversation(session, conversation_id)
                 parsed_messages = [normalize_outlook_message_for_offer(item) for item in conversation_messages]
+                project_reference = extract_offer_project_reference(parsed_email.get("subject"))
+                if project_reference:
+                    parsed_messages = [
+                        item
+                        for item in parsed_messages
+                        if extract_offer_project_reference(item.get("subject")) == project_reference
+                    ] or [parsed_email]
 
             sync_result = sync_imported_emails_into_offer(cursor, thread_match["id_oferta"], parsed_messages)
             conn.commit()

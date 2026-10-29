@@ -1,0 +1,31 @@
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on https://127.0.0.1:3010
+ * Running on https://172.16.250.126:3010
+Press CTRL+C to quit
+127.0.0.1 - - [29/Oct/2026 08:11:28] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/css/loginModal.css HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/js/ofertas.js?v=20260804 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/css/ofertas.css?v=20260804 HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/css/global.css HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/js/navigationManager.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/js/i18n.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/js/globalHeader.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/translations/es.json HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/js/loginModal.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /static/images/Logo_EMESA.png HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:29] "GET /api/boms/last-import HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /api/session/check HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /static/data/state-emoji-suggestions.json HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /static/js/sharedSession.js HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /api/session/check HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /api/session/check HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /api/ofertas/columnas-disponibles HTTP/1.1" 401 -
+127.0.0.1 - - [29/Oct/2026 08:11:30] "GET /static/images/Logo_EMESA.png HTTP/1.1" 304 -
+127.0.0.1 - - [29/Oct/2026 08:11:39] "POST /api/login HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:11:50] "GET /api/outlook/status HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:12:01] "GET /api/session/check HTTP/1.1" 200 -
+127.0.0.1 - - [29/Oct/2026 08:12:04] "GET /api/outlook/status HTTP/1.1" 200 -
+C:\Proyectos\OFERTAS_prueba\.venv\Lib\site-packages\msal\oauth2cli\oauth2.py:408: UserWarning: response_mode='form_post' is recommended for better security. See https://www.rfc-editor.org/rfc/rfc9700.html#section-4.3.1
+  warnings.warn(
+127.0.0.1 - - [29/Oct/2026 08:12:09] "GET /auth/outlook/login?open_outlook=0 HTTP/1.1" 302 -

@@ -2325,3 +2325,223 @@
 [2026-10-12 08:52:24] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.pdf -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065224992204_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.pdf
 [2026-10-12 08:52:26] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.STEP -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065226084978_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.STEP
 [2026-10-12 08:52:27] save_binary_attachment_to_dir nombre=Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.DXF -> C:/ProgramData/OFERTAS/data/imported_email_attachments\pendientes\I5dLS7SZCnCpMgSo9IecnLTz\20261012065227219255_Schindler_DSW_Podlozka_q6_t3000_S235JR_EN10025_10029.DXF
+[2026-10-29 08:10:38] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:10:38] frozen=False
+[2026-10-29 08:10:39] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:10:39] sys._MEIPASS=None
+[2026-10-29 08:10:40] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:10:41] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:10:41] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:10:42] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:10:42] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:10:43] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:21:56] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:21:57] frozen=False
+[2026-10-29 08:21:57] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:21:58] sys._MEIPASS=None
+[2026-10-29 08:21:58] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:21:59] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:21:59] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:22:00] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:22:00] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:22:01] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:22:37] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:22:38] frozen=False
+[2026-10-29 08:22:38] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:22:39] sys._MEIPASS=None
+[2026-10-29 08:22:40] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:22:40] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:22:41] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:22:41] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:22:42] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:22:42] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:23:32] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:23:33] frozen=False
+[2026-10-29 08:23:33] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:23:34] sys._MEIPASS=None
+[2026-10-29 08:23:35] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:23:36] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:23:36] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:23:37] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:23:37] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:23:38] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:25:11] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:25:12] frozen=False
+[2026-10-29 08:25:12] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:25:13] sys._MEIPASS=None
+[2026-10-29 08:25:13] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:25:14] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:25:14] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:25:15] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:25:15] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:25:16] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:27:37] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:27:38] frozen=False
+[2026-10-29 08:27:38] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:27:39] sys._MEIPASS=None
+[2026-10-29 08:27:39] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:27:40] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:27:40] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:27:41] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:27:42] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:27:42] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:28:06] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:28:07] frozen=False
+[2026-10-29 08:28:07] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:28:08] sys._MEIPASS=None
+[2026-10-29 08:28:09] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:28:09] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:28:10] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:28:11] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:28:12] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:28:12] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:28:50] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:28:51] frozen=False
+[2026-10-29 08:28:52] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:28:52] sys._MEIPASS=None
+[2026-10-29 08:28:53] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:28:53] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:28:54] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:28:55] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:28:55] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:28:56] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:29:31] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:29:31] frozen=False
+[2026-10-29 08:29:32] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:29:32] sys._MEIPASS=None
+[2026-10-29 08:29:33] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:29:33] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:29:34] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:29:34] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:29:35] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:29:35] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:33:07] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:33:08] frozen=False
+[2026-10-29 08:33:08] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:33:09] sys._MEIPASS=None
+[2026-10-29 08:33:09] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:33:10] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:33:10] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:33:11] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:33:11] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:33:12] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:33:38] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:33:39] frozen=False
+[2026-10-29 08:33:39] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:33:40] sys._MEIPASS=None
+[2026-10-29 08:33:40] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:33:41] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:33:41] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:33:42] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:33:42] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:33:43] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:35:14] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:35:15] frozen=False
+[2026-10-29 08:35:15] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:35:16] sys._MEIPASS=None
+[2026-10-29 08:35:17] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:35:17] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:35:18] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:35:18] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:35:19] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:35:20] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:36:05] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:36:06] frozen=False
+[2026-10-29 08:36:06] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:36:07] sys._MEIPASS=None
+[2026-10-29 08:36:07] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:36:08] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:36:08] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:36:09] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:36:09] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:36:10] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:36:47] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:36:48] frozen=False
+[2026-10-29 08:36:48] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:36:49] sys._MEIPASS=None
+[2026-10-29 08:36:49] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:36:50] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:36:50] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:36:51] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:36:51] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:36:52] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:37:52] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:37:52] frozen=False
+[2026-10-29 08:37:53] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:37:53] sys._MEIPASS=None
+[2026-10-29 08:37:54] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:37:54] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:37:55] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:37:55] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:37:56] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:37:56] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:38:40] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:38:41] frozen=False
+[2026-10-29 08:38:41] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:38:42] sys._MEIPASS=None
+[2026-10-29 08:38:42] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:38:43] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:38:43] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:38:44] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:38:44] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:38:44] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:39:18] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:39:19] frozen=False
+[2026-10-29 08:39:19] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:39:20] sys._MEIPASS=None
+[2026-10-29 08:39:20] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:39:21] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:39:21] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:39:22] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:39:22] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:39:23] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:39:55] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:39:56] frozen=False
+[2026-10-29 08:39:56] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:39:57] sys._MEIPASS=None
+[2026-10-29 08:39:57] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:39:58] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:39:58] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:39:59] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:39:59] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:40:00] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:40:33] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:40:34] frozen=False
+[2026-10-29 08:40:34] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:40:35] sys._MEIPASS=None
+[2026-10-29 08:40:35] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:40:36] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:40:36] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:40:37] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:40:37] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:40:38] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:42:18] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:42:18] frozen=False
+[2026-10-29 08:42:19] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:42:19] sys._MEIPASS=None
+[2026-10-29 08:42:21] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:42:22] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:42:23] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:42:24] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:42:24] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:42:25] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:52:13] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:52:13] frozen=False
+[2026-10-29 08:52:14] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:52:14] sys._MEIPASS=None
+[2026-10-29 08:52:15] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:52:15] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:52:16] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:52:16] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:52:17] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:52:17] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+[2026-10-29 08:56:05] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:56:06] frozen=False
+[2026-10-29 08:56:06] sys.executable=C:\Users\j.barutell\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.12_qbz5n2kfra8p0\python.exe
+[2026-10-29 08:56:07] sys._MEIPASS=None
+[2026-10-29 08:56:07] os.getcwd()=C:\Proyectos\OFERTAS_prueba\api
+[2026-10-29 08:56:08] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:56:08] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:56:09] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:56:09] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:56:10] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat

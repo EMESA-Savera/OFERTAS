@@ -1,0 +1,12 @@
+[2026-10-29 08:10:38] ===== INICIO DE LA APP (diagnostico de rutas) =====
+[2026-10-29 08:10:38] frozen=False
+[2026-10-29 08:10:39] sys.executable=C:\Proyectos\OFERTAS_prueba\.venv\Scripts\python.exe
+[2026-10-29 08:10:39] sys._MEIPASS=None
+[2026-10-29 08:10:40] os.getcwd()=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:10:41] PROJECT_DIR=C:\Proyectos\OFERTAS_prueba
+[2026-10-29 08:10:41] RUNTIME_DATA_DIR=C:/ProgramData/OFERTAS/data
+[2026-10-29 08:10:42] OFFER_ATTACHMENTS_DIR=//192.168.253.9/DIgitalizacion/01. DESARROLLO/OFERTAS SAVERA/data/offer_attachments
+[2026-10-29 08:10:42] IMPORTED_EMAIL_ATTACHMENTS_DIR=C:/ProgramData/OFERTAS/data/imported_email_attachments
+[2026-10-29 08:10:43] OFFER_CHAT_DIR=C:/ProgramData/OFERTAS/data\offer_chat
+ * Serving Flask app 'app_ofertas'
+ * Debug mode: off
